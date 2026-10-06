@@ -39,10 +39,14 @@ export async function PATCH(
     }
 
     // 알림 기록
-    dispatchStaffNotifications({
-      order: updatedOrder,
-      type: 'STATUS_CHANGE',
-    }).catch(console.error);
+    try {
+      await dispatchStaffNotifications({
+        order: updatedOrder,
+        type: 'STATUS_CHANGE',
+      });
+    } catch (notifyErr) {
+      console.error('[Notification error]', notifyErr);
+    }
 
     return NextResponse.json({ success: true, order: updatedOrder });
   } catch (error) {

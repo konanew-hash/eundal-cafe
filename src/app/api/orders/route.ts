@@ -170,14 +170,18 @@ export async function POST(req: NextRequest) {
     }));
     await supabase.from('eundal_order_items').insert(itemsData);
 
-    // 9. 관리자 및 매니저 알림 디스패치 (비동기)
-    dispatchStaffNotifications({
-      order: {
-        ...createdOrder,
-        items: itemsData,
-      },
-      type: 'NEW_ORDER',
-    }).catch((err) => console.error('Notification dispatch failed:', err));
+    // 9. 관리자 및 매니저 알림 디스패치
+    try {
+      await dispatchStaffNotifications({
+        order: {
+          ...createdOrder,
+          items: itemsData,
+        },
+        type: 'NEW_ORDER',
+      });
+    } catch (err) {
+      console.error('Notification dispatch failed:', err);
+    }
 
     return NextResponse.json({
       success: true,
