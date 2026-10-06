@@ -11,8 +11,9 @@
 - **Supabase Project Ref**: `fldcouaymmbbiugexvwj`
 - **Supabase Region**: `ap-northeast-2` (Seoul)
 - **Supabase Project URL**: `https://fldcouaymmbbiugexvwj.supabase.co`
-- **Vercel Project ID**: (배포 후 대조 기록)
-- **Vercel Org ID**: (배포 후 대조 기록)
+- **Vercel Project ID**: `prj_uG4G32HbST8hM68WRZ00ufmpufLp`
+- **Vercel Org ID**: `team_vuXymHPqr1grVbY1EJjUOo9G`
+- **Vercel Project Name**: `eundal`
 
 ## 3. 핵심 기능 명세
 1. **고객 모바일 반응형 웹 (`/`)**:
