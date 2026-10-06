@@ -19,17 +19,40 @@ import {
   ChevronDown,
   Volume2,
   VolumeX,
+  Camera,
+  Edit,
+  Plus,
+  Minus,
+  Trash2,
+  X,
+  Save,
+  Check,
+  Download,
 } from 'lucide-react';
-import { Order } from '@/lib/types';
+import { toPng } from 'html-to-image';
+import { Order, MenuItem, OrderItem } from '@/lib/types';
 import { exportOrdersToExcel } from '@/lib/excel';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [availableMenus, setAvailableMenus] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const previousOrderCountRef = useRef(0);
+
+  // 주문 수정 모달 상태
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editItems, setEditItems] = useState<OrderItem[]>([]);
+  const [editDeliveryFee, setEditDeliveryFee] = useState<number>(0);
+  const [editOrderMemo, setEditOrderMemo] = useState<string>('');
+  const [selectedAddMenuId, setSelectedAddMenuId] = useState<string>('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // 캡처 중 상태 (어떤 주문 ID가 캡처 중인지)
+  const [capturingId, setCapturingId] = useState<string | null>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 주문 목록 로드
   const fetchOrders = useCallback(async (isInitial = false) => {
@@ -38,7 +61,6 @@ export default function AdminOrdersPage() {
       const res = await fetch(`/api/admin/orders?status=${statusFilter}`);
       const data = await res.json();
       if (data.orders) {
-        // 새 주문 발생 시 사운드 알림
         if (!isInitial && previousOrderCountRef.current > 0 && data.orders.length > previousOrderCountRef.current) {
           playOrderSound();
         }
@@ -52,6 +74,20 @@ export default function AdminOrdersPage() {
     }
   }, [statusFilter]);
 
+  // 메뉴 목록 로드 (주문 수정 시 추가용)
+  useEffect(() => {
+    async function loadMenus() {
+      try {
+        const res = await fetch('/api/public/data');
+        const data = await res.json();
+        if (data.menus) setAvailableMenus(data.menus);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadMenus();
+  }, []);
+
   // 주기적 자동 폴링 (8초마다 갱신)
   useEffect(() => {
     fetchOrders(true);
@@ -61,7 +97,7 @@ export default function AdminOrdersPage() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
-  // 주문 알림음 (Web Audio API로 감미로운 챠임 사운드 생성)
+  // 주문 알림음
   const playOrderSound = () => {
     if (!soundEnabled) return;
     try {
@@ -69,8 +105,8 @@ export default function AdminOrdersPage() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
       gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
       osc.connect(gain);
@@ -103,6 +139,133 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // 요구사항: 주문 내역에서 이미지를 캡처하여 고객 확인 문자에 첨부 가능하도록 조치
+  const handleCaptureOrderImage = async (order: Order) => {
+    const cardEl = cardRefs.current[order.id];
+    if (!cardEl) return;
+
+    try {
+      setCapturingId(order.id);
+      // html-to-image로 캡처
+      const dataUrl = await toPng(cardEl, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        cacheBust: true,
+      });
+
+      // 이미지 파일 다운로드 트리거
+      const link = document.createElement('a');
+      link.download = `은달카페_주문확인_${order.order_number}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      // 클립보드 복사 시도
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        alert(`주문확인 이미지가 다운로드되고 클립보드에 복사되었습니다!\n(문자/카카오톡 발송 시 붙여넣기(Ctrl+V)하여 첨부할 수 있습니다.)`);
+      } catch {
+        alert(`주문확인 이미지가 다운로드되었습니다: 은달카페_주문확인_${order.order_number}.png`);
+      }
+    } catch (err) {
+      console.error('Capture error:', err);
+      alert('이미지 캡처 중 오류가 발생했습니다.');
+    } finally {
+      setCapturingId(null);
+    }
+  };
+
+  // 요구사항: 관리자가 주문 내역 메뉴 일부 수정 가능
+  const openEditModal = (order: Order) => {
+    setEditingOrder(order);
+    setEditItems(order.items ? JSON.parse(JSON.stringify(order.items)) : []);
+    setEditDeliveryFee(order.delivery_fee);
+    setEditOrderMemo(order.order_memo || '');
+    setSelectedAddMenuId(availableMenus[0]?.id || '');
+  };
+
+  const handleEditItemQty = (index: number, delta: number) => {
+    setEditItems((prev) => {
+      const next = [...prev];
+      const nextQty = next[index].quantity + delta;
+      if (nextQty > 0) {
+        next[index].quantity = nextQty;
+        next[index].subtotal = next[index].price * nextQty;
+      }
+      return next;
+    });
+  };
+
+  const handleRemoveEditItem = (index: number) => {
+    if (editItems.length <= 1) {
+      alert('주문에 최소 1개 이상의 품목이 있어야 합니다.');
+      return;
+    }
+    setEditItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddMenuToOrder = () => {
+    const targetMenu = availableMenus.find((m) => m.id === selectedAddMenuId);
+    if (!targetMenu) return;
+
+    // 이미 있는 품목이면 수량만 증가
+    const existingIdx = editItems.findIndex((it) => it.menu_id === targetMenu.id);
+    if (existingIdx > -1) {
+      handleEditItemQty(existingIdx, 1);
+    } else {
+      setEditItems((prev) => [
+        ...prev,
+        {
+          order_id: editingOrder?.id,
+          menu_id: targetMenu.id,
+          menu_name: targetMenu.name,
+          price: targetMenu.price,
+          quantity: 1,
+          subtotal: targetMenu.price,
+        },
+      ]);
+    }
+  };
+
+  const handleSaveOrderEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOrder) return;
+
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${editingOrder.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: editItems,
+          delivery_fee: editDeliveryFee,
+          order_memo: editOrderMemo,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '수정 실패');
+
+      // 주문 목록 업데이트
+      setOrders((prev) =>
+        prev.map((o) => (o.id === editingOrder.id ? data.order : o))
+      );
+      setEditingOrder(null);
+      alert('주문 내역이 성공적으로 수정되었습니다.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert(err.message);
+      } else {
+        alert('주문 수정 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   // 엑셀 내보내기 핸들러
   const handleExportExcel = () => {
     if (orders.length === 0) {
@@ -127,9 +290,9 @@ export default function AdminOrdersPage() {
   const statusBadge = (status: Order['status']) => {
     switch (status) {
       case 'pending':
-        return <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px] border border-amber-300 flex items-center gap-1"><Clock className="w-3 h-3" /> 접수대기</span>;
+        return <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px] border border-amber-300 flex items-center gap-1"><Clock className="w-3 h-3" /> 견적대기</span>;
       case 'accepted':
-        return <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 font-bold text-[11px] border border-blue-300 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> 접수완료</span>;
+        return <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 font-bold text-[11px] border border-blue-300 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> 주문확정</span>;
       case 'brewing':
         return <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-900 font-bold text-[11px] border border-purple-300 flex items-center gap-1"><Clock className="w-3 h-3" /> 제조중</span>;
       case 'delivering':
@@ -141,19 +304,23 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // 모달 안에서 계산되는 합계
+  const editItemsTotal = editItems.reduce((s, it) => s + (it.price * it.quantity), 0);
+  const editFinalTotal = editItemsTotal + (editDeliveryFee || 0);
+
   return (
     <div className="space-y-5">
       {/* 타이틀 및 상단 툴바 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-sm">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
-            <span>주문 실시간 대시보드</span>
+            <span>주문 & 견적 실시간 대시보드</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold">
               총 {orders.length}건
             </span>
           </h2>
           <p className="text-xs text-stone-500 mt-0.5">
-            고객의 주문 및 24시간제 배달 일정을 확인하고 상태를 변경합니다.
+            접수된 견적 및 주문 확인, 메뉴 일부 수정, 문자 첨부용 영수증 이미지 캡처를 지원합니다.
           </p>
         </div>
 
@@ -181,14 +348,13 @@ export default function AdminOrdersPage() {
             <span className="hidden sm:inline">새로고침</span>
           </button>
 
-          {/* 요구사항: 엑셀 다운로드 */}
           <button
             onClick={handleExportExcel}
             className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
             title="현재 주문 내역을 엑셀(.xlsx) 파일로 내보냅니다."
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>주문 내역 엑셀 다운로드</span>
+            <span>엑셀 다운로드</span>
           </button>
         </div>
       </div>
@@ -199,8 +365,8 @@ export default function AdminOrdersPage() {
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full sm:w-auto">
           {[
             { key: 'all', label: '전체' },
-            { key: 'pending', label: '접수대기' },
-            { key: 'accepted', label: '접수완료' },
+            { key: 'pending', label: '견적대기' },
+            { key: 'accepted', label: '주문확정' },
             { key: 'brewing', label: '제조중' },
             { key: 'delivering', label: '배달중' },
             { key: 'completed', label: '완료' },
@@ -256,7 +422,8 @@ export default function AdminOrdersPage() {
                   : 'border-stone-200'
               }`}
             >
-              <div>
+              {/* 이미지 캡처 대상 영역 Ref 지정 */}
+              <div ref={(el) => { cardRefs.current[order.id] = el; }} className="bg-white rounded-xl p-1">
                 {/* 상단 주문번호 & 상태 */}
                 <div className="flex items-center justify-between pb-2.5 border-b border-stone-100">
                   <div>
@@ -312,7 +479,10 @@ export default function AdminOrdersPage() {
 
                 {/* 품목 상세 */}
                 <div className="py-2.5 space-y-1 text-xs border-b border-stone-100">
-                  <span className="text-[11px] font-bold text-stone-500 block mb-1">주문 메뉴 내역</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-stone-500">주문 메뉴 내역</span>
+                    <span className="text-[10px] text-stone-400">총 {order.items?.length || 0}종</span>
+                  </div>
                   {order.items?.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-stone-700">
                       <span className="line-clamp-1">{item.menu_name} x {item.quantity}</span>
@@ -339,60 +509,251 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* 하단 상태 변경 액션 버튼들 */}
-              <div className="pt-3 border-t border-stone-100 flex items-center gap-1.5">
-                {order.status === 'pending' && (
+              {/* 하단 관리자 도구 바 (품목 수정 & 이미지 캡처 & 상태 변경) */}
+              <div className="pt-3 border-t border-stone-100 space-y-2">
+                {/* 상단 버튼: 품목 수정 및 이미지 캡처 */}
+                <div className="flex items-center gap-1.5">
+                  {/* 요구사항 3: 메뉴 일부 수정 버튼 */}
                   <button
-                    onClick={() => handleUpdateStatus(order.id, 'accepted')}
-                    className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold rounded-xl text-xs transition-colors shadow-xs"
+                    onClick={() => openEditModal(order)}
+                    className="flex-1 py-1.5 px-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-colors border border-stone-200"
+                    title="주문 품목 및 수량 수정"
                   >
-                    주문 접수
+                    <Edit className="w-3.5 h-3.5 text-stone-600" />
+                    <span>품목/수량 수정</span>
                   </button>
-                )}
-                {order.status === 'accepted' && (
-                  <button
-                    onClick={() => handleUpdateStatus(order.id, 'brewing')}
-                    className="flex-1 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold rounded-xl text-xs transition-colors"
-                  >
-                    제조 시작
-                  </button>
-                )}
-                {order.status === 'brewing' && (
-                  <button
-                    onClick={() => handleUpdateStatus(order.id, 'delivering')}
-                    className="flex-1 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-bold rounded-xl text-xs transition-colors"
-                  >
-                    배달 출발
-                  </button>
-                )}
-                {order.status === 'delivering' && (
-                  <button
-                    onClick={() => handleUpdateStatus(order.id, 'completed')}
-                    className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs transition-colors"
-                  >
-                    배달 완료 처리
-                  </button>
-                )}
 
-                {/* 상태 임의 지정 셀렉트 드롭다운 */}
-                <div className="relative">
-                  <select
-                    value={order.status}
-                    onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                    className="appearance-none bg-stone-100 border border-stone-300 text-stone-700 text-xs py-2 pl-2.5 pr-6 rounded-xl font-medium focus:outline-none"
+                  {/* 요구사항 4: 문자 첨부용 이미지 캡처 버튼 */}
+                  <button
+                    onClick={() => handleCaptureOrderImage(order)}
+                    disabled={capturingId === order.id}
+                    className="flex-1 py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-colors border border-amber-300 shadow-2xs"
+                    title="주문 내역 이미지를 캡처하여 다운로드 및 클립보드에 복사합니다"
                   >
-                    <option value="pending">접수대기</option>
-                    <option value="accepted">접수완료</option>
-                    <option value="brewing">제조중</option>
-                    <option value="delivering">배달중</option>
-                    <option value="completed">완료</option>
-                    <option value="cancelled">취소</option>
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-stone-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Camera className="w-3.5 h-3.5 text-amber-700" />
+                    <span>{capturingId === order.id ? '캡처 중...' : '문자용 이미지 캡처'}</span>
+                  </button>
+                </div>
+
+                {/* 상태 변경 액션 버튼들 */}
+                <div className="flex items-center gap-1.5">
+                  {order.status === 'pending' && (
+                    <button
+                      onClick={() => handleUpdateStatus(order.id, 'accepted')}
+                      className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
+                    >
+                      주문 확정
+                    </button>
+                  )}
+                  {order.status === 'accepted' && (
+                    <button
+                      onClick={() => handleUpdateStatus(order.id, 'brewing')}
+                      className="flex-1 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold rounded-xl text-xs transition-colors"
+                    >
+                      제조 시작
+                    </button>
+                  )}
+                  {order.status === 'brewing' && (
+                    <button
+                      onClick={() => handleUpdateStatus(order.id, 'delivering')}
+                      className="flex-1 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-bold rounded-xl text-xs transition-colors"
+                    >
+                      배달 출발
+                    </button>
+                  )}
+                  {order.status === 'delivering' && (
+                    <button
+                      onClick={() => handleUpdateStatus(order.id, 'completed')}
+                      className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs transition-colors"
+                    >
+                      배달 완료 처리
+                    </button>
+                  )}
+
+                  {/* 상태 임의 지정 셀렉트 드롭다운 */}
+                  <div className="relative">
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
+                      className="appearance-none bg-stone-100 border border-stone-300 text-stone-700 text-xs py-2 pl-2.5 pr-6 rounded-xl font-medium focus:outline-none"
+                    >
+                      <option value="pending">견적대기</option>
+                      <option value="accepted">주문확정</option>
+                      <option value="brewing">제조중</option>
+                      <option value="delivering">배달중</option>
+                      <option value="completed">완료</option>
+                      <option value="cancelled">취소</option>
+                    </select>
+                    <ChevronDown className="w-3 h-3 text-stone-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* 주문 품목 수정 모달 (요구사항 3: 관리자 주문 내역 메뉴 일부 수정 기능) */}
+      {editingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in text-xs">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl border border-stone-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <div>
+                <h3 className="font-bold text-stone-900 text-sm">
+                  주문 품목 및 금액 수정 ({editingOrder.order_number})
+                </h3>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  고객: {editingOrder.customer_name}님 ({editingOrder.customer_phone})
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingOrder(null)}
+                className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveOrderEdit} className="flex-1 overflow-y-auto py-3 space-y-4">
+              {/* 1. 현재 담긴 품목 리스트 및 수량 증감 */}
+              <div className="space-y-2">
+                <span className="font-bold text-stone-800 block">주문 품목 편집</span>
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {editItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 flex items-center justify-between gap-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-stone-900 truncate">{item.menu_name}</p>
+                        <p className="text-stone-500 text-[11px]">단가 {item.price.toLocaleString()}원</p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex items-center bg-white border border-stone-300 rounded-full px-1.5 py-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleEditItemQty(idx, -1)}
+                            className="w-5 h-5 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center font-bold text-stone-900">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleEditItemQty(idx, 1)}
+                            className="w-5 h-5 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        <span className="w-16 text-right font-bold text-stone-900">
+                          {item.subtotal.toLocaleString()}원
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEditItem(idx)}
+                          className="p-1 text-stone-400 hover:text-red-600"
+                          title="품목 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. 추가 메뉴 추가 셀렉트 */}
+              <div className="p-3 bg-amber-50/50 rounded-2xl border border-amber-200/70 space-y-2">
+                <span className="font-bold text-amber-950 block">새 메뉴 품목 추가</span>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedAddMenuId}
+                    onChange={(e) => setSelectedAddMenuId(e.target.value)}
+                    className="flex-1 p-2 bg-white border border-stone-300 rounded-xl font-medium text-stone-900"
+                  >
+                    {availableMenus.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.price.toLocaleString()}원)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddMenuToOrder}
+                    className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl flex items-center gap-1 transition-colors shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>추가</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. 배달비 및 요청사항 조절 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1">배달비 (원)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={editDeliveryFee}
+                    onChange={(e) => setEditDeliveryFee(parseInt(e.target.value, 10) || 0)}
+                    className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1">관리자 메모/요청사항</label>
+                  <input
+                    type="text"
+                    value={editOrderMemo}
+                    onChange={(e) => setEditOrderMemo(e.target.value)}
+                    className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* 4. 최종 재계산 금액 확인 */}
+              <div className="p-3 bg-stone-100 rounded-2xl border border-stone-200 space-y-1">
+                <div className="flex justify-between text-stone-600">
+                  <span>상품 합계</span>
+                  <span className="font-bold">{editItemsTotal.toLocaleString()}원</span>
+                </div>
+                <div className="flex justify-between text-stone-600">
+                  <span>배달비</span>
+                  <span className="font-bold">+{editDeliveryFee.toLocaleString()}원</span>
+                </div>
+                <div className="pt-1.5 border-t border-stone-300 flex justify-between items-baseline font-bold text-stone-900">
+                  <span>최종 수정 결제액</span>
+                  <span className="text-sm font-black text-amber-900">{editFinalTotal.toLocaleString()}원</span>
+                </div>
+              </div>
+
+              {/* 액션 버튼 */}
+              <div className="pt-2 flex justify-end gap-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingOrder(null)}
+                  className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 font-medium"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-amber-600 text-white font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{savingEdit ? '저장 중...' : '수정 내역 저장'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

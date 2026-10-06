@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "rounds": [
+    {
+      "n": 1,
+      "at": "2026-10-06T15:36:59.194Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 28,
+          "unverified": 7,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
+    },
+    {
+      "n": 2,
+      "at": "2026-10-06T15:38:13.633Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": false,
+        "outcome": "unavailable",
+        "coverage": {
+          "checked": 4,
+          "unverified": 2,
+          "notApplicable": 0
+        },
+        "blocking": []
+      }
+    }
+  ],
+  "items": {
+    "meta.public-surface": {
+      "status": "unknown",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.header.csp": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.header.hsts": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.header.frame": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.header.nosniff": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.header.referrer": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.header.permissions": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.fingerprint.powered-by": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.transport.https-redirect": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.transport.ssl-valid": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.transport.old-tls": {
+      "status": "unknown",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "sec.transport.cookie-flags": {
+      "status": "na",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "info.secret-exposed": {
+      "status": "unknown",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "info.config-exposed": {
+      "status": "unknown",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "info.source-map": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "info.stack-trace": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "info.mixed-content": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "cors.policy": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "legal.privacy-policy": {
+      "status": "unknown",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "legal.terms": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "legal.contact": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "seo.title": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "seo.description": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "seo.viewport": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "seo.og": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "seo.canonical": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "perf.ttfb": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "perf.page-size": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "perf.compression": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "code.rls.anon-read": {
+      "status": "unknown",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "code.firebase.public-read": {
+      "status": "unknown",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "code.endpoint.unauth": {
+      "status": "unknown",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "code.hardcoded-secret": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "code.client-secret-leak": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "code.headers-config": {
+      "status": "info",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    },
+    "code.dangerous-pattern": {
+      "status": "pass",
+      "firstFailRound": null,
+      "fixedRound": null,
+      "regressed": false
+    }
+  },
+  "passed": {
+    "security": false,
+    "edzip": false,
+    "protection": false
+  },
+  "submitted": {}
+}

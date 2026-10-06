@@ -9,6 +9,7 @@ import CartDrawer from '@/components/CartDrawer';
 import OrderModal from '@/components/OrderModal';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import OrderSuccessModal from '@/components/OrderSuccessModal';
+import CheckOrderModal from '@/components/CheckOrderModal';
 import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order } from '@/lib/types';
 import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2 } from 'lucide-react';
 
@@ -31,6 +32,7 @@ export default function HomePage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isCheckOrderOpen, setIsCheckOrderOpen] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
   // 초기 데이터 불러오기
@@ -100,7 +102,7 @@ export default function HomePage() {
   // 주문 접수 성공 콜백
   const handleOrderSuccess = (order: Order) => {
     setCompletedOrder(order);
-    setCart([]); // 주문 성공 시 장바구니 비우기
+    setCart([]);
   };
 
   // 필터링된 메뉴 목록
@@ -131,11 +133,12 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5] pb-28">
-      {/* 1. 상단 글로벌 헤더 */}
+      {/* 1. 상단 글로벌 헤더 (관리자 링크 분리, 견적조회 버튼 추가) */}
       <Header
         cafe={cafe}
         onOpenIntro={() => setIsIntroOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
+        onOpenCheckOrder={() => setIsCheckOrderOpen(true)}
         cartCount={cartTotalItems}
       />
 
@@ -202,7 +205,7 @@ export default function HomePage() {
           onSelectCategory={(id) => setSelectedCategory(id)}
         />
 
-        {/* 4. 메뉴 카드 리스트 */}
+        {/* 4. 메뉴 카드 리스트 (수량 증감 - 및 + 지원) */}
         <section className="px-4 py-4 space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="font-bold text-stone-900 text-sm flex items-center gap-1.5">
@@ -224,6 +227,7 @@ export default function HomePage() {
                   menu={menu}
                   inCartCount={inCart}
                   onAddToCart={handleAddToCart}
+                  onUpdateQuantity={handleUpdateQuantity}
                 />
               );
             })}
@@ -231,7 +235,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* 5. 하단 고정 실시간 견적 플로팅 바 (장바구니에 아이템이 있을 때 등장) */}
+      {/* 5. 하단 고정 실시간 견적 플로팅 바 */}
       {cart.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 p-3 bg-gradient-to-t from-white via-white/95 to-transparent backdrop-blur-md border-t border-stone-200">
           <div className="max-w-md mx-auto">
@@ -247,7 +251,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <div className="text-left">
-                  <p className="text-[11px] text-stone-300 font-medium">실시간 견적 산정 중</p>
+                  <p className="text-[11px] text-stone-300 font-medium">실시간 예상 견적</p>
                   <p className="text-base font-black text-amber-200 tracking-tight">
                     {finalEstimatedTotal.toLocaleString()}원
                     <span className="text-xs font-normal text-stone-300 ml-1">
@@ -258,7 +262,7 @@ export default function HomePage() {
               </div>
 
               <div className="flex items-center gap-1 text-xs font-bold bg-white/10 px-3 py-2 rounded-xl text-amber-200">
-                <span>주문하기</span>
+                <span>견적 요청하기</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
             </button>
@@ -291,7 +295,7 @@ export default function HomePage() {
         }}
       />
 
-      {/* 주문서 작성 모달 (24시간제/00,30분 배달시간 + 개인정보동의 + 배달장소) */}
+      {/* 주문서/견적서 작성 모달 (24시간/12h 병기 + 도로명주소 API + 개인정보동의) */}
       <OrderModal
         isOpen={isOrderOpen}
         onClose={() => setIsOrderOpen(false)}
@@ -308,10 +312,17 @@ export default function HomePage() {
         onClose={() => setIsPrivacyOpen(false)}
       />
 
-      {/* 주문 완료 축하 영수증 모달 */}
+      {/* 견적 정상 접수 완료 모달 (안내 문구 포함) */}
       <OrderSuccessModal
         order={completedOrder}
+        quoteNotice={cafe?.quote_notice}
         onClose={() => setCompletedOrder(null)}
+      />
+
+      {/* 견적/주문 실시간 확인 모달 */}
+      <CheckOrderModal
+        isOpen={isCheckOrderOpen}
+        onClose={() => setIsCheckOrderOpen(false)}
       />
     </div>
   );

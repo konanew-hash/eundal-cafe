@@ -1,0 +1,15 @@
+{
+  "app": {
+    "name": "은달 카페 주문 앱",
+    "url": "https://eundal.vercel.app",
+    "stack": "Next.js"
+  },
+  "tracks": [
+    "security"
+  ],
+  "edzipCase": null,
+  "teacher": {
+    "dormsHandle": ""
+  },
+  "ownershipConfirmed": true
+}

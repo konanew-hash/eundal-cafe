@@ -2,17 +2,18 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Moon, Info, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { Moon, Info, Search, ShoppingBag } from 'lucide-react';
 import { CafeInfo } from '@/lib/types';
 
 interface HeaderProps {
   cafe: CafeInfo | null;
   onOpenIntro: () => void;
   onOpenCart: () => void;
+  onOpenCheckOrder: () => void;
   cartCount: number;
 }
 
-export default function Header({ cafe, onOpenIntro, onOpenCart, cartCount }: HeaderProps) {
+export default function Header({ cafe, onOpenIntro, onOpenCart, onOpenCheckOrder, cartCount }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 glass-panel border-b border-stone-200/80 transition-all">
       <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between">
@@ -43,15 +44,15 @@ export default function Header({ cafe, onOpenIntro, onOpenCart, cartCount }: Hea
             <span className="hidden sm:inline font-medium">소개</span>
           </button>
 
-          {/* 관리자 바로가기 */}
-          <Link
-            href="/admin/login"
-            title="관리자 / 매니저 로그인"
+          {/* 견적/주문 조회 버튼 */}
+          <button
+            onClick={onOpenCheckOrder}
+            title="견적 및 주문 상태 조회"
             className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-stone-600" />
-            <span className="hidden sm:inline font-medium">관리자</span>
-          </Link>
+            <Search className="w-3.5 h-3.5 text-stone-600" />
+            <span className="hidden sm:inline font-medium">견적조회</span>
+          </button>
 
           {/* 장바구니 버튼 */}
           <button

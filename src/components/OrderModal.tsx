@@ -1,7 +1,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Calendar, Clock, MapPin, User, Phone, CheckSquare, Square, FileText, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  X,
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Phone,
+  CheckSquare,
+  Square,
+  FileText,
+  AlertCircle,
+  Loader2,
+  Search,
+} from 'lucide-react';
+import DaumPostcode from 'react-daum-postcode';
 import { CartItem, DeliveryPolicy, Order } from '@/lib/types';
 
 interface OrderModalProps {
@@ -23,19 +37,21 @@ export default function OrderModal({
   onOrderSuccess,
   onOpenPrivacyModal,
 }: OrderModalProps) {
-  // 오늘 날짜 기본값 YYYY-MM-DD
   const todayStr = new Date().toISOString().slice(0, 10);
 
   // 폼 상태
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryDate, setDeliveryDate] = useState(todayStr);
-  const [deliveryHour, setDeliveryHour] = useState('12'); // 24시간제 시: "09" ~ "21"
-  const [deliveryMinute, setDeliveryMinute] = useState('00'); // 분: 반드시 "00" 또는 "30"
+  const [deliveryHour, setDeliveryHour] = useState('12'); // 24시간제 기준
+  const [deliveryMinute, setDeliveryMinute] = useState('00'); // 00분 또는 30분
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryAddressDetail, setDeliveryAddressDetail] = useState('');
   const [orderMemo, setOrderMemo] = useState('');
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+
+  // 주소 검색 팝업 상태
+  const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -52,8 +68,24 @@ export default function OrderModal({
   const deliveryFee = (isFreeDelivery ? 0 : baseFee) + extraFee;
   const finalTotal = itemsTotal + deliveryFee;
 
-  // 24시간제 시간 옵션 (09시 ~ 21시 우선, 필요시 00시~23시 전체 제공)
-  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  // 24시간제 시간 옵션 포맷 (요구사항: 12시(오후12시), 14시(오후02시) 형태)
+  const hours = Array.from({ length: 24 }, (_, i) => {
+    const h24 = i.toString().padStart(2, '0');
+    let period = '오전';
+    let h12 = i;
+    if (i === 0) {
+      period = '자정';
+      h12 = 12;
+    } else if (i === 12) {
+      period = '오후';
+      h12 = 12;
+    } else if (i > 12) {
+      period = '오후';
+      h12 = i - 12;
+    }
+    const label = `${h24}시 (${period} ${h12.toString().padStart(2, '0')}시)`;
+    return { value: h24, label };
+  });
 
   // 휴대폰 번호 자동 하이픈 포맷
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,13 +99,20 @@ export default function OrderModal({
     setCustomerPhone(formatted);
   };
 
+  // 다음 도로명 주소 선택 핸들러
+  const handleCompletePostcode = (data: { roadAddress: string; jibunAddress: string; zonecode: string }) => {
+    const fullAddress = data.roadAddress || data.jibunAddress;
+    setDeliveryAddress(fullAddress);
+    setIsPostcodeOpen(false);
+  };
+
+  // 견적 요청 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    // 유효성 검증
     if (!customerName.trim()) {
-      setErrorMsg('주문자 성함을 입력해주세요.');
+      setErrorMsg('요청자 성함을 입력해주세요.');
       return;
     }
     if (!customerPhone.trim() || customerPhone.length < 10) {
@@ -85,11 +124,11 @@ export default function OrderModal({
       return;
     }
     if (!deliveryAddress.trim()) {
-      setErrorMsg('배달 장소(기본 주소)를 입력해주세요.');
+      setErrorMsg('배달 장소(기본 도로명 주소)를 입력해주세요.');
       return;
     }
     if (!privacyAgreed) {
-      setErrorMsg('개인정보 수집 및 이용에 동의하셔야 주문이 가능합니다.');
+      setErrorMsg('개인정보 수집 및 이용에 동의하셔야 견적 요청이 가능합니다.');
       return;
     }
 
@@ -119,7 +158,7 @@ export default function OrderModal({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || '주문 처리에 실패했습니다.');
+        throw new Error(data.error || '견적 요청 처리에 실패했습니다.');
       }
 
       onOrderSuccess(data.order);
@@ -135,9 +174,9 @@ export default function OrderModal({
     }
   };
 
-  // 날짜 한국어 포맷팅 예시
   const [year, month, day] = deliveryDate.split('-');
-  const formattedPreview = `${year || '2026'}년 ${month || '10'}월 ${day || '10'}일 ${deliveryHour}시 ${deliveryMinute}분`;
+  const hourObj = hours.find((h) => h.value === deliveryHour);
+  const formattedPreview = `${year || '2026'}년 ${month || '10'}월 ${day || '10'}일 ${hourObj?.label || `${deliveryHour}시`} ${deliveryMinute}분`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -145,9 +184,9 @@ export default function OrderModal({
         {/* 헤더 */}
         <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
           <div>
-            <h2 className="text-base font-bold text-stone-900">은달 카페 배달 주문서</h2>
+            <h2 className="text-base font-bold text-stone-900">은달 카페 배달 견적 요청서</h2>
             <p className="text-xs text-stone-500 mt-0.5">
-              배달 예약 일시와 배송지를 입력해주세요.
+              배달 희망 일시와 배송지를 입력하여 견적을 요청합니다.
             </p>
           </div>
           <button
@@ -167,11 +206,11 @@ export default function OrderModal({
             </div>
           )}
 
-          {/* 1. 주문자 정보 */}
+          {/* 1. 견적 요청자 정보 */}
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
             <h3 className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-amber-700" />
-              주문자 정보
+              견적 요청자 정보
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
@@ -203,12 +242,12 @@ export default function OrderModal({
             </div>
           </div>
 
-          {/* 2. 배달 희망 일시 (24시간제 & 00분/30분 필수) */}
+          {/* 2. 배달 희망 일시 (24시간제 & 12시간제 병기, 00분/30분 필수) */}
           <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-700" />
-                배달 예약 일시 (24시간제 / 30분 단위)
+                배달 희망 일시 (24시간제 / 30분 단위)
               </h3>
               <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-bold">
                 필수 기입
@@ -232,23 +271,23 @@ export default function OrderModal({
                 />
               </div>
 
-              {/* 24시간제 시 (00시 ~ 23시) */}
+              {/* 시간 선택 (요구사항: 12시(오후12시), 14시(오후02시) 표기) */}
               <div>
-                <label className="block text-stone-600 mb-1 font-medium">시간 (24시간제)</label>
+                <label className="block text-stone-600 mb-1 font-medium">시간 (24시간제 / 12h)</label>
                 <select
                   value={deliveryHour}
                   onChange={(e) => setDeliveryHour(e.target.value)}
                   className="w-full p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium text-stone-900"
                 >
                   {hours.map((h) => (
-                    <option key={h} value={h}>
-                      {h}시 ({parseInt(h, 10) < 12 ? '오전' : '오후'} {h}:00)
+                    <option key={h.value} value={h.value}>
+                      {h.label}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* 분: 반드시 00분 혹은 30분만 지원 */}
+              {/* 분: 00분 또는 30분만 지원 */}
               <div>
                 <label className="block text-stone-600 mb-1 font-medium">분 (00분 / 30분)</label>
                 <select
@@ -264,12 +303,12 @@ export default function OrderModal({
 
             {/* 실시간 예약 일시 프리뷰 */}
             <div className="p-2.5 bg-white rounded-xl border border-amber-200 flex items-center justify-between text-xs">
-              <span className="text-stone-500">배달 지정 일시:</span>
+              <span className="text-stone-500">지정 일시:</span>
               <span className="font-bold text-amber-900">{formattedPreview}</span>
             </div>
           </div>
 
-          {/* 3. 배달 장소 */}
+          {/* 3. 배달 장소 (도로명 주소 검색 API 연동) */}
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
             <h3 className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-amber-700" />
@@ -277,16 +316,30 @@ export default function OrderModal({
             </h3>
             <div className="space-y-2">
               <div>
-                <label className="block text-stone-600 mb-1 font-medium">기본 주소 (도로명 / 지번, 필수)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="예: 서울특별시 마포구 월드컵북로 120"
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
-                  className="w-full p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                />
+                <label className="block text-stone-600 mb-1 font-medium">
+                  도로명 주소 (필수)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    readOnly
+                    placeholder="우측 '주소 검색' 버튼을 클릭하세요"
+                    value={deliveryAddress}
+                    onClick={() => setIsPostcodeOpen(true)}
+                    className="flex-1 p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsPostcodeOpen(true)}
+                    className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl flex items-center gap-1 shrink-0 transition-colors"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>주소 검색</span>
+                  </button>
+                </div>
               </div>
+
               <div>
                 <label className="block text-stone-600 mb-1 font-medium">상세 주소 (동/호수, 층 등)</label>
                 <input
@@ -297,11 +350,12 @@ export default function OrderModal({
                   className="w-full p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
+
               <div>
                 <label className="block text-stone-600 mb-1 font-medium">배달 요청사항</label>
                 <input
                   type="text"
-                  placeholder="예: 문 앞에 놓아주시고 벨 눌러주세요"
+                  placeholder="예: 문 앞에 놓아주시고 문자 남겨주세요"
                   value={orderMemo}
                   onChange={(e) => setOrderMemo(e.target.value)}
                   className="w-full p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
@@ -329,12 +383,11 @@ export default function OrderModal({
                     [필수] 개인정보 수집 및 이용 동의
                   </p>
                   <p className="text-[11px] text-stone-500 mt-0.5 leading-snug">
-                    주문 처리, 배달지 확인 및 고객 응대를 위해 필요한 최소한의 정보를 수집합니다.
+                    견적 확인, 배달지 안내 및 고객 상담 처리를 위해 필요한 최소한의 정보를 수집합니다.
                   </p>
                 </div>
               </div>
 
-              {/* 전문 보기 링크 */}
               <button
                 type="button"
                 onClick={onOpenPrivacyModal}
@@ -346,20 +399,20 @@ export default function OrderModal({
             </div>
           </div>
 
-          {/* 5. 최종 결제 금액 요약 */}
+          {/* 5. 최종 견적 금액 요약 */}
           <div className="p-4 bg-stone-100 rounded-2xl border border-stone-200 text-xs space-y-1.5">
             <div className="flex justify-between text-stone-600">
-              <span>주문 품목 ({cart.reduce((s, i) => s + i.quantity, 0)}개)</span>
+              <span>견적 품목 ({cart.reduce((s, i) => s + i.quantity, 0)}개)</span>
               <span className="font-semibold">{itemsTotal.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between text-stone-600">
-              <span>배달비 ({selectedDistanceLabel})</span>
+              <span>예상 배달비 ({selectedDistanceLabel})</span>
               <span className="font-semibold">
                 {isFreeDelivery ? '무료 (0원)' : `${deliveryFee.toLocaleString()}원`}
               </span>
             </div>
             <div className="pt-2 border-t border-stone-300 flex justify-between items-baseline text-stone-900">
-              <span className="font-bold text-sm">최종 결제 금액</span>
+              <span className="font-bold text-sm">최종 예상 견적 금액</span>
               <span className="text-lg font-black text-amber-900">
                 {finalTotal.toLocaleString()}
                 <span className="text-xs font-normal text-stone-600 ml-0.5">원</span>
@@ -367,7 +420,7 @@ export default function OrderModal({
             </div>
           </div>
 
-          {/* 주문 제출 버튼 */}
+          {/* 견적 요청 제출 버튼 */}
           <div className="pt-2">
             <button
               type="submit"
@@ -381,15 +434,36 @@ export default function OrderModal({
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>주문 접수 중...</span>
+                  <span>견적 요청 접수 중...</span>
                 </>
               ) : (
-                <span>{finalTotal.toLocaleString()}원 주문 접수하기</span>
+                <span>{finalTotal.toLocaleString()}원 견적 요청하기</span>
               )}
             </button>
           </div>
         </form>
       </div>
+
+      {/* 다음 카카오 도로명 주소 검색 모달 */}
+      {isPostcodeOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-300">
+            <div className="p-4 bg-stone-900 text-white flex items-center justify-between">
+              <span className="font-bold text-sm">도로명 주소 검색</span>
+              <button
+                type="button"
+                onClick={() => setIsPostcodeOpen(false)}
+                className="text-stone-300 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2">
+              <DaumPostcode onComplete={handleCompletePostcode} autoClose={false} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

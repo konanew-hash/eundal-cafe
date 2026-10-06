@@ -1,0 +1,185 @@
+{
+  "at": "2026-10-06T15:38:13.635Z",
+  "url": "https://eundal.vercel.app",
+  "reachable": false,
+  "results": [
+    {
+      "id": "meta.public-surface",
+      "status": "unknown",
+      "observed": "공개 응답 검사를 완료하지 못했습니다.",
+      "evidence": {
+        "error": "HTTP 403"
+      }
+    },
+    {
+      "id": "meta.public-surface",
+      "status": "unknown",
+      "observed": "공개 응답 검사를 완료하지 못했습니다.",
+      "evidence": {
+        "error": "HTTP 403"
+      }
+    },
+    {
+      "id": "code.hardcoded-secret",
+      "status": "pass",
+      "observed": "하드코딩 시크릿 미검출",
+      "evidence": {
+        "hits": [],
+        "inspectedFiles": 43,
+        "readFailures": 0
+      }
+    },
+    {
+      "id": "code.client-secret-leak",
+      "status": "pass",
+      "observed": "클라 시크릿 노출 미검출",
+      "evidence": {
+        "hits": [],
+        "inspectedFiles": 38,
+        "readFailures": 0
+      }
+    },
+    {
+      "id": "code.headers-config",
+      "status": "info",
+      "observed": "헤더 설정 발견: x-frame-options, x-content-type-options, referrer-policy, permissions-policy",
+      "evidence": {
+        "configuredHeaders": {
+          "x-frame-options": [
+            "next.config.ts"
+          ],
+          "x-content-type-options": [
+            "next.config.ts"
+          ],
+          "referrer-policy": [
+            "next.config.ts"
+          ],
+          "permissions-policy": [
+            "next.config.ts"
+          ]
+        },
+        "filesScanned": [
+          "next.config.ts"
+        ]
+      }
+    },
+    {
+      "id": "code.dangerous-pattern",
+      "status": "pass",
+      "observed": "위험 코드 패턴 미검출",
+      "evidence": {
+        "hits": []
+      }
+    }
+  ],
+  "bonus": [],
+  "raw": {
+    "url": "https://eundal.vercel.app",
+    "finalUrl": "https://eundal.vercel.app/",
+    "httpStatus": 403,
+    "publicSurface": {
+      "httpStatus": 403,
+      "finalUrl": "https://eundal.vercel.app/",
+      "transportChecked": true,
+      "bodyChecked": false,
+      "unsafeTransport": false
+    },
+    "scannedAt": "2026-10-06T15:38:13.563Z"
+  },
+  "trackResults": {
+    "security": {
+      "eligible": false,
+      "outcome": "unavailable",
+      "items": [
+        {
+          "id": "meta.public-surface",
+          "status": "unknown",
+          "observed": "공개 화면을 확인하지 못했습니다.",
+          "evidence": {
+            "httpStatus": 403,
+            "finalUrl": "https://eundal.vercel.app/",
+            "transportChecked": true,
+            "bodyChecked": false,
+            "unsafeTransport": false
+          }
+        },
+        {
+          "id": "meta.public-surface",
+          "status": "unknown",
+          "observed": "공개 응답 검사를 완료하지 못했습니다.",
+          "evidence": {
+            "error": "HTTP 403"
+          }
+        },
+        {
+          "id": "code.hardcoded-secret",
+          "status": "pass",
+          "observed": "하드코딩 시크릿 미검출",
+          "evidence": {
+            "hits": [],
+            "inspectedFiles": 43,
+            "readFailures": 0
+          }
+        },
+        {
+          "id": "code.client-secret-leak",
+          "status": "pass",
+          "observed": "클라 시크릿 노출 미검출",
+          "evidence": {
+            "hits": [],
+            "inspectedFiles": 38,
+            "readFailures": 0
+          }
+        },
+        {
+          "id": "code.headers-config",
+          "status": "info",
+          "observed": "헤더 설정 발견: x-frame-options, x-content-type-options, referrer-policy, permissions-policy",
+          "evidence": {
+            "configuredHeaders": {
+              "x-frame-options": [
+                "next.config.ts"
+              ],
+              "x-content-type-options": [
+                "next.config.ts"
+              ],
+              "referrer-policy": [
+                "next.config.ts"
+              ],
+              "permissions-policy": [
+                "next.config.ts"
+              ]
+            },
+            "filesScanned": [
+              "next.config.ts"
+            ]
+          }
+        },
+        {
+          "id": "code.dangerous-pattern",
+          "status": "pass",
+          "observed": "위험 코드 패턴 미검출",
+          "evidence": {
+            "hits": []
+          }
+        }
+      ],
+      "blockingFails": [],
+      "coverage": {
+        "checked": 4,
+        "unverified": 2,
+        "notApplicable": 0
+      },
+      "policyVersion": "minimum-2026-09-15",
+      "score": null,
+      "grade": null,
+      "failingBySeverity": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      }
+    }
+  }
+}

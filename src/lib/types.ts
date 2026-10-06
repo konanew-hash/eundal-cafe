@@ -8,6 +8,7 @@ export interface CafeInfo {
   phone: string;
   address: string;
   business_hours: string;
+  quote_notice?: string;
   updated_at?: string;
 }
 

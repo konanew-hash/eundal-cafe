@@ -122,14 +122,6 @@ export default function AdminLoginPage() {
               )}
             </button>
           </form>
-
-          {/* 초기 계정 안내 */}
-          <div className="mt-5 pt-4 border-t border-stone-700/60 text-[11px] text-stone-400 space-y-1">
-            <p className="font-semibold text-stone-300">💡 초기 로그인 안내</p>
-            <p>- 메인 관리자: <code className="text-amber-300 font-mono">admin</code> / <code className="text-amber-300 font-mono">eundal2026!</code></p>
-            <p>- 매니저 1호: <code className="text-amber-300 font-mono">manager1</code> / <code className="text-amber-300 font-mono">eundal2026!</code></p>
-            <p className="text-[10px] text-stone-500 pt-1">* 관리자 모드에서 신규 매니저를 추가 등록할 수 있습니다.</p>
-          </div>
         </div>
       </div>
     </div>
