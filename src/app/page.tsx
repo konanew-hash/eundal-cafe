@@ -12,8 +12,9 @@ import OrderSuccessModal from '@/components/OrderSuccessModal';
 import CheckOrderModal from '@/components/CheckOrderModal';
 import MenuDetailModal from '@/components/MenuDetailModal';
 import InstallPromptModal, { useHomeScreenInstall } from '@/components/InstallPromptModal';
+import GpsGuideModal from '@/components/GpsGuideModal';
 import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store } from '@/lib/types';
-import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation } from 'lucide-react';
 
 export default function HomePage() {
   const [cafe, setCafe] = useState<CafeInfo | null>(null);
@@ -22,6 +23,10 @@ export default function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [deliveryPolicy, setDeliveryPolicy] = useState<DeliveryPolicy | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // 주문 수령 형태: 배달(기본) vs 매장 픽업
+  const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
 
   // 선택된 카테고리
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -37,6 +42,7 @@ export default function HomePage() {
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isCheckOrderOpen, setIsCheckOrderOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [isGpsGuideOpen, setIsGpsGuideOpen] = useState(false);
   const [selectedDetailMenu, setSelectedDetailMenu] = useState<MenuItem | null>(null);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
@@ -56,7 +62,10 @@ export default function HomePage() {
         if (data.cafe) setCafe(data.cafe);
         if (data.categories) setCategories(data.categories);
         if (data.menus) setMenus(data.menus);
-        if (data.stores) setStores(data.stores);
+        if (data.stores && data.stores.length > 0) {
+          setStores(data.stores);
+          setSelectedStoreId(data.stores[0].id);
+        }
         if (data.deliveryPolicy) {
           setDeliveryPolicy(data.deliveryPolicy);
           if (data.deliveryPolicy.distance_rules && data.deliveryPolicy.distance_rules.length > 0) {
@@ -125,14 +134,19 @@ export default function HomePage() {
   });
 
   // 실시간 합계 금액 계산
+  const isPickup = orderType === 'pickup';
   const cartTotalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const itemsTotal = cart.reduce((sum, item) => sum + item.menu.price * item.quantity, 0);
   const baseFee = deliveryPolicy?.base_fee ?? 3000;
   const freeThreshold = deliveryPolicy?.free_threshold ?? 35000;
-  const isFreeDelivery = itemsTotal >= freeThreshold && itemsTotal > 0;
+  const isFreeDelivery = isPickup || (itemsTotal >= freeThreshold && itemsTotal > 0);
   const distanceRule = deliveryPolicy?.distance_rules.find((r) => r.label === selectedDistanceLabel);
-  const extraFee = distanceRule ? distanceRule.extra_fee : 0;
-  const deliveryFee = itemsTotal > 0 ? (isFreeDelivery ? 0 : baseFee) + extraFee : 0;
+  const extraFee = isPickup ? 0 : (distanceRule ? distanceRule.extra_fee : 0);
+  const deliveryFee = isPickup
+    ? 0
+    : itemsTotal > 0
+    ? (isFreeDelivery ? 0 : baseFee) + extraFee
+    : 0;
   const finalEstimatedTotal = itemsTotal + deliveryFee;
 
   if (loading) {
@@ -222,23 +236,34 @@ export default function HomePage() {
           </button>
         </section>
 
-        {/* 배달비 정책 안내 바 */}
-        <section className="px-4 py-1.5">
+        {/* 배달비 및 픽업 정책 안내 바 & GPS 위치설정 안내 버튼 */}
+        <section className="px-4 py-1.5 space-y-1">
           <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 flex items-center justify-between text-xs text-amber-950">
             <div className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-amber-200 flex items-center justify-center font-bold text-[11px] text-amber-900">
                 ✦
               </span>
               <span>
-                <strong>{deliveryPolicy?.free_threshold.toLocaleString()}원 이상</strong> 주문 시 기본 배달비 무료!
+                <strong>{deliveryPolicy?.free_threshold.toLocaleString()}원 이상</strong> 배달비 무료! (매장 픽업은 항시 <strong>0원</strong>)
               </span>
             </div>
-            <button
-              onClick={() => setIsIntroOpen(true)}
-              className="text-[11px] text-amber-800 font-bold underline hover:text-amber-950"
-            >
-              매장안내
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsGpsGuideOpen(true)}
+                className="text-[11px] text-amber-900 font-bold underline hover:text-amber-950 flex items-center gap-0.5"
+                title="정확한 배달/픽업 관제를 위한 기기 GPS 설정 안내"
+              >
+                <Navigation className="w-3 h-3 text-amber-700" />
+                <span>GPS 안내</span>
+              </button>
+              <button
+                onClick={() => setIsIntroOpen(true)}
+                className="text-[11px] text-stone-500 font-medium underline hover:text-stone-700"
+              >
+                매장소개
+              </button>
+            </div>
           </div>
         </section>
 
@@ -300,14 +325,14 @@ export default function HomePage() {
                   <p className="text-base font-black text-amber-200 tracking-tight">
                     {finalEstimatedTotal.toLocaleString()}원
                     <span className="text-xs font-normal text-stone-300 ml-1">
-                      (배달비 {isFreeDelivery ? '무료' : `${deliveryFee.toLocaleString()}원`} 포함)
+                      {isPickup ? '(매장 픽업 배달비 0원 무료)' : `(배달비 ${isFreeDelivery ? '무료' : `${deliveryFee.toLocaleString()}원`} 포함)`}
                     </span>
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1 text-xs font-bold bg-white/10 px-3 py-2 rounded-xl text-amber-200">
-                <span>견적 요청하기</span>
+                <span>{isPickup ? '픽업 요청하기' : '견적 요청하기'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
             </button>
@@ -323,7 +348,7 @@ export default function HomePage() {
         cafe={cafe}
       />
 
-      {/* 실시간 견적 및 장바구니 드로어 */}
+      {/* 실시간 견적 및 장바구니 드로어 (배달 vs 픽업 선택 상호 연동) */}
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -334,6 +359,11 @@ export default function HomePage() {
         deliveryPolicy={deliveryPolicy}
         selectedDistanceLabel={selectedDistanceLabel}
         onSelectDistance={setSelectedDistanceLabel}
+        orderType={orderType}
+        onSelectOrderType={setOrderType}
+        stores={stores}
+        selectedStoreId={selectedStoreId}
+        onSelectStoreId={setSelectedStoreId}
         onProceedOrder={() => {
           setIsCartOpen(false);
           setIsOrderOpen(true);
@@ -348,8 +378,11 @@ export default function HomePage() {
         deliveryPolicy={deliveryPolicy}
         selectedDistanceLabel={selectedDistanceLabel}
         stores={stores}
+        initialOrderType={orderType}
+        initialStoreId={selectedStoreId}
         onOrderSuccess={handleOrderSuccess}
         onOpenPrivacyModal={() => setIsPrivacyOpen(true)}
+        onOpenGpsGuide={() => setIsGpsGuideOpen(true)}
       />
 
       {/* 개인정보보호법 전문 모달 */}
@@ -403,6 +436,12 @@ export default function HomePage() {
         isOpen={isInstallModalOpen}
         onClose={() => setIsInstallModalOpen(false)}
         appIconUrl={cafe?.app_icon_url || cafe?.logo_icon_url}
+      />
+
+      {/* 5. GPS 위치 정보 권한 및 설정 안내 모달 */}
+      <GpsGuideModal
+        isOpen={isGpsGuideOpen}
+        onClose={() => setIsGpsGuideOpen(false)}
       />
     </div>
   );

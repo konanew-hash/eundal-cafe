@@ -18,6 +18,8 @@ import {
   Truck,
   ExternalLink,
   Navigation,
+  RotateCw,
+  HelpCircle,
 } from 'lucide-react';
 import DaumPostcode from 'react-daum-postcode';
 import { CartItem, DeliveryPolicy, Order, Store } from '@/lib/types';
@@ -29,33 +31,36 @@ interface OrderModalProps {
   deliveryPolicy: DeliveryPolicy | null;
   selectedDistanceLabel: string;
   stores?: Store[];
+  initialOrderType?: 'delivery' | 'pickup';
+  initialStoreId?: string;
   onOrderSuccess: (order: Order) => void;
   onOpenPrivacyModal: () => void;
+  onOpenGpsGuide?: () => void;
 }
 
 const DEFAULT_STORES: Store[] = [
   {
-    id: '74f3b811-1a2b-4c5d-9e8f-111111111111',
+    id: '74f3b811-7bf3-4793-a0f2-ceeee50da851',
     name: '은달 1호점 (조원)',
     branch_name: '조원점',
-    address: '경기도 수원시 장안구 조원로 85',
-    address_detail: '1층 은달 카페',
+    address: '경기도 수원시 장안구 조원로 25',
+    address_detail: '1층 은달카페',
     postal_code: '16298',
-    phone: '031-241-1234',
+    phone: '031-255-0815',
     operating_hours: '09:00 ~ 21:00',
-    description: '조원시장 맞은편, 넓은 픽업 대기 공간 완비',
+    description: '조원시장 맞은편, 픽업 대기 공간 완비',
     is_active: true,
     sort_order: 1,
   },
   {
-    id: 'c948e546-2b3c-4d5e-8f9a-222222222222',
+    id: 'c948e546-490d-400d-b8d5-583465111e72',
     name: '은달 2호점 (파장)',
     branch_name: '파장점',
     address: '경기도 수원시 장안구 파장로 48',
-    address_detail: '1층 은달 카페',
+    address_detail: '1층 은달카페',
     postal_code: '16305',
-    phone: '031-242-5678',
-    operating_hours: '10:00 ~ 22:00',
+    phone: '031-255-0816',
+    operating_hours: '09:00 ~ 21:00',
     description: '파장시장 입구 인근, 드라이브 픽업 및 정차 가능',
     is_active: true,
     sort_order: 2,
@@ -69,19 +74,31 @@ export default function OrderModal({
   deliveryPolicy,
   selectedDistanceLabel,
   stores = [],
+  initialOrderType = 'delivery',
+  initialStoreId,
   onOrderSuccess,
   onOpenPrivacyModal,
+  onOpenGpsGuide,
 }: OrderModalProps) {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   // 주문 형태: 배달(delivery) vs 픽업(pickup)
-  const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
+  const [orderType, setOrderType] = useState<'delivery' | 'pickup'>(initialOrderType);
 
-  // 픽업 매장 목록 (props가 비었으면 기본 2개 매장 사용)
+  // 픽업 매장 목록 (props가 비었으면 기본 매장 사용)
   const activeStores = stores.length > 0 ? stores.filter((s) => s.is_active) : DEFAULT_STORES;
   const [selectedStoreId, setSelectedStoreId] = useState<string>(
-    activeStores[0]?.id || DEFAULT_STORES[0].id
+    initialStoreId || activeStores[0]?.id || DEFAULT_STORES[0].id
   );
+
+  // 상위 상태 변경 시 동기화
+  useEffect(() => {
+    if (initialOrderType) setOrderType(initialOrderType);
+  }, [initialOrderType]);
+
+  useEffect(() => {
+    if (initialStoreId) setSelectedStoreId(initialStoreId);
+  }, [initialStoreId]);
 
   // 폼 상태
   const [customerName, setCustomerName] = useState('');
@@ -103,51 +120,64 @@ export default function OrderModal({
   // GPS 좌표 수집 상태
   const [gpsLat, setGpsLat] = useState<number | undefined>(undefined);
   const [gpsLng, setGpsLng] = useState<number | undefined>(undefined);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | undefined>(undefined);
   const [gpsAddress, setGpsAddress] = useState<string>('');
-  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'success' | 'denied'>('idle');
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'success' | 'denied' | 'unsupported'>('idle');
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 모달 오픈 시 GPS Geolocation 수집
-  useEffect(() => {
-    if (isOpen && typeof window !== 'undefined' && 'geolocation' in navigator) {
-      setGpsStatus('locating');
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          setGpsLat(lat);
-          setGpsLng(lng);
+  // GPS Geolocation 수집 함수 (스마트폰 GPS 칩셋 및 기지국 신호 직접 측정)
+  const requestGpsLocation = () => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      setGpsStatus('unsupported');
+      return;
+    }
 
-          // 역지오코딩으로 실제 주소명 취득 시도
-          try {
-            const res = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
-              {
-                headers: { 'Accept-Language': 'ko' },
-              }
-            );
-            if (res.ok) {
-              const data = await res.json();
-              const addr =
-                data.display_name ||
-                `${data.address?.city || ''} ${data.address?.borough || data.address?.suburb || ''} ${data.address?.road || ''}`.trim();
-              setGpsAddress(addr || `GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-            } else {
-              setGpsAddress(`GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+    setGpsStatus('locating');
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const acc = Math.round(position.coords.accuracy || 0);
+        setGpsLat(lat);
+        setGpsLng(lng);
+        setGpsAccuracy(acc);
+
+        // 역지오코딩으로 실제 주소명 취득 시도
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
+            {
+              headers: { 'Accept-Language': 'ko' },
             }
-          } catch {
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr =
+              data.display_name ||
+              `${data.address?.city || ''} ${data.address?.borough || data.address?.suburb || ''} ${data.address?.road || ''}`.trim();
+            setGpsAddress(addr || `GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+          } else {
             setGpsAddress(`GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
           }
-          setGpsStatus('success');
-        },
-        (err) => {
-          console.warn('GPS 수집 거부 또는 실패:', err.message);
-          setGpsStatus('denied');
-        },
-        { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
-      );
+        } catch {
+          setGpsAddress(`GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        }
+        setGpsStatus('success');
+      },
+      (err) => {
+        console.warn('GPS 수집 거부 또는 실패:', err.code, err.message);
+        setGpsStatus('denied');
+      },
+      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
+    );
+  };
+
+  // 모달 오픈 시 자동 1회 GPS Geolocation 수집
+  useEffect(() => {
+    if (isOpen) {
+      requestGpsLocation();
     }
   }, [isOpen]);
 
@@ -317,22 +347,53 @@ export default function OrderModal({
           )}
 
           {/* GPS 기반 위치정보 수집 상태 배너 */}
-          <div className="p-2.5 rounded-xl border flex items-center justify-between text-[11px] bg-stone-50 border-stone-200">
+          <div className="p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] bg-stone-50 border-stone-200">
             <div className="flex items-center gap-1.5 overflow-hidden">
               <Navigation className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span className="font-semibold text-stone-700 shrink-0">GPS 위치:</span>
-              <span className="text-stone-500 truncate">
-                {gpsStatus === 'locating' && '현재 위치 확인 중...'}
-                {gpsStatus === 'success' && (gpsAddress || `위도 ${gpsLat?.toFixed(3)}, 경도 ${gpsLng?.toFixed(3)}`)}
-                {gpsStatus === 'denied' && '위치 권한 미허용 (기본 진행)'}
-                {gpsStatus === 'idle' && '위치 확인 대기'}
-              </span>
+              <div className="min-w-0">
+                <span className="font-bold text-stone-800">
+                  {gpsStatus === 'locating' && '📍 GPS 위치 확인 중... (브라우저 허용을 눌러주세요)'}
+                  {gpsStatus === 'success' && '📍 GPS 위치 인증 완료'}
+                  {gpsStatus === 'denied' && '⚠️ 위치 권한이 꺼져 있거나 차단되었습니다'}
+                  {gpsStatus === 'unsupported' && '⚠️ 기기에서 위치 서비스를 지원하지 않습니다'}
+                  {gpsStatus === 'idle' && '📍 GPS 위치 확인 대기'}
+                </span>
+                <p className="text-[10px] text-stone-500 truncate mt-0.5">
+                  {gpsStatus === 'success' && (gpsAddress || `위도 ${gpsLat?.toFixed(4)}, 경도 ${gpsLng?.toFixed(4)}`)}
+                  {gpsStatus === 'success' && gpsAccuracy && ` · 오차 ±${gpsAccuracy}m`}
+                  {gpsStatus === 'denied' && '스마트폰/PC 브라우저의 위치 권한을 허용하시면 정확한 배달/픽업 관제가 가능합니다.'}
+                  {gpsStatus === 'locating' && '단말기 GPS 센서 및 기지국 신호를 수신하는 중입니다.'}
+                </p>
+              </div>
             </div>
-            {gpsStatus === 'success' && (
-              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md shrink-0">
-                인증됨
-              </span>
-            )}
+
+            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+              {onOpenGpsGuide && (
+                <button
+                  type="button"
+                  onClick={onOpenGpsGuide}
+                  className="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold flex items-center gap-1 transition-colors"
+                >
+                  <HelpCircle className="w-3 h-3 text-amber-700" />
+                  <span>설정 방법</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={requestGpsLocation}
+                disabled={gpsStatus === 'locating'}
+                className="px-2 py-1 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-[10px] font-bold flex items-center gap-1 border border-stone-300 transition-colors shadow-2xs"
+                title="GPS 위치 다시 측정"
+              >
+                <RotateCw className={`w-3 h-3 ${gpsStatus === 'locating' ? 'animate-spin text-amber-600' : ''}`} />
+                <span>다시 측정</span>
+              </button>
+              {gpsStatus === 'success' && (
+                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
+                  GPS 인증
+                </span>
+              )}
+            </div>
           </div>
 
           {/* 1. 수령 방법 선택 (배달 vs 픽업) */}

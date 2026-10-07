@@ -112,11 +112,27 @@
         },
         "blocking": []
       }
+    },
+    {
+      "n": 8,
+      "at": "2026-10-07T06:05:50.263Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": false,
+        "outcome": "unavailable",
+        "coverage": {
+          "checked": 4,
+          "unverified": 2,
+          "notApplicable": 0
+        },
+        "blocking": []
+      }
     }
   ],
   "items": {
     "meta.public-surface": {
-      "status": "pass",
+      "status": "unknown",
       "firstFailRound": null,
       "fixedRound": 3,
       "regressed": false
@@ -333,7 +349,7 @@
     }
   },
   "passed": {
-    "security": true,
+    "security": false,
     "edzip": false,
     "protection": false
   },
