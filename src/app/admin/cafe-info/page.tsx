@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Store, Save, RefreshCw, CheckCircle, Image as ImageIcon, MapPin, Clock, Phone, Upload, FileText } from 'lucide-react';
+import { Store, Save, RefreshCw, CheckCircle, Image as ImageIcon, MapPin, Clock, Phone, Upload, FileText, Trash2 } from 'lucide-react';
 import { CafeInfo } from '@/lib/types';
 
 export default function AdminCafeInfoPage() {
@@ -17,6 +17,11 @@ export default function AdminCafeInfoPage() {
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const appIconFileInputRef = useRef<HTMLInputElement>(null);
 
+  // 새 배너 URL 직접 추가용 입력값
+  const [newBannerUrl, setNewBannerUrl] = useState('');
+  // 새 로고 URL 직접 추가용 입력값
+  const [newLogoUrl, setNewLogoUrl] = useState('');
+
   const [form, setForm] = useState({
     name: '',
     slogan: '',
@@ -24,6 +29,8 @@ export default function AdminCafeInfoPage() {
     hero_image_url: '',
     logo_icon_url: '',
     app_icon_url: '',
+    hero_images: [] as string[],
+    logo_images: [] as string[],
     phone: '',
     address: '',
     business_hours: '',
@@ -35,6 +42,8 @@ export default function AdminCafeInfoPage() {
     business_number: '',
     owner_name: '',
     privacy_officer: '',
+    manager_kakao_id: '',
+    manager_phone: '',
   });
 
   const loadCafeInfo = async () => {
@@ -44,13 +53,22 @@ export default function AdminCafeInfoPage() {
       const data = await res.json();
       if (data.cafe) {
         setCafe(data.cafe);
+        const heroImages = Array.isArray(data.cafe.hero_images) && data.cafe.hero_images.length > 0
+          ? data.cafe.hero_images
+          : (data.cafe.hero_image_url ? [data.cafe.hero_image_url] : []);
+        const logoImages = Array.isArray(data.cafe.logo_images) && data.cafe.logo_images.length > 0
+          ? data.cafe.logo_images
+          : (data.cafe.logo_icon_url ? [data.cafe.logo_icon_url] : []);
+
         setForm({
           name: data.cafe.name || '',
           slogan: data.cafe.slogan || '',
           description: data.cafe.description || '',
-          hero_image_url: data.cafe.hero_image_url || '',
-          logo_icon_url: data.cafe.logo_icon_url || '',
+          hero_image_url: heroImages[0] || data.cafe.hero_image_url || '',
+          logo_icon_url: logoImages[0] || data.cafe.logo_icon_url || '',
           app_icon_url: data.cafe.app_icon_url || '',
+          hero_images: heroImages,
+          logo_images: logoImages,
           phone: data.cafe.phone || '',
           address: data.cafe.address || '',
           business_hours: data.cafe.business_hours || '',
@@ -62,6 +80,8 @@ export default function AdminCafeInfoPage() {
           business_number: data.cafe.business_number || '',
           owner_name: data.cafe.owner_name || '',
           privacy_officer: data.cafe.privacy_officer || '',
+          manager_kakao_id: data.cafe.manager_kakao_id || '',
+          manager_phone: data.cafe.manager_phone || '',
         });
       }
     } catch (e) {
@@ -92,9 +112,23 @@ export default function AdminCafeInfoPage() {
       const data = await res.json();
       if (res.ok && data.url) {
         if (target === 'banner') {
-          setForm((prev) => ({ ...prev, hero_image_url: data.url }));
+          setForm((prev) => {
+            const nextList = [...prev.hero_images, data.url];
+            return {
+              ...prev,
+              hero_images: nextList,
+              hero_image_url: nextList[0] || data.url,
+            };
+          });
         } else if (target === 'logo') {
-          setForm((prev) => ({ ...prev, logo_icon_url: data.url }));
+          setForm((prev) => {
+            const nextList = [...prev.logo_images, data.url];
+            return {
+              ...prev,
+              logo_images: nextList,
+              logo_icon_url: nextList[0] || data.url,
+            };
+          });
         } else {
           setForm((prev) => ({ ...prev, app_icon_url: data.url }));
         }
@@ -109,6 +143,58 @@ export default function AdminCafeInfoPage() {
       else if (target === 'logo') setUploadingLogo(false);
       else setUploadingAppIcon(false);
     }
+  };
+
+  // 배너 이미지 삭제
+  const handleRemoveHeroImage = (index: number) => {
+    setForm((prev) => {
+      const nextList = prev.hero_images.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        hero_images: nextList,
+        hero_image_url: nextList[0] || '',
+      };
+    });
+  };
+
+  // 로고 이미지 삭제
+  const handleRemoveLogoImage = (index: number) => {
+    setForm((prev) => {
+      const nextList = prev.logo_images.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        logo_images: nextList,
+        logo_icon_url: nextList[0] || '',
+      };
+    });
+  };
+
+  // 배너 URL 직접 추가
+  const handleAddHeroUrl = () => {
+    if (!newBannerUrl.trim()) return;
+    setForm((prev) => {
+      const nextList = [...prev.hero_images, newBannerUrl.trim()];
+      return {
+        ...prev,
+        hero_images: nextList,
+        hero_image_url: nextList[0] || newBannerUrl.trim(),
+      };
+    });
+    setNewBannerUrl('');
+  };
+
+  // 로고 URL 직접 추가
+  const handleAddLogoUrl = () => {
+    if (!newLogoUrl.trim()) return;
+    setForm((prev) => {
+      const nextList = [...prev.logo_images, newLogoUrl.trim()];
+      return {
+        ...prev,
+        logo_images: nextList,
+        logo_icon_url: nextList[0] || newLogoUrl.trim(),
+      };
+    });
+    setNewLogoUrl('');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -188,11 +274,21 @@ export default function AdminCafeInfoPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 대표 배너 이미지 */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-stone-700 font-bold">대표 배너 이미지</label>
+          <div className="space-y-6">
+            {/* 1. 대표 배너 이미지 (복수 이미지 롤링 지원) */}
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="text-stone-900 font-bold text-xs flex items-center gap-1.5">
+                    <span>🎞️ 대표 배너 이미지 목록</span>
+                    <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded font-bold">
+                      홈페이지 자동 롤링/슬라이더 연동 ({form.hero_images.length}개)
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    홈페이지 상단 메인 비주얼 배너에 복수의 이미지가 주기적으로 부드럽게 롤링(전환)됩니다.
+                  </p>
+                </div>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="file"
@@ -208,129 +304,173 @@ export default function AdminCafeInfoPage() {
                     type="button"
                     disabled={uploadingBanner}
                     onClick={() => bannerFileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[11px] transition-colors"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors shadow-2xs"
                   >
-                    <Upload className="w-3 h-3" />
-                    <span>{uploadingBanner ? '업로드 중...' : '파일 직접 업로드'}</span>
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{uploadingBanner ? '업로드 중...' : '📷 새 사진 파일 추가'}</span>
                   </button>
                 </div>
               </div>
-              <input
-                type="url"
-                required
-                value={form.hero_image_url}
-                onChange={(e) => setForm({ ...form, hero_image_url: e.target.value })}
-                placeholder="https://... 또는 우측 상단 파일 업로드"
-                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:ring-2 focus:ring-amber-500"
-              />
-              {/* 이미지 미리보기 */}
-              <div className="relative h-36 rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
-                <img
-                  src={form.hero_image_url || 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80'}
-                  alt="대표 배너 미리보기"
-                  className="w-full h-full object-cover"
+
+              {/* URL 직접 추가 입력창 */}
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="외부 이미지 URL 직접 추가 (https://...)"
+                  value={newBannerUrl}
+                  onChange={(e) => setNewBannerUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddHeroUrl(); } }}
+                  className="flex-1 p-2 bg-white border border-stone-300 rounded-xl text-xs"
                 />
-                <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold">
-                  배너 미리보기
-                </span>
+                <button
+                  type="button"
+                  onClick={handleAddHeroUrl}
+                  className="px-3 py-2 bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs rounded-xl"
+                >
+                  URL 추가
+                </button>
               </div>
+
+              {/* 등록된 배너 썸네일 그리드 */}
+              {form.hero_images.length === 0 ? (
+                <div className="p-4 bg-white rounded-xl border border-stone-200 text-center text-stone-400 text-xs">
+                  등록된 대표 배너 이미지가 없습니다. 상단 버튼으로 사진을 추가해주세요.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {form.hero_images.map((imgUrl, idx) => (
+                    <div key={idx} className="relative group rounded-xl overflow-hidden border border-stone-300 bg-white aspect-video shadow-xs">
+                      <img src={imgUrl} alt={`배너 ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHeroImage(idx)}
+                          className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-xs"
+                          title="이미지 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[9px] font-bold">
+                        {idx === 0 ? '★ 대표' : `#${idx + 1}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* 로고 / 아이콘 */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-stone-700 font-bold">카페 로고 / 아이콘</label>
-                <div className="flex items-center gap-1.5">
+            {/* 2. 카페 로고 및 바로가기 아이콘 (복수 로고 관리 지원) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 로고 / 아이콘 */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-stone-900 font-bold text-xs flex items-center gap-1">
+                    <span>☕ 카페 로고 / 아이콘 ({form.logo_images.length}개)</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={logoFileInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'logo');
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploadingLogo}
+                      onClick={() => logoFileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[11px] transition-colors"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>{uploadingLogo ? '업로드 중...' : '파일 추가'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-1.5">
                   <input
-                    type="file"
-                    ref={logoFileInputRef}
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file, 'logo');
-                    }}
+                    type="url"
+                    placeholder="로고 URL 추가 (https://...)"
+                    value={newLogoUrl}
+                    onChange={(e) => setNewLogoUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLogoUrl(); } }}
+                    className="flex-1 p-2 bg-white border border-stone-300 rounded-xl text-xs"
                   />
                   <button
                     type="button"
-                    disabled={uploadingLogo}
-                    onClick={() => logoFileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[11px] transition-colors"
+                    onClick={handleAddLogoUrl}
+                    className="px-2.5 py-1.5 bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs rounded-xl"
                   >
-                    <Upload className="w-3 h-3" />
-                    <span>{uploadingLogo ? '업로드 중...' : '파일 직접 업로드'}</span>
+                    추가
                   </button>
                 </div>
-              </div>
-              <input
-                type="url"
-                required
-                value={form.logo_icon_url}
-                onChange={(e) => setForm({ ...form, logo_icon_url: e.target.value })}
-                placeholder="https://... 또는 우측 상단 파일 업로드"
-                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:ring-2 focus:ring-amber-500"
-              />
-              {/* 아이콘 미리보기 */}
-              <div className="h-36 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center p-4">
-                <div className="text-center">
-                  <img
-                    src={form.logo_icon_url || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=200&q=80'}
-                    alt="로고 아이콘 미리보기"
-                    className="w-16 h-16 rounded-full object-cover mx-auto shadow-sm border-2 border-amber-300"
-                  />
-                  <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 text-[10px] font-bold">
-                    아이콘 미리보기
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            {/* 바탕화면 즐겨찾기 / 바로가기 아이콘 (PWA) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-stone-700 font-bold flex items-center gap-1.5">
-                  <span>📱 휴대폰 바탕화면 즐겨찾기 아이콘</span>
-                  <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-full font-bold">홈화면 추가용</span>
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="file"
-                    ref={appIconFileInputRef}
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file, 'app_icon');
-                    }}
-                  />
-                  <button
-                    type="button"
-                    disabled={uploadingAppIcon}
-                    onClick={() => appIconFileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[11px] transition-colors"
-                  >
-                    <Upload className="w-3 h-3" />
-                    <span>{uploadingAppIcon ? '업로드 중...' : '파일 직접 업로드'}</span>
-                  </button>
+                {/* 등록된 로고 썸네일들 */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {form.logo_images.map((imgUrl, idx) => (
+                    <div key={idx} className="relative group w-14 h-14 rounded-full overflow-hidden border-2 border-amber-300 bg-white shadow-xs">
+                      <img src={imgUrl} alt={`로고 ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLogoImage(idx)}
+                        className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        title="로고 삭제"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <input
-                type="url"
-                value={form.app_icon_url}
-                onChange={(e) => setForm({ ...form, app_icon_url: e.target.value })}
-                placeholder="https://... 또는 우측 상단 파일 업로드 (비워둘 시 기본 로고 사용)"
-                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:ring-2 focus:ring-amber-500"
-              />
-              {/* 즐겨찾기 아이콘 미리보기 */}
-              <div className="h-36 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center p-4">
-                <div className="text-center">
+
+              {/* 바탕화면 즐겨찾기 / 바로가기 아이콘 (PWA) */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-stone-900 font-bold text-xs flex items-center gap-1.5">
+                    <span>📱 휴대폰 바탕화면 바로가기 아이콘</span>
+                    <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded-full font-bold">홈화면 추가용</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={appIconFileInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'app_icon');
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploadingAppIcon}
+                      onClick={() => appIconFileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[11px] transition-colors"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>{uploadingAppIcon ? '업로드 중...' : '파일 업로드'}</span>
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="url"
+                  value={form.app_icon_url}
+                  onChange={(e) => setForm({ ...form, app_icon_url: e.target.value })}
+                  placeholder="https://... 또는 파일 업로드 (비워둘 시 기본 로고 사용)"
+                  className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500"
+                />
+                <div className="h-16 rounded-xl bg-white border border-stone-200 flex items-center justify-center gap-3 px-3">
                   <img
-                    src={form.app_icon_url || form.logo_icon_url || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=200&q=80'}
+                    src={form.app_icon_url || form.logo_images[0] || form.logo_icon_url || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=200&q=80'}
                     alt="바탕화면 아이콘 미리보기"
-                    className="w-16 h-16 rounded-2xl object-cover mx-auto shadow-md border-2 border-amber-400"
+                    className="w-10 h-10 rounded-xl object-cover shadow-sm border border-amber-400"
                   />
-                  <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 text-[10px] font-bold">
-                    바탕화면 아이콘 미리보기 (앱 아이콘 스타일)
+                  <span className="text-[11px] text-stone-600 font-medium">
+                    스마트폰 바탕화면 추가 시 표시되는 앱 아이콘
                   </span>
                 </div>
               </div>
@@ -453,6 +593,49 @@ export default function AdminCafeInfoPage() {
                 required
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 4.5. 총괄관리자 카카오톡 & 직통 연락처 설정 (주문 접수 시 즉시 전송 연동) */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-3">
+          <div>
+            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+              <span>💬 총괄관리자 카카오톡 & 주문 알림 설정</span>
+              <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                원클릭 카톡 전송 연동
+              </span>
+            </h3>
+            <p className="text-xs text-stone-500 mt-0.5">
+              고객이 주문 접수 완료 시 또는 관리자가 주문을 총괄관리자에게 카톡으로 보낼 때 사용되는 카카오톡 ID 및 연락처입니다.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">
+                카카오톡 ID 또는 오픈프로필 링크
+              </label>
+              <input
+                type="text"
+                placeholder="예: eundal_boss 또는 https://open.kakao.com/o/..."
+                value={form.manager_kakao_id}
+                onChange={(e) => setForm({ ...form, manager_kakao_id: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">
+                총괄관리자 직통 연락처
+              </label>
+              <input
+                type="text"
+                placeholder="예: 010-1234-5678"
+                value={form.manager_phone}
+                onChange={(e) => setForm({ ...form, manager_phone: e.target.value })}
                 className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
               />
             </div>

@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Moon,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import { Staff } from '@/lib/types';
 
@@ -70,6 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { label: '주문·견적 관제', href: '/admin/orders', icon: ClipboardList },
+    { label: '매니저 전달사항', href: '/admin/notices', icon: MessageSquare },
     { label: '픽업 매장 관리', href: '/admin/stores', icon: Store },
     { label: '메뉴 & 알러지', href: '/admin/menus', icon: Coffee },
     { label: '배달비 정책', href: '/admin/delivery', icon: Truck },

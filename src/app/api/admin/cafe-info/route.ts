@@ -53,7 +53,14 @@ export async function PUT(req: NextRequest) {
       business_number,
       owner_name,
       privacy_officer,
+      hero_images,
+      logo_images,
+      manager_kakao_id,
+      manager_phone,
     } = body;
+
+    const finalHeroImages = Array.isArray(hero_images) ? hero_images : (hero_image_url ? [hero_image_url] : []);
+    const finalLogoImages = Array.isArray(logo_images) ? logo_images : (logo_icon_url ? [logo_icon_url] : []);
 
     const { data: updated, error } = await supabase
       .from('eundal_cafes')
@@ -61,8 +68,10 @@ export async function PUT(req: NextRequest) {
         name,
         slogan,
         description,
-        hero_image_url,
-        logo_icon_url,
+        hero_image_url: finalHeroImages[0] || hero_image_url,
+        logo_icon_url: finalLogoImages[0] || logo_icon_url,
+        hero_images: finalHeroImages,
+        logo_images: finalLogoImages,
         app_icon_url: app_icon_url !== undefined ? app_icon_url : undefined,
         phone,
         address,
@@ -75,6 +84,8 @@ export async function PUT(req: NextRequest) {
         business_number: business_number !== undefined ? business_number : null,
         owner_name: owner_name !== undefined ? owner_name : null,
         privacy_officer: privacy_officer !== undefined ? privacy_officer : null,
+        manager_kakao_id: manager_kakao_id !== undefined ? manager_kakao_id : null,
+        manager_phone: manager_phone !== undefined ? manager_phone : null,
         updated_at: new Date().toISOString(),
       })
       .neq('id', '00000000-0000-0000-0000-000000000000')

@@ -19,6 +19,30 @@ export interface CafeInfo {
   business_number?: string;
   owner_name?: string;
   privacy_officer?: string;
+  hero_images?: string[]; // 대표 이미지 복수 목록 (홈페이지 롤링용)
+  logo_images?: string[]; // 로고 복수 이미지 목록
+  manager_kakao_id?: string; // 총괄관리자 카카오톡 ID/오픈채팅 링크
+  manager_phone?: string; // 총괄관리자 직통 연락처
+}
+
+// 관리자, 매니저간 전달사항 (인수인계 및 점포 변경사항)
+export interface NoticeReadInfo {
+  admin_id: string;
+  name?: string;
+  read_at: string;
+}
+
+export interface ManagerNotice {
+  id: string;
+  created_at: string;
+  author_id: string;
+  author_name?: string;
+  store_id?: string | null;
+  store_name: string;
+  content: string;
+  photo_urls?: string[];
+  read_by?: NoticeReadInfo[];
+  is_important?: boolean;
 }
 
 export interface Category {

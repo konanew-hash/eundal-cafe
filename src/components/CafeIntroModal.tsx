@@ -89,13 +89,98 @@ export default function CafeIntroModal({ isOpen, onClose, cafe }: CafeIntroModal
               </div>
             </div>
           </div>
+
+          {/* 은달 공식 SNS 4종 채널 바로가기 */}
+          <div className="pt-2 border-t border-stone-100">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-stone-700 flex items-center gap-1.5">
+                <span>공식 SNS & 지도 채널</span>
+                <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded font-semibold">
+                  홍보 채널
+                </span>
+              </span>
+              <span className="text-[10px] text-stone-400">클릭 시 공식 페이지로 이동</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {/* 1. 인스타그램 */}
+              <a
+                href={cafe?.instagram_url || 'https://instagram.com/eundal_cafe'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-orange-500/10 border border-pink-200/80 hover:bg-pink-50 transition-all text-stone-800 group"
+              >
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-stone-900 group-hover:text-pink-600 transition-colors">인스타그램</div>
+                  <div className="text-[9px] text-stone-500 truncate">소식 & 사진</div>
+                </div>
+              </a>
+
+              {/* 2. 유튜브 */}
+              <a
+                href={cafe?.youtube_url || 'https://youtube.com/@eundal_cafe'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-200/80 hover:bg-red-50 transition-all text-stone-800 group"
+              >
+                <div className="w-6 h-6 rounded-lg bg-red-600 flex items-center justify-center text-white shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-stone-900 group-hover:text-red-600 transition-colors">유튜브 채널</div>
+                  <div className="text-[9px] text-stone-500 truncate">제조 영상 보기</div>
+                </div>
+              </a>
+
+              {/* 3. 네이버 플레이스 */}
+              <a
+                href={cafe?.naver_url || 'https://map.naver.com/p/search/%EC%9D%80%EB%8B%AC%EC%B9%B4%ED%8E%98'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-200/80 hover:bg-emerald-50 transition-all text-stone-800 group"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#03C75A] flex items-center justify-center text-white shrink-0 font-black text-xs shadow-2xs group-hover:scale-105 transition-transform">
+                  N
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-stone-900 group-hover:text-emerald-700 transition-colors">네이버 플레이스</div>
+                  <div className="text-[9px] text-stone-500 truncate">리뷰 & 길찾기</div>
+                </div>
+              </a>
+
+              {/* 4. 구글 지도 */}
+              <a
+                href={cafe?.google_url || 'https://maps.google.com/?q=%EC%9D%80%EB%8B%AC%EC%B9%B4%ED%8E%98'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-200/80 hover:bg-blue-50 transition-all text-stone-800 group"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#4285F4] flex items-center justify-center text-white shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-stone-900 group-hover:text-blue-600 transition-colors">구글 지도</div>
+                  <div className="text-[9px] text-stone-500 truncate">위치 확인</div>
+                </div>
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* 하단 닫기 */}
         <div className="p-4 border-t border-stone-100 bg-stone-50">
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-xl bg-stone-900 text-white font-medium text-sm hover:bg-stone-800 transition-colors shadow-sm"
+            className="w-full py-3 rounded-xl bg-stone-900 text-white font-medium text-sm hover:bg-stone-800 transition-colors shadow-sm active:scale-[0.99]"
           >
             확인
           </button>

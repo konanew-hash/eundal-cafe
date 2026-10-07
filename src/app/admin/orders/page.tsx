@@ -155,6 +155,33 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // 요구사항: 관리자 주문&견적 실시간 대시보드에서 삭제할 수 있는 기능 (테스트 내역 정리용)
+  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    if (
+      !confirm(
+        `[주문 삭제 확인]\n정말 주문 내역(${orderNumber})을 삭제하시겠습니까?\n\n* 테스트 내역 정리용 기능으로, 삭제 후에는 주문 내역과 상세 품목이 영구 삭제됩니다.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
+        alert(`주문(${orderNumber})이 성공적으로 삭제되었습니다.`);
+      } else {
+        alert(data.error || '주문 삭제에 실패했습니다.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('오류가 발생하여 삭제하지 못했습니다.');
+    }
+  };
+
   // 요구사항: 주문 내역에서 이미지를 캡처하여 고객 확인 문자에 첨부 가능하도록 조치
   const handleCaptureOrderImage = async (order: Order) => {
     const cardEl = cardRefs.current[order.id];
@@ -489,7 +516,17 @@ export default function AdminOrdersPage() {
                       {new Date(order.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 접수
                     </span>
                   </div>
-                  <div>{statusBadge(order.status)}</div>
+                  <div className="flex items-center gap-1.5">
+                    <div>{statusBadge(order.status)}</div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(order.id, order.order_number)}
+                      className="p-1 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      title="주문 내역 영구 삭제 (테스트 정리용)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* 고객 정보 & 배달일시 */}
@@ -719,22 +756,32 @@ export default function AdminOrdersPage() {
                   )}
 
                   {/* 상태 임의 지정 셀렉트 드롭다운 */}
-                  <div className="relative">
-                    <select
-                      value={order.status === 'accepted' || order.status === 'brewing' || order.status === 'delivering' ? 'confirmed' : order.status}
-                      onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                      className="appearance-none bg-stone-100 border border-stone-300 text-stone-700 text-xs py-2 pl-2.5 pr-6 rounded-xl font-medium focus:outline-none"
+                    <div className="relative">
+                      <select
+                        value={order.status === 'accepted' || order.status === 'brewing' || order.status === 'delivering' ? 'confirmed' : order.status}
+                        onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
+                        className="appearance-none bg-stone-100 border border-stone-300 text-stone-700 text-xs py-2 pl-2.5 pr-6 rounded-xl font-medium focus:outline-none"
+                      >
+                        <option value="pending">견적대기</option>
+                        <option value="confirmed">견적확정</option>
+                        <option value="completed">거래완료</option>
+                        <option value="cancelled">취소</option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+
+                    {/* 테스트 내역 정리용 주문 삭제 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(order.id, order.order_number)}
+                      className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold flex items-center justify-center transition-colors shadow-2xs"
+                      title="주문 영구 삭제 (테스트 내역 정리용)"
                     >
-                      <option value="pending">견적대기</option>
-                      <option value="confirmed">견적확정</option>
-                      <option value="completed">거래완료</option>
-                      <option value="cancelled">취소</option>
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
           ))}
         </div>
       )}

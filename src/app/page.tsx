@@ -16,7 +16,7 @@ import GpsGuideModal from '@/components/GpsGuideModal';
 import CustomSetBuilderModal from '@/components/CustomSetBuilderModal';
 import Footer from '@/components/Footer';
 import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store } from '@/lib/types';
-import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation, Gift, Package } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation, Gift, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function HomePage() {
   const [cafe, setCafe] = useState<CafeInfo | null>(null);
@@ -25,6 +25,28 @@ export default function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [deliveryPolicy, setDeliveryPolicy] = useState<DeliveryPolicy | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // 대표 이미지 복수 롤링 슬라이더 상태
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+
+  const heroImages = useMemo(() => {
+    if (cafe?.hero_images && cafe.hero_images.length > 0) {
+      return cafe.hero_images;
+    }
+    if (cafe?.hero_image_url) {
+      return [cafe.hero_image_url];
+    }
+    return ['https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80'];
+  }, [cafe]);
+
+  // 대표 이미지 자동 롤링 (4.5초 주기)
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentHeroIndex((prev) => (prev + 1) % heroImages.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [heroImages.length]);
 
   // 주문 수령 형태: 배달(기본) vs 매장 픽업
   const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
@@ -275,24 +297,32 @@ export default function HomePage() {
       />
 
       <main className="max-w-md mx-auto w-full">
-        {/* 2. 상단 감성 비주얼 배너 */}
+        {/* 2. 상단 감성 비주얼 배너 (복수 대표 이미지 자동 롤링 슬라이더) */}
         <section className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
-          <div className="relative rounded-3xl overflow-hidden shadow-lg border border-stone-200/60 bg-stone-900 h-44 sm:h-52">
-            <img
-              src={cafe?.hero_image_url || 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80'}
-              alt="은달 카페 무드"
-              className="w-full h-full object-cover opacity-80 transition-transform duration-700 hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-900/40 to-transparent" />
+          <div className="relative rounded-3xl overflow-hidden shadow-lg border border-stone-200/60 bg-stone-900 h-44 sm:h-52 group">
+            {/* 롤링 이미지들 */}
+            {heroImages.map((imgUrl, idx) => (
+              <img
+                key={idx}
+                src={imgUrl}
+                alt={`은달 카페 무드 ${idx + 1}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
+                  idx === currentHeroIndex ? 'opacity-85 scale-100' : 'opacity-0 scale-105 pointer-events-none'
+                }`}
+              />
+            ))}
 
-            <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between text-white">
+            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-900/40 to-transparent pointer-events-none" />
+
+            {/* 상하단 텍스트 및 정보 오버레이 */}
+            <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between text-white pointer-events-none">
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-200 border border-white/10">
                   <Sparkles className="w-3 h-3 text-amber-300" />
                   당일 로스팅 & 수제 베이커리
                 </span>
-                <span className="text-[10px] sm:text-[11px] text-stone-300 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
+                <span className="text-[10px] sm:text-[11px] text-stone-300 flex items-center gap-1 bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-full">
+                  <Clock className="w-3 h-3 text-amber-300" />
                   09:00 ~ 21:00
                 </span>
               </div>
@@ -307,6 +337,42 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+
+            {/* 슬라이더 컨트롤: 2개 이상일 때 이전/다음 버튼 및 하단 도트 */}
+            {heroImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setCurrentHeroIndex((prev) => (prev - 1 + heroImages.length) % heroImages.length)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 backdrop-blur-xs"
+                  title="이전 이미지"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentHeroIndex((prev) => (prev + 1) % heroImages.length)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 backdrop-blur-xs"
+                  title="다음 이미지"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                {/* 하단 인디케이터 도트 */}
+                <div className="absolute bottom-2.5 right-4 flex items-center gap-1.5 z-10">
+                  {heroImages.map((_, dotIdx) => (
+                    <button
+                      key={dotIdx}
+                      type="button"
+                      onClick={() => setCurrentHeroIndex(dotIdx)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        dotIdx === currentHeroIndex ? 'w-4 bg-amber-400' : 'w-1.5 bg-white/50 hover:bg-white/80'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </section>
 
@@ -571,10 +637,11 @@ export default function HomePage() {
         onClose={() => setIsPrivacyOpen(false)}
       />
 
-      {/* 견적 정상 접수 완료 모달 (안내 문구 포함) */}
+      {/* 견적 정상 접수 완료 모달 (안내 문구 및 총괄관리자 카톡 전송 포함) */}
       <OrderSuccessModal
         order={completedOrder}
         quoteNotice={cafe?.quote_notice}
+        cafe={cafe}
         onClose={() => setCompletedOrder(null)}
       />
 

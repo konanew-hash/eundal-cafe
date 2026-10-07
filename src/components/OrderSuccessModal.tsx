@@ -1,16 +1,17 @@
-'use client';
-
-import React from 'react';
-import { CheckCircle2, Copy, MapPin, Calendar, Clock, ShoppingBag, MessageCircle, Gift } from 'lucide-react';
-import { Order } from '@/lib/types';
+import React, { useState } from 'react';
+import { CheckCircle2, Copy, MapPin, Calendar, Clock, ShoppingBag, MessageCircle, Gift, Send, Check } from 'lucide-react';
+import { Order, CafeInfo } from '@/lib/types';
 
 interface OrderSuccessModalProps {
   order: Order | null;
   quoteNotice?: string;
+  cafe?: CafeInfo | null;
   onClose: () => void;
 }
 
-export default function OrderSuccessModal({ order, quoteNotice, onClose }: OrderSuccessModalProps) {
+export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }: OrderSuccessModalProps) {
+  const [copiedKakao, setCopiedKakao] = useState(false);
+
   if (!order) return null;
 
   const defaultNotice =
@@ -20,6 +21,77 @@ export default function OrderSuccessModal({ order, quoteNotice, onClose }: Order
   const copyOrderNumber = () => {
     navigator.clipboard.writeText(order.order_number);
     alert('견적/주문번호가 복사되었습니다: ' + order.order_number);
+  };
+
+  // 요구사항: 주문이 접수되면 카톡으로 은달 총괄관리자에게 전송할 수 있도록 조치
+  const generateKakaoOrderText = () => {
+    const isPickup = order.order_type === 'pickup';
+    const deliveryMethod = isPickup
+      ? `매장 픽업 (${order.pickup_store_name || '은달 매장'})`
+      : `배달 (${order.delivery_address} ${order.delivery_address_detail || ''})`;
+
+    let itemsText = '';
+    if (order.items && order.items.length > 0) {
+      itemsText = order.items
+        .map((it, idx) => {
+          let line = `${idx + 1}. ${it.menu_name} x ${it.quantity} (${it.subtotal.toLocaleString()}원)`;
+          if (it.set_details) {
+            const comps = it.set_details.components?.map((c) => `${c.menu_name}x${c.quantity}`).join(', ');
+            line += `\n   └ 구성: ${comps || '-'}\n   └ 포장: ${it.set_details.package_box?.name || '-'}`;
+          }
+          return line;
+        })
+        .join('\n');
+    }
+
+    return (
+      `[은달카페 신규 주문 접수]\n` +
+      `■ 주문번호: ${order.order_number}\n` +
+      `■ 주문고객: ${order.customer_name} (${order.customer_phone})\n` +
+      `■ 수령방식: ${deliveryMethod}\n` +
+      `■ 희망일시: ${order.delivery_date} ${order.delivery_time}\n` +
+      `■ 주문품목:\n${itemsText}\n` +
+      (order.packaging_box ? `■ 선물/포장용기: ${order.packaging_box.name}\n` : '') +
+      `■ 배달비: ${order.delivery_fee.toLocaleString()}원\n` +
+      `■ 총 견적금액: ${order.total_amount.toLocaleString()}원\n` +
+      `-------------------------\n` +
+      `* 은달카페 주문조회: https://eundal.vercel.app/check-order`
+    );
+  };
+
+  const handleSendKakaoToManager = async () => {
+    const kakaoText = generateKakaoOrderText();
+
+    // 1. 모바일 Web Share API 지원 시 (카카오톡 바로 선택 전송 가능)
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `[은달카페 주문] ${order.customer_name}님 (${order.order_number})`,
+          text: kakaoText,
+        });
+        return;
+      } catch {
+        // 취소 또는 에러 시 클립보드 복사 및 URL 실행
+      }
+    }
+
+    // 2. 오픈채팅 링크가 등록되어 있는 경우
+    if (cafe?.manager_kakao_id && cafe.manager_kakao_id.startsWith('http')) {
+      navigator.clipboard.writeText(kakaoText);
+      alert('주문 내역이 복사되었습니다! 열리는 총괄관리자 카카오톡 창에 붙여넣기(Ctrl+V) 해주세요.');
+      window.open(cafe.manager_kakao_id, '_blank');
+      return;
+    }
+
+    // 3. 클립보드 복사 후 카카오톡 실행
+    navigator.clipboard.writeText(kakaoText);
+    setCopiedKakao(true);
+    setTimeout(() => setCopiedKakao(false), 3000);
+    alert(
+      `[주문 내역 복사 완료!]\n\n` +
+      `총괄관리자에게 전송할 주문서 텍스트가 복사되었습니다.\n` +
+      `카카오톡을 열어 붙여넣기(Ctrl+V)하여 전송해주세요.`
+    );
   };
 
   return (
@@ -145,13 +217,36 @@ export default function OrderSuccessModal({ order, quoteNotice, onClose }: Order
           </div>
         </div>
 
-        {/* 닫기 버튼 */}
-        <button
-          onClick={onClose}
-          className="w-full py-3.5 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-sm"
-        >
-          확인 (홈으로 이동)
-        </button>
+        {/* 요구사항: 카톡으로 은달 총괄관리자에게 전송 버튼 */}
+        <div className="space-y-2 pt-1">
+          <button
+            type="button"
+            onClick={handleSendKakaoToManager}
+            className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99] border border-[#E6CF00]"
+          >
+            {copiedKakao ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-700" />
+                <span className="text-emerald-900">주문서 텍스트 복사 완료! (카톡에 붙여넣기)</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 3c-5.523 0-10 3.582-10 8 0 2.868 1.865 5.394 4.675 6.777l-.95 3.52c-.105.39.296.72.648.537l4.31-2.247c.432.046.87.07 1.317.07 5.523 0 10-3.582 10-8s-4.477-8-10-8z"/>
+                </svg>
+                <span>💬 카카오톡으로 은달 총괄관리자에게 전송</span>
+              </>
+            )}
+          </button>
+
+          {/* 닫기 버튼 */}
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-sm"
+          >
+            확인 (홈으로 이동)
+          </button>
+        </div>
       </div>
     </div>
   );

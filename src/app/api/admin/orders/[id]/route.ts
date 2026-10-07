@@ -128,3 +128,35 @@ export async function PUT(
   }
 }
 
+// 주문 삭제 (테스트 내역 정리 및 잘못된 접수 주문 삭제)
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: '관리자 인증이 필요합니다.' }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const supabase = getSupabaseServer();
+
+  try {
+    // 1. 주문 상세 품목 삭제
+    await supabase.from('eundal_order_items').delete().eq('order_id', id);
+
+    // 2. 주문 본체 삭제
+    const { error } = await supabase.from('eundal_orders').delete().eq('id', id);
+
+    if (error) {
+      console.error('Delete order error:', error);
+      return NextResponse.json({ error: '주문 삭제에 실패했습니다.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: '주문 내역이 성공적으로 삭제되었습니다.' });
+  } catch (error) {
+    console.error('Failed to delete order:', error);
+    return NextResponse.json({ error: '서버 오류로 주문 삭제에 실패했습니다.' }, { status: 500 });
+  }
+}
+
