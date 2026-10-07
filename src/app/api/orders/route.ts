@@ -26,8 +26,12 @@ export async function POST(req: NextRequest) {
       gps_lat,
       gps_lng,
       gps_address,
+      packaging_fee,
+      packaging_box,
+      packaging_options,
     } = body;
 
+    const parsedPackagingFee = typeof packaging_fee === 'number' ? Math.max(0, packaging_fee) : 0;
     const isPickup = order_type === 'pickup';
 
     // 1. 필수 검증
@@ -192,7 +196,7 @@ export async function POST(req: NextRequest) {
       deliveryFee += extraFee;
     }
 
-    const totalAmount = itemsTotal + deliveryFee;
+    const totalAmount = itemsTotal + deliveryFee + parsedPackagingFee;
 
     // 고유 주문번호 생성 (EUN-YYYYMMDD-랜덤4자리)
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -243,6 +247,9 @@ export async function POST(req: NextRequest) {
         order_memo: (order_memo || '').trim(),
         items_total: itemsTotal,
         delivery_fee: deliveryFee,
+        packaging_fee: parsedPackagingFee,
+        packaging_box: packaging_box || null,
+        packaging_options: Array.isArray(packaging_options) ? packaging_options : [],
         total_amount: totalAmount,
         privacy_agreed: true,
         privacy_agreed_at: new Date().toISOString(),

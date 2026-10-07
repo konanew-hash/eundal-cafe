@@ -41,6 +41,7 @@ export default function AdminMenusPage() {
     video_urls: string[];
     sort_order: number;
     packaging_type: 'box' | 'special' | null;
+    is_available_for_set: boolean;
   }>({
     category_id: '',
     name: '',
@@ -52,6 +53,7 @@ export default function AdminMenusPage() {
     video_urls: [],
     sort_order: 0,
     packaging_type: null,
+    is_available_for_set: true,
   });
 
   // 다중 이미지 및 비디오 추가 인풋 상태
@@ -109,6 +111,30 @@ export default function AdminMenusPage() {
     }
   };
 
+  // 맞춤 세트 구성품 허용 여부 토글 (원클릭 가감)
+  const handleToggleSetAvailable = async (menu: MenuItem) => {
+    try {
+      const nextStatus = menu.is_available_for_set === false ? true : false;
+      const res = await fetch('/api/admin/menus', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle_set_available',
+          id: menu.id,
+          is_available_for_set: nextStatus,
+        }),
+      });
+      if (res.ok) {
+        setMenus((prev) =>
+          prev.map((m) => (m.id === menu.id ? { ...m, is_available_for_set: nextStatus } : m))
+        );
+      }
+    } catch (e) {
+      console.error(e);
+      alert('세트메뉴 품목 설정 변경 실패');
+    }
+  };
+
   // 메뉴 삭제
   const handleDeleteMenu = async (id: string) => {
     if (!confirm('정말 이 메뉴를 삭제하시겠습니까?')) return;
@@ -140,6 +166,7 @@ export default function AdminMenusPage() {
         video_urls: Array.isArray(menu.video_urls) ? [...menu.video_urls] : [],
         sort_order: menu.sort_order,
         packaging_type: menu.packaging_type || null,
+        is_available_for_set: menu.is_available_for_set !== false,
       });
     } else {
       setEditingMenu(null);
@@ -154,6 +181,7 @@ export default function AdminMenusPage() {
         video_urls: [],
         sort_order: (menus.length + 1),
         packaging_type: null,
+        is_available_for_set: true,
       });
     }
     setIsMenuModalOpen(true);
@@ -459,6 +487,17 @@ export default function AdminMenusPage() {
                             ✨ 특수포장
                           </span>
                         )}
+                        {!menu.packaging_type && (
+                          menu.is_available_for_set !== false ? (
+                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-block">
+                              🎁 맞춤세트 포함
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full inline-block">
+                              ⛔ 세트제외
+                            </span>
+                          )
+                        )}
                       </div>
                       <h4 className="font-bold text-stone-900 text-sm line-clamp-1">{menu.name}</h4>
                       <p className="text-xs font-bold text-stone-700 mt-0.5">
@@ -519,7 +558,22 @@ export default function AdminMenusPage() {
                     )}
                   </button>
 
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
+                    {!menu.packaging_type && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSetAvailable(menu)}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 ${
+                          menu.is_available_for_set !== false
+                            ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                            : 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
+                        }`}
+                        title="클릭하여 맞춤 세트메뉴 1단계(품목) 포함/제외를 전환합니다"
+                      >
+                        <span>{menu.is_available_for_set !== false ? '🎁 세트포함' : '⛔ 세트제외'}</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => openMenuModal(menu)}
                       className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700"
@@ -659,6 +713,30 @@ export default function AdminMenusPage() {
                 <p className="text-[10px] text-stone-500 mt-1">
                   * 포장용기(박스)나 특수포장으로 지정된 품목은 맞춤형 세트메뉴 빌더의 포장용기/특수옵션 선택지에 자동 연동되며, 세트 내 구성품 담기 목록에서는 제외됩니다.
                 </p>
+
+                {/* 일반 식음료 메뉴일 경우 맞춤 세트메뉴 1단계(담을 품목) 포함 여부 설정 */}
+                {!menuForm.packaging_type && (
+                  <div className="mt-2.5 p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={menuForm.is_available_for_set}
+                        onChange={(e) =>
+                          setMenuForm({ ...menuForm, is_available_for_set: e.target.checked })
+                        }
+                        className="mt-0.5 w-4 h-4 text-amber-600 rounded border-stone-300 focus:ring-amber-500"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-stone-900">
+                          은달 맞춤 세트메뉴 1단계(세트 담을 품목) 목록에 포함
+                        </span>
+                        <p className="text-[11px] text-stone-600 mt-0.5 leading-snug">
+                          체크 해제 시 고객이 홈페이지에서 맞춤 세트메뉴를 구성할 때 담을 품목 목록에서 제외됩니다.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>

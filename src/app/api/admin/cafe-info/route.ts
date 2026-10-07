@@ -35,7 +35,25 @@ export async function PUT(req: NextRequest) {
   const supabase = getSupabaseServer();
   try {
     const body = await req.json();
-    const { name, slogan, description, hero_image_url, logo_icon_url, app_icon_url, phone, address, business_hours, quote_notice } = body;
+    const {
+      name,
+      slogan,
+      description,
+      hero_image_url,
+      logo_icon_url,
+      app_icon_url,
+      phone,
+      address,
+      business_hours,
+      quote_notice,
+      instagram_url,
+      youtube_url,
+      naver_url,
+      google_url,
+      business_number,
+      owner_name,
+      privacy_officer,
+    } = body;
 
     const { data: updated, error } = await supabase
       .from('eundal_cafes')
@@ -50,6 +68,13 @@ export async function PUT(req: NextRequest) {
         address,
         business_hours,
         quote_notice: quote_notice || '견적 내역을 카페에서 확인 후 문자 혹은 유선 연락드려, 견적에 대한 주문 확정을 확인합니다.',
+        instagram_url: instagram_url !== undefined ? instagram_url : null,
+        youtube_url: youtube_url !== undefined ? youtube_url : null,
+        naver_url: naver_url !== undefined ? naver_url : null,
+        google_url: google_url !== undefined ? google_url : null,
+        business_number: business_number !== undefined ? business_number : null,
+        owner_name: owner_name !== undefined ? owner_name : null,
+        privacy_officer: privacy_officer !== undefined ? privacy_officer : null,
         updated_at: new Date().toISOString(),
       })
       .neq('id', '00000000-0000-0000-0000-000000000000')

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   MessageSquare,
@@ -8,18 +8,12 @@ import {
   Copy,
   Check,
   Phone,
-  Camera,
-  Download,
   Settings,
   Plus,
   Trash2,
   Edit2,
   Save,
-  Sparkles,
-  Share2,
-  Smartphone,
 } from 'lucide-react';
-import { toPng, toBlob } from 'html-to-image';
 import { Order, SmsTemplate } from '@/lib/types';
 
 interface SmsSendModalProps {
@@ -33,13 +27,6 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('custom');
   const [messageText, setMessageText] = useState('');
   const [copiedText, setCopiedText] = useState(false);
-
-  // 이미지 캡처 및 공유 상태
-  const [capturingImage, setCapturingImage] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [capturedImageUrl, setCapturedImageUrl] = useState<string | null>(null);
-  const [copiedImage, setCopiedImage] = useState(false);
-  const captureCardRef = useRef<HTMLDivElement>(null);
 
   // 템플릿 관리(편집) 모달 상태
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
@@ -68,8 +55,6 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
   useEffect(() => {
     if (isOpen) {
       loadTemplates();
-      setCapturedImageUrl(null);
-      setCopiedImage(false);
     }
   }, [isOpen]);
 
@@ -119,128 +104,7 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
     setTimeout(() => setCopiedText(false), 2000);
   };
 
-  // 문자용 이미지 캡처 (옵션 기능)
-  const handleCaptureImage = async () => {
-    if (!captureCardRef.current) return;
-    setCapturingImage(true);
-    try {
-      const dataUrl = await toPng(captureCardRef.current, {
-        cacheBust: true,
-        quality: 0.95,
-        backgroundColor: '#ffffff',
-      });
-      setCapturedImageUrl(dataUrl);
 
-      // 클립보드에 이미지 복사 시도
-      try {
-        const blob = await (await fetch(dataUrl)).blob();
-        if (navigator.clipboard && window.ClipboardItem) {
-          const item = new ClipboardItem({ 'image/png': blob });
-          await navigator.clipboard.write([item]);
-          setCopiedImage(true);
-          setTimeout(() => setCopiedImage(false), 3000);
-        }
-      } catch {
-        // 클립보드 미지원 환경은 다운로드 유지
-      }
-    } catch (e) {
-      console.error('Image capture failed:', e);
-      alert('이미지 캡처 중 오류가 발생했습니다.');
-    } finally {
-      setCapturingImage(false);
-    }
-  };
-
-  // 캡처 이미지 다운로드
-  const handleDownloadImage = () => {
-    if (!capturedImageUrl) return;
-    const link = document.createElement('a');
-    link.download = `eundal-order-${order.order_number}.png`;
-    link.href = capturedImageUrl;
-    link.click();
-  };
-
-  // 요구사항: 이미지와 텍스트를 함께 전송 (Web Share API Level 2 및 클립보드 복사 Fallback)
-  const handleSendImageAndText = async () => {
-    if (!captureCardRef.current) return;
-    setSharing(true);
-    try {
-      // 1. 고화질 이미지 Blob 생성
-      const blob = await toBlob(captureCardRef.current, {
-        pixelRatio: 2.5,
-        backgroundColor: '#ffffff',
-        cacheBust: true,
-      });
-      if (!blob) throw new Error('이미지 생성에 실패했습니다.');
-
-      const imageFile = new File([blob], `은달카페_주문확인_${order.order_number}.png`, { type: 'image/png' });
-
-      // 2. 모바일 / Web Share API 지원 브라우저: 메시지(MMS) 또는 카카오톡으로 이미지+본문 동시 전송!
-      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
-        await navigator.share({
-          title: `[은달카페] 주문 및 견적서 (${order.customer_name} 님)`,
-          text: messageText,
-          files: [imageFile],
-        });
-        return;
-      }
-
-      // 3. PC 또는 Share API 미지원 브라우저: 클립보드에 이미지 복사 + 텍스트 복사 + 안내 팝업
-      let imageCopied = false;
-      if (navigator.clipboard && window.ClipboardItem) {
-        try {
-          await navigator.clipboard.write([
-            new ClipboardItem({ 'image/png': blob })
-          ]);
-          imageCopied = true;
-          setCopiedImage(true);
-          setTimeout(() => setCopiedImage(false), 4000);
-        } catch (clipErr) {
-          console.warn('Clipboard image write warning:', clipErr);
-        }
-      }
-
-      // 텍스트도 복사
-      try {
-        await navigator.clipboard.writeText(messageText);
-        setCopiedText(true);
-        setTimeout(() => setCopiedText(false), 3000);
-      } catch {
-        // ignore
-      }
-
-      // 미리보기 이미지 생성
-      const dataUrl = await toPng(captureCardRef.current, {
-        pixelRatio: 2.5,
-        backgroundColor: '#ffffff',
-        cacheBust: true,
-      });
-      setCapturedImageUrl(dataUrl);
-
-      if (imageCopied) {
-        alert(
-          `[주문 내역 이미지 클립보드 복사 완료!]\n\n` +
-          `• 주문서 이미지가 클립보드에 복사되었습니다.\n` +
-          `• PC 카카오톡 또는 문자 발송 프로그램에서 '붙여넣기(Ctrl+V)'하시면 이미지가 바로 첨부됩니다.\n` +
-          `• 문자 본문도 함께 복사되었습니다.`
-        );
-      } else {
-        // 파일 다운로드
-        const link = document.createElement('a');
-        link.download = `은달카페_주문확인_${order.order_number}.png`;
-        link.href = dataUrl;
-        link.click();
-        alert('주문 내역 이미지가 다운로드되었습니다. 문자 발송 시 첨부해주세요.');
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name !== 'AbortError') {
-        console.error('Send error:', err);
-        alert('전송 처리 중 오류가 발생했습니다: ' + err.message);
-      }
-    } finally {
-      setSharing(false);
-    }
-  };
 
   // 템플릿 저장 (신규 추가 또는 수정)
   const handleSaveTemplate = async (e: React.FormEvent) => {
@@ -441,324 +305,42 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
             />
           </div>
 
-          {/* 3. [옵션] 문자용 주문 내역 이미지 캡처 영역 (요구사항 반영) */}
-          <div className="p-3.5 bg-gradient-to-r from-amber-50/60 to-stone-50 rounded-2xl border border-amber-200/80 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-amber-700" />
-                <span className="text-xs font-bold text-stone-900">문자용 주문 내역 이미지 캡처 (옵션)</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleCaptureImage}
-                disabled={capturingImage}
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-2xs transition-colors active:scale-95 disabled:bg-stone-300"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>{capturingImage ? '캡처 생성 중...' : '주문 내역 이미지 생성/복사'}</span>
-              </button>
-            </div>
 
-            <p className="text-[11px] text-stone-600 leading-snug">
-              주문 품목 및 세트메뉴 세부 구성, 총 결제금액이 포함된 이미지를 캡처하여 클립보드에 복사하거나 다운로드하여 MMS/카카오톡으로 함께 전송할 수 있습니다.
-            </p>
-
-            {/* 캡처 성공 시 미리보기 및 추가 도구 */}
-            {capturedImageUrl && (
-              <div className="p-2.5 bg-white rounded-xl border border-amber-300 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1 font-bold text-emerald-700">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>{copiedImage ? '클립보드에 이미지 복사 완료!' : '이미지 생성 완료'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={handleDownloadImage}
-                      className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg text-[11px] flex items-center gap-1 border border-stone-200"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>이미지 다운로드</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="max-h-36 overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
-                  <img src={capturedImageUrl} alt="캡처된 주문서 미리보기" className="w-full object-cover" />
-                </div>
-              </div>
-            )}
-
-            {/* 캡처 대상 숨김 프레임 (toPng/toBlob 대상: 사용자 제공 스크린샷과 100% 일치하는 주문 카드 디자인) */}
-            <div className="overflow-hidden h-0 opacity-0 pointer-events-none">
-              <div
-                ref={captureCardRef}
-                style={{
-                  width: '420px',
-                  backgroundColor: '#ffffff',
-                  color: '#1c1917',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif',
-                  borderRadius: '24px',
-                  border: '1px solid #e7e5e4',
-                  padding: '22px',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {/* 1. 상단: 주문번호 + 배달/픽업 뱃지 + 상태 뱃지 */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '16px', fontWeight: '800', color: '#1c1917', letterSpacing: '-0.3px' }}>
-                        {order.order_number}
-                      </span>
-                      {order.order_type === 'pickup' ? (
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>
-                          🏬 픽업
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
-                          🛵 배달
-                        </span>
-                      )}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#a8a29e', marginTop: '3px' }}>
-                      {order.created_at ? new Date(order.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' 접수' : '접수 완료'}
-                    </div>
-                  </div>
 
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 12px',
-                    borderRadius: '9999px',
-                    backgroundColor: '#fefce8',
-                    color: '#854d0e',
-                    border: '1px solid #fef08a',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                  }}>
-                    <span>🕒</span>
-                    <span>{order.status === 'confirmed' ? '주문확정' : order.status === 'brewing' ? '제조중' : order.status === 'delivering' ? '배달중' : order.status === 'completed' ? '완료' : '견적대기'}</span>
-                  </div>
-                </div>
-
-                {/* 2. 고객명 & 전화번호 */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: 'bold', color: '#1c1917' }}>
-                    <span>👤</span>
-                    <span>{order.customer_name} 님</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', fontWeight: 'bold', color: '#78350f' }}>
-                    <span>📞</span>
-                    <span>{order.customer_phone}</span>
-                  </div>
-                </div>
-
-                {/* 3. 배달/픽업 일정 및 장소 박스 (스크린샷 일치) */}
-                <div style={{
-                  backgroundColor: '#fafaf9',
-                  borderRadius: '16px',
-                  border: '1px solid #e7e5e4',
-                  padding: '12px 14px',
-                  marginBottom: '14px',
-                  fontSize: '12px',
-                  lineHeight: '1.6',
-                  color: '#44403c',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#451a03', marginBottom: '4px' }}>
-                    <span>📅</span>
-                    <span>{order.delivery_date} {order.delivery_time}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '2px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px', flex: 1 }}>
-                      <span style={{ color: '#78716c' }}>📍</span>
-                      <span style={{ color: '#1c1917', fontWeight: '500' }}>
-                        {order.order_type === 'pickup'
-                          ? `매장 픽업 (${order.pickup_store_name || '은달 매장'})`
-                          : `${order.delivery_address} ${order.delivery_address_detail || ''}`}
-                      </span>
-                    </div>
-                    <span style={{
-                      fontSize: '10px',
-                      fontWeight: 'bold',
-                      color: '#1d4ed8',
-                      backgroundColor: '#eff6ff',
-                      padding: '2px 6px',
-                      borderRadius: '6px',
-                      border: '1px solid #bfdbfe',
-                      flexShrink: 0,
-                    }}>
-                      지도
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#78716c', marginTop: '2px' }}>
-                    거리구간: <strong style={{ color: '#292524' }}>{order.selected_distance_label || '기본'}</strong>
-                  </div>
-                  {order.order_memo && (
-                    <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #e7e5e4', fontSize: '11px', color: '#92400e' }}>
-                      <strong>요청사항:</strong> {order.order_memo}
-                    </div>
-                  )}
-                </div>
-
-                {/* 4. 주문 메뉴 내역 헤더 */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#44403c' }}>주문 메뉴 내역</span>
-                  <span style={{ fontSize: '11px', color: '#a8a29e' }}>총 {order.items?.length || 0}종</span>
-                </div>
-
-                {/* 5. 메뉴 품목 목록 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
-                  {order.items?.map((item, idx) => {
-                    const isSet = !!item.set_details;
-                    return (
-                      <div key={idx} style={{ fontSize: '13px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, paddingRight: '8px' }}>
-                            {isSet && (
-                              <span style={{
-                                fontSize: '10px',
-                                fontWeight: 'bold',
-                                backgroundColor: '#fef3c7',
-                                color: '#92400e',
-                                border: '1px solid #f59e0b',
-                                borderRadius: '4px',
-                                padding: '1px 5px',
-                                marginRight: '2px',
-                                flexShrink: 0,
-                              }}>
-                                🎁 세트
-                              </span>
-                            )}
-                            <span style={{ fontWeight: isSet ? 'bold' : '500', color: '#1c1917', lineHeight: '1.4' }}>
-                              {isSet ? `[세트] ${item.menu_name}` : item.menu_name} x {item.quantity}
-                            </span>
-                          </div>
-                          <span style={{ fontWeight: 'bold', color: '#1c1917', flexShrink: 0 }}>
-                            {item.subtotal.toLocaleString()}원
-                          </span>
-                        </div>
-
-                        {/* 세트 세부 내역 (노란색 좌측 바 & 크림색 배경 서브박스) */}
-                        {isSet && item.set_details && (
-                          <div style={{
-                            backgroundColor: '#fffbeb',
-                            borderLeft: '3px solid #f59e0b',
-                            borderRadius: '0 10px 10px 0',
-                            padding: '8px 10px',
-                            marginTop: '6px',
-                            fontSize: '11px',
-                            lineHeight: '1.6',
-                            color: '#44403c',
-                          }}>
-                            <div>
-                              <strong style={{ color: '#1c1917' }}>구성:</strong>{' '}
-                              {item.set_details.components?.map((c) => `${c.menu_name} x${c.quantity}`).join(', ') || '-'}
-                            </div>
-                            <div>
-                              <strong style={{ color: '#1c1917' }}>포장:</strong>{' '}
-                              {item.set_details.package_box?.name}
-                              {item.set_details.package_box?.price > 0 && ` (+${item.set_details.package_box.price.toLocaleString()}원)`}
-                            </div>
-                            {item.set_details.packaging_options && item.set_details.packaging_options.length > 0 && (
-                              <div>
-                                <strong style={{ color: '#1c1917' }}>옵션:</strong>{' '}
-                                {item.set_details.packaging_options.map((opt) => `${opt.name} (+${opt.price.toLocaleString()}원)`).join(', ')}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* 6. 배달비 */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#78716c', marginBottom: '8px' }}>
-                  <span>배달비 ({order.selected_distance_label || '기본'})</span>
-                  <span>{order.delivery_fee.toLocaleString()}원</span>
-                </div>
-
-                {/* 7. 점선 구분선 및 총 결제금액 */}
-                <div style={{
-                  borderTop: '1px dashed #d6d3d1',
-                  paddingTop: '10px',
-                  marginTop: '6px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                }}>
-                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1c1917' }}>총 결제금액</span>
-                  <span style={{ fontSize: '18px', fontWeight: '900', color: '#451a03' }}>
-                    {order.total_amount.toLocaleString()}원
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 모달 하단 액션 바: 스마트 동시 발송 + 개별 복사/앱 실행 */}
+        {/* 모달 하단 액션 바: 본문 복사 + 문자 앱 바로 실행 */}
         <div className="p-4 bg-stone-50 border-t border-stone-200 space-y-2 shrink-0">
-          {/* 핵심 요구사항 버튼: 이미지 + 문자 함께 발송 (MMS/카카오톡) */}
-          <button
-            type="button"
-            onClick={handleSendImageAndText}
-            disabled={sharing}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950 text-white font-extrabold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:bg-stone-300"
-          >
-            {sharing ? (
-              <span>이미지 및 문자 발송 준비 중...</span>
-            ) : (
-              <>
-                <Share2 className="w-4 h-4 text-amber-200" />
-                <span>📱 이미지 + 문자 함께 전송 (MMS / 카카오톡)</span>
-              </>
-            )}
-          </button>
-
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleCopyMessage}
-              className="flex-1 py-2.5 px-3 bg-white hover:bg-stone-100 text-stone-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 border border-stone-300 transition-colors shadow-2xs"
+              className="flex-1 py-3 px-4 bg-white hover:bg-stone-100 text-stone-800 font-bold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 border border-stone-300 transition-colors shadow-2xs active:scale-[0.99]"
             >
               {copiedText ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700">본문 복사됨</span>
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span className="text-emerald-700">문자 본문 복사 완료!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-3.5 h-3.5 text-stone-600" />
-                  <span>문자 본문 복사</span>
+                  <Copy className="w-4 h-4 text-stone-600" />
+                  <span>📋 문자 본문 복사</span>
                 </>
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={handleCaptureImage}
-              disabled={capturingImage}
-              className="flex-1 py-2.5 px-3 bg-white hover:bg-stone-100 text-stone-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 border border-stone-300 transition-colors shadow-2xs"
-            >
-              <Camera className="w-3.5 h-3.5 text-stone-600" />
-              <span>{copiedImage ? '이미지 복사됨' : '이미지만 복사'}</span>
-            </button>
-
             <a
               href={smsHref}
-              className="px-3.5 py-2.5 bg-stone-800 hover:bg-stone-900 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-colors"
+              className="flex-1 py-3 px-4 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors shadow-sm active:scale-[0.99]"
               title="기본 문자앱 열기"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>문자앱</span>
+              <Send className="w-4 h-4 text-white" />
+              <span>✉️ 문자 앱 바로 실행</span>
             </a>
           </div>
 
-          <div className="text-[10px] text-stone-500 text-center leading-tight">
-            * 스마트폰 환경에서는 [함께 전송] 클릭 시 문자(MMS) 또는 카카오톡에 이미지와 글이 함께 자동 첨부됩니다. PC에서는 이미지가 클립보드에 복사되어 메신저에 붙여넣기(Ctrl+V)하실 수 있습니다.
+          <div className="text-[11px] text-stone-500 text-center leading-tight">
+            * [문자 앱 바로 실행]을 누르면 스마트폰의 기본 메시지 앱으로 본문이 자동 입력됩니다. PC 환경에서는 [문자 본문 복사] 후 메신저 등에 붙여넣어(Ctrl+V) 발송하세요.
           </div>
         </div>
       </div>

@@ -14,14 +14,17 @@ import {
   MapPin,
   ExternalLink,
   Gift,
+  Package,
+  Check,
 } from 'lucide-react';
-import { CartItem, DeliveryPolicy, DistanceRule, Store } from '@/lib/types';
+import { CartItem, DeliveryPolicy, DistanceRule, MenuItem, Store } from '@/lib/types';
 import MiniMapPopup from '@/components/MiniMapPopup';
 
 interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartItem[];
+  menus?: MenuItem[];
   onUpdateQuantity: (menuId: string, delta: number) => void;
   onRemoveItem: (menuId: string) => void;
   onClearCart: () => void;
@@ -33,9 +36,26 @@ interface CartDrawerProps {
   stores?: Store[];
   selectedStoreId: string;
   onSelectStoreId: (storeId: string) => void;
+  selectedPackagingBoxId?: string;
+  onSelectPackagingBoxId?: (id: string) => void;
+  selectedPackagingOptionIds?: string[];
+  onTogglePackagingOptionId?: (id: string) => void;
   onProceedOrder: () => void;
   onOpenSetBuilder?: () => void;
 }
+
+const DEFAULT_PACKAGE_BOX_OPTIONS = [
+  { id: 'none', name: '기본 포장 (선물박스 없음)', price: 0, desc: '일반 테이크아웃 음료 캐리어 및 기본 포장백' },
+  { id: 'box_craft', name: '은달 시그니처 크라프트 선물박스', price: 1500, desc: '고급 크라프트 재질의 은달 전용 선물 상자' },
+  { id: 'box_clear', name: '투명 손잡이 선물팩', price: 1000, desc: '디저트와 음료가 돋보이는 모던 투명 패키지' },
+  { id: 'box_premium', name: '프리미엄 기프트 하드케이스', price: 3000, desc: '격식 있는 자리에 어울리는 단단한 선물용 하드케이스' },
+];
+
+const DEFAULT_SPECIAL_OPTIONS = [
+  { id: 'opt_can', name: '음료 캔시머(알루미늄 캔 밀봉) 안심 포장', price: 500, desc: '배달/이동 시 음료가 전혀 새지 않는 밀봉 캔 포장' },
+  { id: 'opt_ribbon', name: '선물용 고급 리본 & 스티커 패키징', price: 1000, desc: '정성을 더하는 리본 매듭과 은달 로고 씰링 스티커' },
+  { id: 'opt_card', name: '감사 메시지 카드 동봉', price: 500, desc: '마음을 전하는 인쇄형 감사 엽서 동봉' },
+];
 
 const DEFAULT_STORES: Store[] = [
   {
@@ -70,6 +90,7 @@ export default function CartDrawer({
   isOpen,
   onClose,
   cart,
+  menus = [],
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
@@ -81,10 +102,60 @@ export default function CartDrawer({
   stores = [],
   selectedStoreId,
   onSelectStoreId,
+  selectedPackagingBoxId: propBoxId,
+  onSelectPackagingBoxId: propOnSelectBox,
+  selectedPackagingOptionIds: propOptionIds,
+  onTogglePackagingOptionId: propOnToggleOption,
   onProceedOrder,
   onOpenSetBuilder,
 }: CartDrawerProps) {
   const [selectedMapStore, setSelectedMapStore] = React.useState<Store | null>(null);
+
+  // 로컬 fallback 상태 (부모에서 prop을 안 넘겨도 자체 작동)
+  const [localBoxId, setLocalBoxId] = React.useState<string>('none');
+  const [localOptionIds, setLocalOptionIds] = React.useState<string[]>([]);
+
+  const selectedBoxId = propBoxId !== undefined ? propBoxId : localBoxId;
+  const onSelectBoxId = propOnSelectBox || setLocalBoxId;
+  const selectedOptionIds = propOptionIds !== undefined ? propOptionIds : localOptionIds;
+  const onToggleOptionId =
+    propOnToggleOption ||
+    ((id: string) => {
+      setLocalOptionIds((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      );
+    });
+
+  // DB에 등록된 packaging_type === 'box' 품목들을 동적으로 로드 (없으면 기본 fallback)
+  const boxOptions = React.useMemo(() => {
+    const dbBoxes = menus.filter((m) => m.packaging_type === 'box' && m.is_active && !m.is_sold_out);
+    if (dbBoxes.length > 0) {
+      return [
+        { id: 'none', name: '기본 포장 (선물박스 없음)', price: 0, desc: '일반 테이크아웃 기본 캐리어 및 종이봉투 포장' },
+        ...dbBoxes.map((b) => ({
+          id: b.id,
+          name: b.name,
+          price: b.price,
+          desc: b.description || '은달 전용 포장용기',
+        })),
+      ];
+    }
+    return DEFAULT_PACKAGE_BOX_OPTIONS;
+  }, [menus]);
+
+  // DB에 등록된 packaging_type === 'special' 품목들을 동적으로 로드 (없으면 기본 fallback)
+  const specialOptions = React.useMemo(() => {
+    const dbSpecials = menus.filter((m) => m.packaging_type === 'special' && m.is_active && !m.is_sold_out);
+    if (dbSpecials.length > 0) {
+      return dbSpecials.map((s) => ({
+        id: s.id,
+        name: s.name,
+        price: s.price,
+        desc: s.description || '은달 특별 패키징 옵션',
+      }));
+    }
+    return DEFAULT_SPECIAL_OPTIONS;
+  }, [menus]);
 
   if (!isOpen) return null;
 
@@ -93,6 +164,15 @@ export default function CartDrawer({
 
   // 상품 합계
   const itemsTotal = cart.reduce((sum, item) => sum + item.menu.price * item.quantity, 0);
+
+  // 포장용기 및 특수포장 비용 계산 (실시간 견적 반영)
+  const currentBox = boxOptions.find((b) => b.id === selectedBoxId) || boxOptions[0];
+  const boxFee = currentBox ? currentBox.price : 0;
+  const specialFee = selectedOptionIds.reduce((sum, id) => {
+    const opt = specialOptions.find((o) => o.id === id);
+    return sum + (opt ? opt.price : 0);
+  }, 0);
+  const packagingFee = boxFee + specialFee;
 
   // 배달비 정책 계산
   const isPickup = orderType === 'pickup';
@@ -110,8 +190,8 @@ export default function CartDrawer({
   const currentBaseFee = isPickup ? 0 : (isFreeDelivery ? 0 : (itemsTotal > 0 ? baseFee : 0));
   const totalDeliveryFee = isPickup ? 0 : (itemsTotal > 0 ? currentBaseFee + distanceExtraFee : 0);
 
-  // 최종 견적 합계
-  const finalTotal = itemsTotal + totalDeliveryFee;
+  // 최종 실시간 총 견적 금액: 상품비 + 배달비 + 포장비 (요구사항 실시간 계산 연동)
+  const finalTotal = itemsTotal + totalDeliveryFee + packagingFee;
 
   // 무료배달까지 남은 금액 (배달 주문일 때만 유효)
   const remainingForFree = Math.max(0, freeThreshold - itemsTotal);
@@ -454,6 +534,98 @@ export default function CartDrawer({
                 </div>
               )}
 
+              {/* 4. [신규 요구사항] 포장용기 & 특수포장 옵션 선택 (실시간 견적 연동) */}
+              <div className="p-3.5 bg-gradient-to-br from-amber-50/70 to-stone-50 rounded-2xl border border-amber-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Package className="w-4 h-4 text-amber-700" />
+                    <span className="text-xs font-bold text-stone-900">포장용기 & 선물포장 옵션 선택</span>
+                  </div>
+                  {packagingFee > 0 ? (
+                    <span className="text-[11px] font-extrabold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
+                      +{packagingFee.toLocaleString()}원
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-stone-500 font-medium">선택 가능</span>
+                  )}
+                </div>
+
+                {/* 포장용기 선택 그리드 */}
+                <div>
+                  <div className="text-[11px] font-bold text-stone-700 mb-1.5 flex items-center justify-between">
+                    <span>1) 포장용기 선택</span>
+                    <span className="text-[10px] text-stone-400">전체 주문 포장 기준</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {boxOptions.map((box) => {
+                      const isSelected = selectedBoxId === box.id;
+                      return (
+                        <div
+                          key={box.id}
+                          onClick={() => onSelectBoxId(box.id)}
+                          className={`p-2 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between ${
+                            isSelected
+                              ? 'bg-white border-amber-600 ring-2 ring-amber-500/20 shadow-xs'
+                              : 'bg-white/80 border-stone-200 hover:border-stone-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-stone-900 line-clamp-1">{box.name}</span>
+                            <span className={`text-[11px] font-extrabold shrink-0 ${box.price > 0 ? 'text-amber-800' : 'text-stone-500'}`}>
+                              {box.price > 0 ? `+${box.price.toLocaleString()}원` : '무료'}
+                            </span>
+                          </div>
+                          {box.desc && (
+                            <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">{box.desc}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 특수포장 옵션 다중 선택 (캔시머, 리본 등) */}
+                <div className="pt-2 border-t border-amber-200/60">
+                  <div className="text-[11px] font-bold text-stone-700 mb-1.5 flex items-center justify-between">
+                    <span>2) 특수포장 안심/선물 옵션</span>
+                    <span className="text-[10px] text-stone-400">다중 선택 가능</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {specialOptions.map((opt) => {
+                      const isChecked = selectedOptionIds.includes(opt.id);
+                      return (
+                        <label
+                          key={opt.id}
+                          className={`p-2 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition-all ${
+                            isChecked
+                              ? 'bg-white border-amber-600 ring-1 ring-amber-500/20 shadow-2xs'
+                              : 'bg-white/80 border-stone-200 hover:bg-stone-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => onToggleOptionId(opt.id)}
+                              className="w-3.5 h-3.5 text-amber-600 rounded border-stone-300 focus:ring-amber-500"
+                            />
+                            <div className="min-w-0">
+                              <span className="font-bold text-stone-900 block truncate">{opt.name}</span>
+                              {opt.desc && (
+                                <span className="text-[10px] text-stone-500 block truncate">{opt.desc}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-[11px] font-extrabold text-amber-800 shrink-0 ml-2">
+                            +{opt.price.toLocaleString()}원
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               {/* 5. 실시간 견적 상세 내역 */}
               <div className="p-4 bg-stone-100/70 rounded-2xl border border-stone-200/70 space-y-2 text-xs">
                 <div className="flex justify-between text-stone-600">
@@ -476,6 +648,16 @@ export default function CartDrawer({
                   <div className="flex justify-between text-stone-600">
                     <span>거리별 할증 요금 ({selectedRule?.label})</span>
                     <span className="font-semibold text-stone-900">+{distanceExtraFee.toLocaleString()}원</span>
+                  </div>
+                )}
+                {packagingFee > 0 && (
+                  <div className="flex justify-between text-stone-700 font-medium">
+                    <span>
+                      포장용기 & 특수옵션
+                      {currentBox?.price ? ` (${currentBox.name})` : ''}
+                      {selectedOptionIds.length > 0 ? ` 외 ${selectedOptionIds.length}건` : ''}
+                    </span>
+                    <span className="font-bold text-amber-800">+{packagingFee.toLocaleString()}원</span>
                   </div>
                 )}
                 <div className="pt-2 border-t border-stone-300 flex justify-between items-baseline text-stone-900">

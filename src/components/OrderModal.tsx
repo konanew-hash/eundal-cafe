@@ -37,6 +37,9 @@ interface OrderModalProps {
   stores?: Store[];
   initialOrderType?: 'delivery' | 'pickup';
   initialStoreId?: string;
+  packagingFee?: number;
+  packagingBox?: string;
+  packagingOptions?: string[];
   onOrderSuccess: (order: Order) => void;
   onOpenPrivacyModal: () => void;
   onOpenGpsGuide?: () => void;
@@ -86,6 +89,9 @@ export default function OrderModal({
   stores = [],
   initialOrderType = 'delivery',
   initialStoreId,
+  packagingFee = 0,
+  packagingBox,
+  packagingOptions = [],
   onOrderSuccess,
   onOpenPrivacyModal,
   onOpenGpsGuide,
@@ -209,7 +215,7 @@ export default function OrderModal({
     const extraFee = distanceRule ? distanceRule.extra_fee : 0;
     deliveryFee = isFreeDelivery ? 0 : baseFee + extraFee;
   }
-  const finalTotal = itemsTotal + deliveryFee;
+  const finalTotal = itemsTotal + deliveryFee + packagingFee;
 
   // 시간 옵션 포맷 (모바일에서 줄바꿈 없이 깔끔하게 보이도록 12h/24h 최적화)
   const hours = Array.from({ length: 24 }, (_, i) => {
@@ -298,6 +304,9 @@ export default function OrderModal({
           gps_lat: gpsLat,
           gps_lng: gpsLng,
           gps_address: gpsAddress,
+          packaging_fee: packagingFee,
+          packaging_box: packagingBox,
+          packaging_options: packagingOptions,
           items: cart.map((i) => ({
             menu_id: i.is_custom_set ? null : i.menu.id,
             menu_name: i.menu.name,
@@ -798,6 +807,16 @@ export default function OrderModal({
                 {isPickup ? '0원 (픽업 무료)' : deliveryFee === 0 ? '무료 (0원)' : `${deliveryFee.toLocaleString()}원`}
               </span>
             </div>
+            {packagingFee > 0 && (
+              <div className="flex justify-between text-stone-600">
+                <span>
+                  포장용기 & 선물포장
+                  {packagingBox ? ` (${packagingBox})` : ''}
+                  {packagingOptions.length > 0 ? ` 외 ${packagingOptions.length}건` : ''}
+                </span>
+                <span className="font-semibold text-amber-900">+{packagingFee.toLocaleString()}원</span>
+              </div>
+            )}
             <div className="pt-2 border-t border-stone-300 flex justify-between items-baseline text-stone-900">
               <span className="font-bold text-sm">최종 예상 견적 금액</span>
               <span className="text-lg font-black text-amber-900">

@@ -124,12 +124,14 @@ export default function CustomSetBuilderModal({
     );
   };
 
-  // 필터링된 메뉴 목록 (요구사항: 포장용기, 특수포장 물품은 맞춤 세트메뉴 구성품 목록에서는 제외)
+  // 필터링된 메뉴 목록 (요구사항: 포장용기/특수포장 제외 및 관리자 설정 세트 품목 허용 여부(is_available_for_set) 반영)
   const filteredMenus = useMemo(() => {
     return menus.filter((m) => {
       if (m.is_sold_out) return false;
       // 포장용기 및 특수포장 품목 제외
       if (m.packaging_type === 'box' || m.packaging_type === 'special') return false;
+      // 관리자 설정에서 세트 구성품 담기 제외된 항목 필터링
+      if (m.is_available_for_set === false) return false;
       if (m.category_id === '77777777-7777-7777-7777-777777777777') return false;
       if (selectedCatId !== 'all' && m.category_id !== selectedCatId) return false;
       if (searchKeyword.trim() && !m.name.toLowerCase().includes(searchKeyword.toLowerCase())) {

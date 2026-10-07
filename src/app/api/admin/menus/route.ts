@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'create_menu') {
-      const { category_id, name, description, allergens, price, image_url, additional_images, video_urls, sort_order, packaging_type } = body;
+      const { category_id, name, description, allergens, price, image_url, additional_images, video_urls, sort_order, packaging_type, is_available_for_set } = body;
       if (!name || !category_id || price === undefined) {
         return NextResponse.json({ error: '카테고리, 메뉴명, 가격은 필수입니다.' }, { status: 400 });
       }
@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
           is_sold_out: false,
           is_active: true,
           packaging_type: packaging_type || null,
+          is_available_for_set: is_available_for_set !== undefined ? is_available_for_set : true,
         })
         .select('*')
         .single();
@@ -112,6 +113,19 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: true, menu: data });
     }
 
+    if (action === 'toggle_set_available') {
+      const { id, is_available_for_set } = body;
+      const { data, error } = await supabase
+        .from('eundal_menus')
+        .update({ is_available_for_set })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json({ success: true, menu: data });
+    }
+
     if (action === 'update_category') {
       const { id, name, description, sort_order, is_active } = body;
       const { data, error } = await supabase
@@ -126,7 +140,7 @@ export async function PUT(req: NextRequest) {
     }
 
     if (action === 'update_menu') {
-      const { id, category_id, name, description, allergens, price, image_url, additional_images, video_urls, sort_order, is_sold_out, is_active, packaging_type } = body;
+      const { id, category_id, name, description, allergens, price, image_url, additional_images, video_urls, sort_order, is_sold_out, is_active, packaging_type, is_available_for_set } = body;
       const { data, error } = await supabase
         .from('eundal_menus')
         .update({
@@ -142,6 +156,7 @@ export async function PUT(req: NextRequest) {
           is_sold_out,
           is_active,
           packaging_type: packaging_type !== undefined ? packaging_type : null,
+          is_available_for_set: is_available_for_set !== undefined ? is_available_for_set : true,
         })
         .eq('id', id)
         .select('*')

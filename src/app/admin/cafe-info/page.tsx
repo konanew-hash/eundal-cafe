@@ -28,6 +28,13 @@ export default function AdminCafeInfoPage() {
     address: '',
     business_hours: '',
     quote_notice: '',
+    instagram_url: '',
+    youtube_url: '',
+    naver_url: '',
+    google_url: '',
+    business_number: '',
+    owner_name: '',
+    privacy_officer: '',
   });
 
   const loadCafeInfo = async () => {
@@ -48,6 +55,13 @@ export default function AdminCafeInfoPage() {
           address: data.cafe.address || '',
           business_hours: data.cafe.business_hours || '',
           quote_notice: data.cafe.quote_notice || '견적 내역을 카페에서 확인 후 문자 혹은 유선 연락드려, 견적에 대한 주문 확정을 확인합니다.',
+          instagram_url: data.cafe.instagram_url || '',
+          youtube_url: data.cafe.youtube_url || '',
+          naver_url: data.cafe.naver_url || '',
+          google_url: data.cafe.google_url || '',
+          business_number: data.cafe.business_number || '',
+          owner_name: data.cafe.owner_name || '',
+          privacy_officer: data.cafe.privacy_officer || '',
         });
       }
     } catch (e) {
@@ -439,6 +453,119 @@ export default function AdminCafeInfoPage() {
                 required
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 5. SNS 홍보 채널 링크 (홈페이지 푸터 & 헤더 연동) */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-stone-900">
+              SNS & 외부 홍보 채널 링크 연동
+            </h3>
+            <p className="text-xs text-stone-500 mt-0.5">
+              홈페이지 하단 푸터 및 주요 화면에 노출될 인스타그램, 유튜브, 네이버 플레이스, 구글 지도 링크를 설정합니다.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">
+                📸 인스타그램 링크
+              </label>
+              <input
+                type="url"
+                placeholder="https://www.instagram.com/eundal_cafe"
+                value={form.instagram_url}
+                onChange={(e) => setForm({ ...form, instagram_url: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">
+                🎥 유튜브 링크
+              </label>
+              <input
+                type="url"
+                placeholder="https://www.youtube.com/@eundal_cafe"
+                value={form.youtube_url}
+                onChange={(e) => setForm({ ...form, youtube_url: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">
+                🟢 네이버 플레이스 / 지도 / 블로그 링크
+              </label>
+              <input
+                type="url"
+                placeholder="https://map.naver.com/p/search/은달카페"
+                value={form.naver_url}
+                onChange={(e) => setForm({ ...form, naver_url: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">
+                🌐 구글 지도 / 비즈니스 프로필 링크
+              </label>
+              <input
+                type="url"
+                placeholder="https://maps.google.com/?q=은달카페"
+                value={form.google_url}
+                onChange={(e) => setForm({ ...form, google_url: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium text-xs"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 6. 사업자 정보 및 개인정보보호 책임자 (법령 준수) */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-stone-900">
+              사업자 정보 및 개인정보보호 책임자 (법령 표기용)
+            </h3>
+            <p className="text-xs text-stone-500 mt-0.5">
+              전자상거래법 및 개인정보보호법에 의거하여 홈페이지 하단 푸터에 의무 고지되는 사업자 정보입니다.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">대표자명</label>
+              <input
+                type="text"
+                placeholder="예: 김은달"
+                value={form.owner_name}
+                onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">사업자등록번호</label>
+              <input
+                type="text"
+                placeholder="예: 123-45-67890"
+                value={form.business_number}
+                onChange={(e) => setForm({ ...form, business_number: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">개인정보보호책임자</label>
+              <input
+                type="text"
+                placeholder="예: 김은달 (대표)"
+                value={form.privacy_officer}
+                onChange={(e) => setForm({ ...form, privacy_officer: e.target.value })}
                 className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
               />
             </div>

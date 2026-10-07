@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from '@/components/Header';
 import CafeIntroModal from '@/components/CafeIntroModal';
 import CategoryNav from '@/components/CategoryNav';
@@ -14,8 +14,9 @@ import MenuDetailModal from '@/components/MenuDetailModal';
 import InstallPromptModal, { useHomeScreenInstall } from '@/components/InstallPromptModal';
 import GpsGuideModal from '@/components/GpsGuideModal';
 import CustomSetBuilderModal from '@/components/CustomSetBuilderModal';
+import Footer from '@/components/Footer';
 import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store } from '@/lib/types';
-import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation, Gift } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation, Gift, Package } from 'lucide-react';
 
 export default function HomePage() {
   const [cafe, setCafe] = useState<CafeInfo | null>(null);
@@ -35,6 +36,10 @@ export default function HomePage() {
   // 장바구니 상태
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedDistanceLabel, setSelectedDistanceLabel] = useState<string>('');
+
+  // 포장용기 & 특수포장 상태 (요구사항: 일반 메뉴 신청시 제외, 장바구니 실시간 견적에서 선택)
+  const [selectedPackagingBoxId, setSelectedPackagingBoxId] = useState<string>('none');
+  const [selectedPackagingOptionIds, setSelectedPackagingOptionIds] = useState<string[]>([]);
 
   // 모달 제어
   const [isIntroOpen, setIsIntroOpen] = useState(false);
@@ -171,11 +176,66 @@ export default function HomePage() {
     setCart([]);
   };
 
+  // 일반 메뉴 목록 (포장용기 및 특수포장 품목은 단품 구매 일반 목록에서 제외)
+  const regularMenus = useMemo(() => {
+    return menus.filter(
+      (m) => !m.packaging_type && m.category_id !== '77777777-7777-7777-7777-777777777777'
+    );
+  }, [menus]);
+
+  // 카테고리 목록 (포장 전용 카테고리는 메인 카테고리 네비게이션에서 제외)
+  const regularCategories = useMemo(() => {
+    return categories.filter(
+      (c) => c.id !== '77777777-7777-7777-7777-777777777777' && !c.name.includes('포장 & 선물')
+    );
+  }, [categories]);
+
   // 필터링된 메뉴 목록
-  const filteredMenus = menus.filter((m) => {
-    if (selectedCategory === 'all') return true;
-    return m.category_id === selectedCategory;
-  });
+  const filteredMenus = useMemo(() => {
+    if (selectedCategory === 'all') return regularMenus;
+    return regularMenus.filter((m) => m.category_id === selectedCategory);
+  }, [regularMenus, selectedCategory]);
+
+  // 포장비용 실시간 계산
+  const calculatedPackagingFee = useMemo(() => {
+    let fee = 0;
+    if (selectedPackagingBoxId && selectedPackagingBoxId !== 'none') {
+      const box = menus.find((m) => m.id === selectedPackagingBoxId);
+      if (box) fee += box.price;
+      else if (selectedPackagingBoxId === 'box_craft') fee += 1500;
+      else if (selectedPackagingBoxId === 'box_clear') fee += 1000;
+      else if (selectedPackagingBoxId === 'box_premium') fee += 3000;
+    }
+    selectedPackagingOptionIds.forEach((id) => {
+      const opt = menus.find((m) => m.id === id);
+      if (opt) fee += opt.price;
+      else if (id === 'opt_can') fee += 500;
+      else if (id === 'opt_ribbon') fee += 1000;
+      else if (id === 'opt_card') fee += 500;
+    });
+    return fee;
+  }, [menus, selectedPackagingBoxId, selectedPackagingOptionIds]);
+
+  const selectedBoxName = useMemo(() => {
+    if (!selectedPackagingBoxId || selectedPackagingBoxId === 'none') return '';
+    const box = menus.find((m) => m.id === selectedPackagingBoxId);
+    if (box) return box.name;
+    if (selectedPackagingBoxId === 'box_craft') return '은달 크라프트 선물박스';
+    if (selectedPackagingBoxId === 'box_clear') return '투명 손잡이 선물팩';
+    if (selectedPackagingBoxId === 'box_premium') return '프리미엄 기프트 하드케이스';
+    return '';
+  }, [menus, selectedPackagingBoxId]);
+
+  const selectedPackagingOptionNames = useMemo(() => {
+    return selectedPackagingOptionIds.map((id) => {
+      const opt = menus.find((m) => m.id === id);
+      if (opt) return opt.name;
+      if (id === 'opt_can') return '캔시머 밀봉 포장';
+      if (id === 'opt_ribbon') return '선물용 고급 리본';
+      if (id === 'opt_card') return '감사 메시지 카드';
+      return id;
+    });
+  }, [menus, selectedPackagingOptionIds]);
 
   // 실시간 합계 금액 계산
   const isPickup = orderType === 'pickup';
@@ -191,7 +251,7 @@ export default function HomePage() {
     : itemsTotal > 0
     ? (isFreeDelivery ? 0 : baseFee) + extraFee
     : 0;
-  const finalEstimatedTotal = itemsTotal + deliveryFee;
+  const finalEstimatedTotal = itemsTotal + deliveryFee + calculatedPackagingFee;
 
   if (loading) {
     return (
@@ -361,7 +421,7 @@ export default function HomePage() {
 
         {/* 3. 카테고리 네비게이션 (Sticky) */}
         <CategoryNav
-          categories={categories}
+          categories={regularCategories}
           selectedCategoryId={selectedCategory}
           onSelectCategory={(id) => setSelectedCategory(id)}
         />
@@ -396,6 +456,12 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      {/* 5. 홈페이지 하단 푸터 (SNS 홍보 링크 4종 + 사업자정보 + 개인정보처리방침) */}
+      <Footer
+        cafe={cafe}
+        onOpenPrivacyPolicy={() => setIsPrivacyOpen(true)}
+      />
 
       {/* 5. 하단 고정 실시간 견적 플로팅 바 (iOS Safe Area 대응) */}
       {cart.length > 0 && (
@@ -440,11 +506,12 @@ export default function HomePage() {
         cafe={cafe}
       />
 
-      {/* 실시간 견적 및 장바구니 드로어 (배달 vs 픽업 선택 상호 연동) */}
+      {/* 실시간 견적 및 장바구니 드로어 (배달 vs 픽업 선택 상호 연동 + 포장용기 & 특수옵션 선택) */}
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
+        menus={menus}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onClearCart={handleClearCart}
@@ -456,6 +523,14 @@ export default function HomePage() {
         stores={stores}
         selectedStoreId={selectedStoreId}
         onSelectStoreId={setSelectedStoreId}
+        selectedPackagingBoxId={selectedPackagingBoxId}
+        onSelectPackagingBoxId={setSelectedPackagingBoxId}
+        selectedPackagingOptionIds={selectedPackagingOptionIds}
+        onTogglePackagingOptionId={(id) =>
+          setSelectedPackagingOptionIds((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+          )
+        }
         onOpenSetBuilder={() => setIsSetBuilderOpen(true)}
         onProceedOrder={() => {
           setIsCartOpen(false);
@@ -472,7 +547,7 @@ export default function HomePage() {
         onAddSetToCart={handleAddSetToCart}
       />
 
-      {/* 주문서/견적서 작성 모달 (24시간/12h 병기 + 도로명주소 API + 개인정보동의 + 픽업/GPS) */}
+      {/* 주문서/견적서 작성 모달 (24시간/12h 병기 + 도로명주소 API + 개인정보동의 + 픽업/GPS + 포장용기/특수옵션) */}
       <OrderModal
         isOpen={isOrderOpen}
         onClose={() => setIsOrderOpen(false)}
@@ -482,6 +557,9 @@ export default function HomePage() {
         stores={stores}
         initialOrderType={orderType}
         initialStoreId={selectedStoreId}
+        packagingFee={calculatedPackagingFee}
+        packagingBox={selectedBoxName}
+        packagingOptions={selectedPackagingOptionNames}
         onOrderSuccess={handleOrderSuccess}
         onOpenPrivacyModal={() => setIsPrivacyOpen(true)}
         onOpenGpsGuide={() => setIsGpsGuideOpen(true)}

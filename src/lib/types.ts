@@ -11,6 +11,14 @@ export interface CafeInfo {
   business_hours: string;
   quote_notice?: string;
   updated_at?: string;
+  // SNS 및 홍보용 링크 & 사업자 정보
+  instagram_url?: string;
+  youtube_url?: string;
+  naver_url?: string;
+  google_url?: string;
+  business_number?: string;
+  owner_name?: string;
+  privacy_officer?: string;
 }
 
 export interface Category {
@@ -35,6 +43,7 @@ export interface MenuItem {
   sort_order: number;
   is_active: boolean;
   packaging_type?: 'box' | 'special' | null; // 맞춤 세트메뉴용 구분 ('box': 포장용기, 'special': 특수포장, null: 일반메뉴)
+  is_available_for_set?: boolean; // 맞춤 세트메뉴 세트에 담을 품목 포함 여부 (기본 true)
 }
 
 export type Menu = MenuItem;
@@ -137,6 +146,9 @@ export interface Order {
   order_memo?: string;
   items_total: number;
   delivery_fee: number;
+  packaging_fee?: number;
+  packaging_box?: { name: string; price: number } | null;
+  packaging_options?: { name: string; price: number }[] | null;
   total_amount: number;
   privacy_agreed: boolean;
   privacy_agreed_at: string;
