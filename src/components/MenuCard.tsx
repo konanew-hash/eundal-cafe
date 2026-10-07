@@ -9,6 +9,7 @@ interface MenuCardProps {
   inCartCount: number;
   onAddToCart: (menu: MenuItem) => void;
   onUpdateQuantity?: (menuId: string, delta: number) => void;
+  onOpenDetail?: (menu: MenuItem) => void;
 }
 
 export default function MenuCard({
@@ -16,12 +17,20 @@ export default function MenuCard({
   inCartCount,
   onAddToCart,
   onUpdateQuantity,
+  onOpenDetail,
 }: MenuCardProps) {
   const isSoldOut = menu.is_sold_out;
 
+  const handleCardClick = () => {
+    if (onOpenDetail) {
+      onOpenDetail(menu);
+    }
+  };
+
   return (
     <div
-      className={`group relative bg-white rounded-2xl p-3.5 border border-stone-200/90 shadow-sm transition-all hover:shadow-md flex gap-3.5 items-center ${
+      onClick={handleCardClick}
+      className={`group relative bg-white rounded-2xl p-3.5 border border-stone-200/90 shadow-sm transition-all hover:shadow-md flex gap-3.5 items-center cursor-pointer ${
         isSoldOut ? 'opacity-60 grayscale-[30%]' : ''
       }`}
     >
@@ -72,10 +81,16 @@ export default function MenuCard({
             <span className="text-xs text-stone-400 font-medium px-2 py-1">품절</span>
           ) : inCartCount > 0 && onUpdateQuantity ? (
             /* 이미 담긴 경우: - 와 + 수량 조절 컨트롤러 */
-            <div className="flex items-center bg-stone-100 border border-stone-300/80 rounded-full px-1.5 py-0.5 shadow-xs">
+            <div
+              className="flex items-center bg-stone-100 border border-stone-300/80 rounded-full px-1.5 py-0.5 shadow-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 type="button"
-                onClick={() => onUpdateQuantity(menu.id, -1)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQuantity(menu.id, -1);
+                }}
                 className="w-6 h-6 rounded-full flex items-center justify-center text-stone-700 hover:text-stone-950 active:scale-95 hover:bg-white transition-all"
                 title="수량 1개 줄이기"
               >
@@ -86,7 +101,10 @@ export default function MenuCard({
               </span>
               <button
                 type="button"
-                onClick={() => onUpdateQuantity(menu.id, 1)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQuantity(menu.id, 1);
+                }}
                 className="w-6 h-6 rounded-full flex items-center justify-center text-stone-700 hover:text-stone-950 active:scale-95 hover:bg-white transition-all"
                 title="수량 1개 늘리기"
               >
@@ -97,7 +115,10 @@ export default function MenuCard({
             /* 아직 담기지 않은 경우: + 담기 버튼 */
             <button
               type="button"
-              onClick={() => onAddToCart(menu)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(menu);
+              }}
               className="px-3 py-1.5 rounded-full bg-stone-900 text-white hover:bg-amber-600 font-bold text-xs flex items-center gap-1 shadow-xs transition-all active:scale-95"
               title="장바구니에 담기"
             >

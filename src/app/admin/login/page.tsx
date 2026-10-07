@@ -9,6 +9,7 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -21,7 +22,7 @@ export default function AdminLoginPage() {
       const res = await fetch('/api/admin/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, rememberMe }),
       });
 
       const data = await res.json();
@@ -102,6 +103,19 @@ export default function AdminLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full p-3 bg-stone-900 border border-stone-700 rounded-xl text-white text-xs placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
+            </div>
+
+            {/* 로그인 유지 체크박스 (요구사항) */}
+            <div className="flex items-center justify-between text-xs py-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-stone-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-stone-700 bg-stone-900 text-amber-600 focus:ring-amber-500 focus:ring-offset-stone-800"
+                />
+                <span>로그인 상태 유지 (30일간 유지)</span>
+              </label>
             </div>
 
             <button

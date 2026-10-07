@@ -54,8 +54,8 @@ export default function PrivacyPolicyModal({ isOpen, onClose }: PrivacyPolicyMod
 
           <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
             <h4 className="font-bold text-stone-900">3. 개인정보 보유 및 이용 기간</h4>
-            <p className="text-stone-600">
-              - 주문 및 배달 완료 후 원칙적으로 목적 달성 시까지 보유하며, 「전자상거래 등에서의 소비자보호에 관한 법률」 등 관계 법령에 따라 5년간 안전하게 보존 후 파기합니다.
+            <p className="text-stone-700 font-medium leading-relaxed">
+              - <strong className="text-amber-900 font-bold">배달 완료일 이후 14일까지 보관 후 삭제</strong> (14일 경과 시 데이터베이스에서 지체 없이 안전하게 영구 파기)
             </p>
           </div>
 

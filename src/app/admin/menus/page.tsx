@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus,
   Edit2,
@@ -12,6 +12,7 @@ import {
   Image as ImageIcon,
   Check,
   X,
+  Upload,
 } from 'lucide-react';
 import { Category, MenuItem } from '@/lib/types';
 
@@ -20,6 +21,8 @@ export default function AdminMenusPage() {
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'menus' | 'categories'>('menus');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const menuFileInputRef = useRef<HTMLInputElement>(null);
 
   // 메뉴 모달
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
@@ -122,6 +125,30 @@ export default function AdminMenusPage() {
       });
     }
     setIsMenuModalOpen(true);
+  };
+
+  const handleMenuImageUpload = async (file: File) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    setUploadingImage(true);
+    try {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setMenuForm((prev) => ({ ...prev, image_url: data.url }));
+      } else {
+        alert(data.error || '이미지 업로드에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   // 메뉴 저장
@@ -481,23 +508,59 @@ export default function AdminMenusPage() {
               </div>
 
               <div>
-                <label className="block text-stone-700 font-medium mb-1">메뉴 설명</label>
+                <label className="block text-stone-700 font-medium mb-1">메뉴 상세 설명</label>
                 <textarea
-                  rows={2}
+                  rows={3}
+                  placeholder="메뉴의 특징, 원재료, 맛의 설명 등을 작성해주세요."
                   value={menuForm.description}
                   onChange={(e) => setMenuForm({ ...menuForm, description: e.target.value })}
-                  className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl"
+                  className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl leading-relaxed"
                 />
               </div>
 
               <div>
-                <label className="block text-stone-700 font-medium mb-1">이미지 URL</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-stone-700 font-medium">메뉴 대표 사진</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={menuFileInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleMenuImageUpload(file);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploadingImage}
+                      onClick={() => menuFileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[11px] transition-colors"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>{uploadingImage ? '업로드 중...' : '파일 직접 업로드'}</span>
+                    </button>
+                  </div>
+                </div>
                 <input
                   type="url"
+                  placeholder="https://... 또는 우측 상단 파일 업로드"
                   value={menuForm.image_url}
                   onChange={(e) => setMenuForm({ ...menuForm, image_url: e.target.value })}
                   className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl"
                 />
+                {/* 사진 미리보기 */}
+                <div className="mt-2 h-32 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 relative">
+                  <img
+                    src={menuForm.image_url || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80'}
+                    alt="메뉴 사진 미리보기"
+                    className="w-full h-full object-cover"
+                  />
+                  <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold">
+                    사진 미리보기
+                  </span>
+                </div>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">

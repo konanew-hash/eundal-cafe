@@ -135,6 +135,36 @@ export async function POST(req: NextRequest) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const orderNumber = `EUN-${dateStr}-${randomSuffix}`;
 
+    // 클라이언트 IP 추출 및 접속 위치 조회
+    const forwarded = req.headers.get('x-forwarded-for');
+    const realIp = req.headers.get('x-real-ip');
+    const rawIp = forwarded ? forwarded.split(',')[0].trim() : realIp || '';
+    const clientIp = rawIp.replace(/^::ffff:/, '');
+
+    let clientLocation = '로컬/내부망 접속';
+    if (clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1' && !clientIp.startsWith('192.168.') && !clientIp.startsWith('10.')) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const geoRes = await fetch(`http://ip-api.com/json/${clientIp}?lang=ko&fields=status,country,regionName,city,district`, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData.status === 'success') {
+            const parts = [geoData.regionName, geoData.city, geoData.district].filter(Boolean);
+            const uniqueParts = Array.from(new Set(parts));
+            clientLocation = uniqueParts.length > 0 ? uniqueParts.join(' ') : (geoData.country || '대한민국');
+          } else {
+            clientLocation = '위치 확인 불가';
+          }
+        }
+      } catch {
+        clientLocation = '위치 확인 불가';
+      }
+    }
+
     // 7. eundal_orders INSERT
     const { data: createdOrder, error: orderInsertErr } = await supabase
       .from('eundal_orders')
@@ -154,6 +184,8 @@ export async function POST(req: NextRequest) {
         privacy_agreed: true,
         privacy_agreed_at: new Date().toISOString(),
         status: 'pending',
+        client_ip: clientIp || '확인불가',
+        client_location: clientLocation,
       })
       .select('*')
       .single();

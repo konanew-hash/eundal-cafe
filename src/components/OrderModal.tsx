@@ -383,7 +383,7 @@ export default function OrderModal({
                     [필수] 개인정보 수집 및 이용 동의
                   </p>
                   <p className="text-[11px] text-stone-500 mt-0.5 leading-snug">
-                    견적 확인, 배달지 안내 및 고객 상담 처리를 위해 필요한 최소한의 정보를 수집합니다.
+                    견적 확인 및 배달 처리 목적 (보유 기간: <strong className="text-amber-900 font-bold">배달 완료일 이후 14일까지 보관 후 삭제</strong>)
                   </p>
                 </div>
               </div>

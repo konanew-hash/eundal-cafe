@@ -4,7 +4,7 @@ import { verifyPassword, createAdminToken, COOKIE_NAME } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { username, password } = await req.json();
+    const { username, password, rememberMe } = await req.json();
 
     if (!username || !password) {
       return NextResponse.json({ error: '아이디와 비밀번호를 모두 입력해주세요.' }, { status: 400 });
@@ -27,14 +27,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, { status: 401 });
     }
 
-    // JWT 생성
+    // JWT 생성 (로그인 유지 여부에 따라 30일 vs 24시간)
     const token = await createAdminToken({
       id: staff.id,
       username: staff.username,
       name: staff.name,
       role: staff.role,
       phone: staff.phone,
-    });
+    }, Boolean(rememberMe));
 
     const response = NextResponse.json({
       success: true,
@@ -47,13 +47,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // HttpOnly 쿠키 설정
+    // HttpOnly 쿠키 설정 (로그인 유지 시 30일, 기본 24시간)
+    const cookieMaxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
+
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24, // 24시간
+      maxAge: cookieMaxAge,
     });
 
     return response;

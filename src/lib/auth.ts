@@ -26,12 +26,13 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-// JWT 생성
-export async function createAdminToken(payload: AdminPayload): Promise<string> {
+// JWT 생성 (로그인 유지 옵션 지원)
+export async function createAdminToken(payload: AdminPayload, rememberMe = false): Promise<string> {
+  const exp = rememberMe ? '30d' : '24h';
   return await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('24h')
+    .setExpirationTime(exp)
     .sign(SECRET_KEY);
 }
 

@@ -10,6 +10,7 @@ import OrderModal from '@/components/OrderModal';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import OrderSuccessModal from '@/components/OrderSuccessModal';
 import CheckOrderModal from '@/components/CheckOrderModal';
+import MenuDetailModal from '@/components/MenuDetailModal';
 import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order } from '@/lib/types';
 import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2 } from 'lucide-react';
 
@@ -33,6 +34,7 @@ export default function HomePage() {
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isCheckOrderOpen, setIsCheckOrderOpen] = useState(false);
+  const [selectedDetailMenu, setSelectedDetailMenu] = useState<MenuItem | null>(null);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
   // 초기 데이터 불러오기
@@ -228,6 +230,7 @@ export default function HomePage() {
                   inCartCount={inCart}
                   onAddToCart={handleAddToCart}
                   onUpdateQuantity={handleUpdateQuantity}
+                  onOpenDetail={(targetMenu) => setSelectedDetailMenu(targetMenu)}
                 />
               );
             })}
@@ -323,6 +326,33 @@ export default function HomePage() {
       <CheckOrderModal
         isOpen={isCheckOrderOpen}
         onClose={() => setIsCheckOrderOpen(false)}
+      />
+
+      {/* 메뉴 상세 모달 (사진, 설명, 가격 및 수량 담기) */}
+      <MenuDetailModal
+        menu={selectedDetailMenu}
+        isOpen={!!selectedDetailMenu}
+        onClose={() => setSelectedDetailMenu(null)}
+        currentQuantity={
+          selectedDetailMenu
+            ? cart.find((c) => c.menu.id === selectedDetailMenu.id)?.quantity || 0
+            : 0
+        }
+        onUpdateQuantity={(menu, newQty) => {
+          if (newQty <= 0) {
+            setCart((prev) => prev.filter((item) => item.menu.id !== menu.id));
+          } else {
+            setCart((prev) => {
+              const existing = prev.find((item) => item.menu.id === menu.id);
+              if (existing) {
+                return prev.map((item) =>
+                  item.menu.id === menu.id ? { ...item, quantity: newQty } : item
+                );
+              }
+              return [...prev, { menu, quantity: newQty }];
+            });
+          }
+        }}
       />
     </div>
   );

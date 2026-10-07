@@ -3,11 +3,12 @@ import { Order } from './types';
 
 export function exportOrdersToExcel(orders: Order[], fileNamePrefix = '은달카페_주문내역') {
   const statusMap: Record<string, string> = {
-    pending: '접수대기',
-    accepted: '접수완료',
-    brewing: '제조중',
-    delivering: '배달중',
-    completed: '완료',
+    pending: '견적대기',
+    confirmed: '견적확정',
+    accepted: '견적확정',
+    brewing: '견적확정',
+    delivering: '견적확정',
+    completed: '거래완료',
     cancelled: '취소',
   };
 
@@ -20,7 +21,7 @@ export function exportOrdersToExcel(orders: Order[], fileNamePrefix = '은달카
       'No.': idx + 1,
       '주문번호': order.order_number,
       '접수일시': new Date(order.created_at).toLocaleString('ko-KR'),
-      '주문상태': statusMap[order.status] || order.status,
+      '견적상태': statusMap[order.status] || order.status,
       '고객성함': order.customer_name,
       '연락처': order.customer_phone,
       '배달예정일': order.delivery_date,
@@ -33,6 +34,8 @@ export function exportOrdersToExcel(orders: Order[], fileNamePrefix = '은달카
       '배달비(원)': order.delivery_fee,
       '총 결제금액(원)': order.total_amount,
       '요청사항': order.order_memo || '',
+      '접속 위치': order.client_location || '-',
+      '접속 IP': order.client_ip || '-',
       '개인정보 수집동의': order.privacy_agreed ? '동의완료' : '미동의',
       '동의일시': order.privacy_agreed_at ? new Date(order.privacy_agreed_at).toLocaleString('ko-KR') : '',
     };

@@ -32,6 +32,8 @@ export interface MenuItem {
   is_active: boolean;
 }
 
+export type Menu = MenuItem;
+
 export interface DistanceRule {
   label: string;
   extra_fee: number;
@@ -84,7 +86,9 @@ export interface Order {
   total_amount: number;
   privacy_agreed: boolean;
   privacy_agreed_at: string;
-  status: 'pending' | 'accepted' | 'brewing' | 'delivering' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'accepted' | 'brewing' | 'delivering';
+  client_ip?: string;
+  client_location?: string;
   created_at: string;
   updated_at?: string;
   items?: OrderItem[];

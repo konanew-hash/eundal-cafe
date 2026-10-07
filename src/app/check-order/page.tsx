@@ -65,17 +65,18 @@ function CheckOrderContent() {
   const getStatusBadge = (status: Order['status']) => {
     switch (status) {
       case 'pending':
-        return <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-xs border border-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 견적 접수 대기 중</span>;
+        return <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-xs border border-amber-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 견적대기 (검토 중)</span>;
+      case 'confirmed':
       case 'accepted':
-        return <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-900 font-bold text-xs border border-blue-300 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> 주문 확정 완료</span>;
       case 'brewing':
-        return <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-900 font-bold text-xs border border-purple-300 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 음료/디저트 제조 중</span>;
       case 'delivering':
-        return <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-900 font-bold text-xs border border-indigo-300 flex items-center gap-1"><Bike className="w-3.5 h-3.5" /> 안전하게 배달 중</span>;
+        return <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-900 font-bold text-xs border border-blue-300 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> 견적확정 (제조/배달 진행)</span>;
       case 'completed':
-        return <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-xs border border-emerald-300 flex items-center gap-1"><PackageCheck className="w-3.5 h-3.5" /> 배달 완료</span>;
+        return <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-xs border border-emerald-300 flex items-center gap-1"><PackageCheck className="w-3.5 h-3.5" /> 거래완료</span>;
       case 'cancelled':
-        return <span className="px-3 py-1 rounded-full bg-stone-200 text-stone-700 font-bold text-xs border border-stone-300 flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> 주문 취소</span>;
+        return <span className="px-3 py-1 rounded-full bg-stone-200 text-stone-700 font-bold text-xs border border-stone-300 flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> 취소됨</span>;
+      default:
+        return <span className="px-3 py-1 rounded-full bg-stone-100 text-stone-700 font-bold text-xs">{status}</span>;
     }
   };
 

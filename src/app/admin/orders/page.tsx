@@ -28,6 +28,7 @@ import {
   Save,
   Check,
   Download,
+  Globe,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { Order, MenuItem, OrderItem } from '@/lib/types';
@@ -291,16 +292,17 @@ export default function AdminOrdersPage() {
     switch (status) {
       case 'pending':
         return <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px] border border-amber-300 flex items-center gap-1"><Clock className="w-3 h-3" /> 견적대기</span>;
+      case 'confirmed':
       case 'accepted':
-        return <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 font-bold text-[11px] border border-blue-300 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> 주문확정</span>;
       case 'brewing':
-        return <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-900 font-bold text-[11px] border border-purple-300 flex items-center gap-1"><Clock className="w-3 h-3" /> 제조중</span>;
       case 'delivering':
-        return <span className="px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-900 font-bold text-[11px] border border-indigo-300 flex items-center gap-1"><Bike className="w-3 h-3" /> 배달중</span>;
+        return <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 font-bold text-[11px] border border-blue-300 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> 견적확정</span>;
       case 'completed':
-        return <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-[11px] border border-emerald-300 flex items-center gap-1"><PackageCheck className="w-3 h-3" /> 완료</span>;
+        return <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-[11px] border border-emerald-300 flex items-center gap-1"><PackageCheck className="w-3 h-3" /> 거래완료</span>;
       case 'cancelled':
         return <span className="px-2.5 py-1 rounded-full bg-stone-200 text-stone-700 font-bold text-[11px] border border-stone-300 flex items-center gap-1"><XCircle className="w-3 h-3" /> 취소</span>;
+      default:
+        return <span className="px-2.5 py-1 rounded-full bg-stone-100 text-stone-700 font-bold text-[11px]">{status}</span>;
     }
   };
 
@@ -361,15 +363,13 @@ export default function AdminOrdersPage() {
 
       {/* 검색 및 필터 바 */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-3.5 rounded-2xl border border-stone-200">
-        {/* 상태 필터 탭 */}
+        {/* 상태 필터 탭 (견적대기 - 견적확정 - 거래완료 - 취소 4단계) */}
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full sm:w-auto">
           {[
             { key: 'all', label: '전체' },
             { key: 'pending', label: '견적대기' },
-            { key: 'accepted', label: '주문확정' },
-            { key: 'brewing', label: '제조중' },
-            { key: 'delivering', label: '배달중' },
-            { key: 'completed', label: '완료' },
+            { key: 'confirmed', label: '견적확정' },
+            { key: 'completed', label: '거래완료' },
             { key: 'cancelled', label: '취소' },
           ].map((st) => (
             <button
@@ -499,11 +499,23 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
+                {/* 주문자 접속 위치 및 IP (요구사항: 고객 접속 IP 기반 위치 표시) */}
+                <div className="py-2 px-2.5 bg-stone-50 rounded-xl border border-stone-200/80 flex items-center justify-between text-[11px] text-stone-600 mt-2">
+                  <span className="flex items-center gap-1 font-medium">
+                    <Globe className="w-3.5 h-3.5 text-stone-500" />
+                    <span>접속 위치</span>
+                  </span>
+                  <span className="font-bold text-stone-800">
+                    {order.client_location || '확인 중'}
+                    {order.client_ip ? ` (${order.client_ip})` : ''}
+                  </span>
+                </div>
+
                 {/* 개인정보보호 동의 확인 표기 */}
                 <div className="py-2 flex items-center justify-between text-[10px] text-stone-500">
                   <span className="flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                    개인정보 수집 동의 완료
+                    개인정보 수집 동의 완료 (완료 후 14일 보관)
                   </span>
                   <span>{new Date(order.privacy_agreed_at).toLocaleDateString('ko-KR')}</span>
                 </div>
@@ -513,7 +525,6 @@ export default function AdminOrdersPage() {
               <div className="pt-3 border-t border-stone-100 space-y-2">
                 {/* 상단 버튼: 품목 수정 및 이미지 캡처 */}
                 <div className="flex items-center gap-1.5">
-                  {/* 요구사항 3: 메뉴 일부 수정 버튼 */}
                   <button
                     onClick={() => openEditModal(order)}
                     className="flex-1 py-1.5 px-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-colors border border-stone-200"
@@ -523,7 +534,6 @@ export default function AdminOrdersPage() {
                     <span>품목/수량 수정</span>
                   </button>
 
-                  {/* 요구사항 4: 문자 첨부용 이미지 캡처 버튼 */}
                   <button
                     onClick={() => handleCaptureOrderImage(order)}
                     disabled={capturingId === order.id}
@@ -535,56 +545,48 @@ export default function AdminOrdersPage() {
                   </button>
                 </div>
 
-                {/* 상태 변경 액션 버튼들 */}
+                {/* 상태 변경 액션 버튼들 (4단계: 견적대기 - 견적확정 - 거래완료 - 취소) */}
                 <div className="flex items-center gap-1.5">
                   {order.status === 'pending' && (
                     <button
-                      onClick={() => handleUpdateStatus(order.id, 'accepted')}
+                      onClick={() => handleUpdateStatus(order.id, 'confirmed')}
                       className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
                     >
-                      주문 확정
+                      견적 확정
                     </button>
                   )}
-                  {order.status === 'accepted' && (
-                    <button
-                      onClick={() => handleUpdateStatus(order.id, 'brewing')}
-                      className="flex-1 py-2 bg-purple-700 hover:bg-purple-600 text-white font-bold rounded-xl text-xs transition-colors"
-                    >
-                      제조 시작
-                    </button>
-                  )}
-                  {order.status === 'brewing' && (
-                    <button
-                      onClick={() => handleUpdateStatus(order.id, 'delivering')}
-                      className="flex-1 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-bold rounded-xl text-xs transition-colors"
-                    >
-                      배달 출발
-                    </button>
-                  )}
-                  {order.status === 'delivering' && (
+                  {(order.status === 'confirmed' || order.status === 'accepted' || order.status === 'brewing' || order.status === 'delivering') && (
                     <button
                       onClick={() => handleUpdateStatus(order.id, 'completed')}
-                      className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs transition-colors"
+                      className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
                     >
-                      배달 완료 처리
+                      거래 완료
                     </button>
+                  )}
+                  {order.status === 'completed' && (
+                    <div className="flex-1 py-2 bg-stone-100 text-emerald-800 font-bold rounded-xl text-xs text-center border border-emerald-200">
+                      거래 완료됨
+                    </div>
+                  )}
+                  {order.status === 'cancelled' && (
+                    <div className="flex-1 py-2 bg-stone-100 text-stone-500 font-bold rounded-xl text-xs text-center border border-stone-200">
+                      취소된 견적
+                    </div>
                   )}
 
                   {/* 상태 임의 지정 셀렉트 드롭다운 */}
                   <div className="relative">
                     <select
-                      value={order.status}
+                      value={order.status === 'accepted' || order.status === 'brewing' || order.status === 'delivering' ? 'confirmed' : order.status}
                       onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
                       className="appearance-none bg-stone-100 border border-stone-300 text-stone-700 text-xs py-2 pl-2.5 pr-6 rounded-xl font-medium focus:outline-none"
                     >
                       <option value="pending">견적대기</option>
-                      <option value="accepted">주문확정</option>
-                      <option value="brewing">제조중</option>
-                      <option value="delivering">배달중</option>
-                      <option value="completed">완료</option>
+                      <option value="confirmed">견적확정</option>
+                      <option value="completed">거래완료</option>
                       <option value="cancelled">취소</option>
                     </select>
-                    <ChevronDown className="w-3 h-3 text-stone-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
               </div>
