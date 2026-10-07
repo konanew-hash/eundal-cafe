@@ -23,6 +23,7 @@ import {
   LocateFixed,
 } from 'lucide-react';
 import DaumPostcode from 'react-daum-postcode';
+import GpsGuideModal from '@/components/GpsGuideModal';
 import { CartItem, DeliveryPolicy, Order, Store } from '@/lib/types';
 import { getBrowserLocation, calculateDistanceInMeters, formatDistance } from '@/lib/geoUtils';
 
@@ -124,6 +125,9 @@ export default function OrderModal({
 
   // 지도 보기 팝업 상태
   const [mapPopupStore, setMapPopupStore] = useState<Store | null>(null);
+
+  // GPS 안내 팝업 상태 (견적서 내 직접 오픈 지원)
+  const [isLocalGpsGuideOpen, setIsLocalGpsGuideOpen] = useState(false);
 
   // GPS 좌표 수집 상태
   const [gpsLat, setGpsLat] = useState<number | undefined>(undefined);
@@ -374,16 +378,18 @@ export default function OrderModal({
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-              {onOpenGpsGuide && (
-                <button
-                  type="button"
-                  onClick={onOpenGpsGuide}
-                  className="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold flex items-center gap-1 transition-colors"
-                >
-                  <HelpCircle className="w-3 h-3 text-amber-700" />
-                  <span>설정 안내</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenGpsGuide) onOpenGpsGuide();
+                  setIsLocalGpsGuideOpen(true);
+                }}
+                className="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold flex items-center gap-1 transition-colors active:scale-95"
+                title="기기 브라우저 위치 권한 설정 안내"
+              >
+                <HelpCircle className="w-3 h-3 text-amber-700" />
+                <span>설정 안내</span>
+              </button>
               <button
                 type="button"
                 onClick={requestGpsLocation}
@@ -903,6 +909,19 @@ export default function OrderModal({
           </div>
         </div>
       )}
+
+      {/* GPS 위치 정보 권한 및 설정 안내 모달 (최상단 z-[120] 오버레이) */}
+      <GpsGuideModal
+        isOpen={isLocalGpsGuideOpen}
+        onClose={() => setIsLocalGpsGuideOpen(false)}
+        onLocationSuccess={(loc) => {
+          setGpsLat(loc.latitude);
+          setGpsLng(loc.longitude);
+          setGpsAddress(loc.address);
+          setGpsStatus('success');
+          setIsLocalGpsGuideOpen(false);
+        }}
+      />
     </div>
   );
 }

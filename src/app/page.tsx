@@ -46,12 +46,48 @@ export default function HomePage() {
   const [selectedDetailMenu, setSelectedDetailMenu] = useState<MenuItem | null>(null);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
+  // 현재 브라우저 GPS 위치 및 권한 상태
+  const [userLocationAddress, setUserLocationAddress] = useState<string>('');
+  const [isLocationGranted, setIsLocationGranted] = useState<boolean>(false);
+
   // 휴대폰 바탕화면 추가(PWA) 훅
   const { triggerInstall } = useHomeScreenInstall();
 
   const handleInstallClick = () => {
     triggerInstall(() => setIsInstallModalOpen(true));
   };
+
+  // 브라우저 위치 권한 트리거 함수 (브라우저 사이트 설정에 '위치' 항목을 즉시 등록시킴)
+  const triggerBrowserLocationPrompt = () => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          setIsLocationGranted(true);
+          try {
+            const res = await fetch(
+              `/api/geocode/reverse?lat=${position.coords.latitude}&lng=${position.coords.longitude}`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              setUserLocationAddress(data.roadAddress || data.address || '');
+            }
+          } catch {
+            setUserLocationAddress('GPS 위치 인증 완료');
+          }
+        },
+        (err) => {
+          console.warn('위치 권한 요청 결과:', err.code, err.message);
+          setIsLocationGranted(false);
+        },
+        { timeout: 8000, enableHighAccuracy: false, maximumAge: 60000 }
+      );
+    }
+  };
+
+  // 홈페이지 첫 진입 시 위치 권한 자동 질의 (브라우저 설정 목록에 '위치' 항목 자동 등록)
+  useEffect(() => {
+    triggerBrowserLocationPrompt();
+  }, []);
 
   // 초기 데이터 불러오기
   useEffect(() => {
@@ -237,7 +273,7 @@ export default function HomePage() {
         </section>
 
         {/* 배달비 및 픽업 정책 안내 바 & GPS 위치설정 안내 버튼 */}
-        <section className="px-3 sm:px-4 py-1 space-y-1">
+        <section className="px-3 sm:px-4 py-1 space-y-1.5">
           <div className="p-2.5 sm:p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 flex items-center justify-between text-xs text-amber-950 gap-2">
             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
               <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-amber-200 flex items-center justify-center font-bold text-[10px] sm:text-[11px] text-amber-900 shrink-0">
@@ -250,7 +286,10 @@ export default function HomePage() {
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setIsGpsGuideOpen(true)}
+                onClick={() => {
+                  triggerBrowserLocationPrompt();
+                  setIsGpsGuideOpen(true);
+                }}
                 className="text-[11px] text-amber-900 font-bold underline hover:text-amber-950 flex items-center gap-0.5"
                 title="정확한 배달/픽업 관제를 위한 기기 GPS 설정 안내"
               >
@@ -265,6 +304,21 @@ export default function HomePage() {
               </button>
             </div>
           </div>
+
+          {/* 실시간 위치 인증 상태 바 (인증 시 자동 노출) */}
+          {userLocationAddress && (
+            <div className="px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-200/80 flex items-center justify-between text-[11px] text-emerald-900 animate-fade-in">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Navigation className="w-3 h-3 text-emerald-700 shrink-0" />
+                <span className="truncate">
+                  <strong>내 위치:</strong> {userLocationAddress}
+                </span>
+              </div>
+              <span className="px-1.5 py-0.2 bg-emerald-200/80 text-emerald-950 text-[10px] font-bold rounded shrink-0">
+                GPS 인증완료
+              </span>
+            </div>
+          )}
         </section>
 
         {/* 3. 카테고리 네비게이션 (Sticky) */}
@@ -438,10 +492,14 @@ export default function HomePage() {
         appIconUrl={cafe?.app_icon_url || cafe?.logo_icon_url}
       />
 
-      {/* 5. GPS 위치 정보 권한 및 설정 안내 모달 */}
+      {/* 5. GPS 위치 정보 권한 및 설정 안내 모달 (최상단 z-[120]) */}
       <GpsGuideModal
         isOpen={isGpsGuideOpen}
         onClose={() => setIsGpsGuideOpen(false)}
+        onLocationSuccess={(loc) => {
+          setUserLocationAddress(loc.address);
+          setIsLocationGranted(true);
+        }}
       />
     </div>
   );
