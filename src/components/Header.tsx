@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Moon, Info, Search, ShoppingBag } from 'lucide-react';
+import { Moon, Info, Search, ShoppingBag, BookmarkPlus } from 'lucide-react';
 import { CafeInfo } from '@/lib/types';
 
 interface HeaderProps {
@@ -10,10 +10,18 @@ interface HeaderProps {
   onOpenIntro: () => void;
   onOpenCart: () => void;
   onOpenCheckOrder: () => void;
+  onOpenInstall: () => void;
   cartCount: number;
 }
 
-export default function Header({ cafe, onOpenIntro, onOpenCart, onOpenCheckOrder, cartCount }: HeaderProps) {
+export default function Header({
+  cafe,
+  onOpenIntro,
+  onOpenCart,
+  onOpenCheckOrder,
+  onOpenInstall,
+  cartCount,
+}: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 glass-panel border-b border-stone-200/80 transition-all">
       <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between">
@@ -34,6 +42,16 @@ export default function Header({ cafe, onOpenIntro, onOpenCart, onOpenCheckOrder
 
         {/* 액션 버튼들 */}
         <div className="flex items-center gap-1.5">
+          {/* 휴대폰 바탕화면 즐겨찾기 버튼 */}
+          <button
+            onClick={onOpenInstall}
+            title="휴대폰 바탕화면에 즐겨찾기 추가"
+            className="flex items-center gap-1 text-xs px-2 py-1.5 rounded-full bg-amber-50/90 text-amber-900 border border-amber-200 hover:bg-amber-100 transition-colors"
+          >
+            <BookmarkPlus className="w-3.5 h-3.5 text-amber-700" />
+            <span className="text-[11px] font-bold">홈화면추가</span>
+          </button>
+
           {/* 카페 소개 버튼 */}
           <button
             onClick={onOpenIntro}

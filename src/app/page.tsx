@@ -11,8 +11,9 @@ import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import OrderSuccessModal from '@/components/OrderSuccessModal';
 import CheckOrderModal from '@/components/CheckOrderModal';
 import MenuDetailModal from '@/components/MenuDetailModal';
+import InstallPromptModal, { useHomeScreenInstall } from '@/components/InstallPromptModal';
 import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order } from '@/lib/types';
-import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2 } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus } from 'lucide-react';
 
 export default function HomePage() {
   const [cafe, setCafe] = useState<CafeInfo | null>(null);
@@ -34,8 +35,16 @@ export default function HomePage() {
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isCheckOrderOpen, setIsCheckOrderOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [selectedDetailMenu, setSelectedDetailMenu] = useState<MenuItem | null>(null);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+
+  // 휴대폰 바탕화면 추가(PWA) 훅
+  const { triggerInstall } = useHomeScreenInstall();
+
+  const handleInstallClick = () => {
+    triggerInstall(() => setIsInstallModalOpen(true));
+  };
 
   // 초기 데이터 불러오기
   useEffect(() => {
@@ -135,12 +144,13 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5] pb-28">
-      {/* 1. 상단 글로벌 헤더 (관리자 링크 분리, 견적조회 버튼 추가) */}
+      {/* 1. 상단 글로벌 헤더 (관리자 링크 분리, 견적조회 버튼, 홈화면추가 버튼) */}
       <Header
         cafe={cafe}
         onOpenIntro={() => setIsIntroOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenCheckOrder={() => setIsCheckOrderOpen(true)}
+        onOpenInstall={handleInstallClick}
         cartCount={cartTotalItems}
       />
 
@@ -180,8 +190,38 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 3. 휴대폰 바탕화면 즐겨찾기 추가 배너 카드 (요구사항: 바탕화면에 즐겨찾기 추가 버튼 탑재) */}
+        <section className="px-4 py-1.5">
+          <button
+            type="button"
+            onClick={handleInstallClick}
+            className="w-full p-3 bg-gradient-to-r from-stone-900 via-stone-800 to-amber-950 text-white rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.99] border border-amber-800/40 text-left group"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-lg border border-amber-400/20 group-hover:scale-105 transition-transform">
+                📱
+              </div>
+              <div>
+                <div className="text-xs font-bold flex items-center gap-1.5">
+                  <span>휴대폰 바탕화면에 바로가기 추가</span>
+                  <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.5 rounded-full">
+                    원클릭
+                  </span>
+                </div>
+                <div className="text-[11px] text-stone-300 mt-0.5">
+                  앱처럼 터치 한 번으로 빠르고 편리하게 주문하세요
+                </div>
+              </div>
+            </div>
+            <div className="text-xs font-bold text-amber-300 flex items-center gap-0.5 shrink-0 pl-2">
+              <span>추가하기</span>
+              <span className="group-hover:translate-x-0.5 transition-transform">➔</span>
+            </div>
+          </button>
+        </section>
+
         {/* 배달비 정책 안내 바 */}
-        <section className="px-4 py-2">
+        <section className="px-4 py-1.5">
           <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 flex items-center justify-between text-xs text-amber-950">
             <div className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-amber-200 flex items-center justify-center font-bold text-[11px] text-amber-900">
@@ -353,6 +393,12 @@ export default function HomePage() {
             });
           }
         }}
+      />
+
+      {/* 4. 휴대폰 바탕화면 즐겨찾기 추가 가이드 모달 */}
+      <InstallPromptModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
       />
     </div>
   );

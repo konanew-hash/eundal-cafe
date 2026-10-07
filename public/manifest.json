@@ -1,0 +1,18 @@
+{
+  "name": "은달(銀月) 카페 - 실시간 예약 & 배달 주문",
+  "short_name": "은달카페",
+  "description": "은은한 달빛 아래 한 잔의 여유. 매일 직접 로스팅하는 신선한 커피와 수제 디저트를 휴대폰 바탕화면에서 간편하게 주문하세요.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf8f5",
+  "theme_color": "#1c1917",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
