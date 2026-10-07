@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import DaumPostcode from 'react-daum-postcode';
 import { Store } from '@/lib/types';
+import MiniMapPopup from '@/components/MiniMapPopup';
 
 export default function AdminStoresPage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -27,6 +28,7 @@ export default function AdminStoresPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
+  const [previewMapStore, setPreviewMapStore] = useState<Store | null>(null);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -321,6 +323,14 @@ export default function AdminStoresPage() {
                 {/* 지도 연동 링크 버튼 */}
                 <div className="pt-1 flex items-center gap-1.5 flex-wrap">
                   <span className="text-[11px] text-stone-400 font-medium">지도 미리보기:</span>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMapStore(store)}
+                    className="px-2 py-1 rounded-md bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold flex items-center gap-1 shadow-2xs transition-colors"
+                  >
+                    <MapPin className="w-2.5 h-2.5 text-amber-400" />
+                    <span>미니 지도 팝업</span>
+                  </button>
                   <a
                     href={`https://map.naver.com/v5/search/${encodeURIComponent(store.address)}`}
                     target="_blank"
@@ -570,6 +580,17 @@ export default function AdminStoresPage() {
           </div>
         </div>
       )}
+
+      {/* 매장 위치 미니 지도 팝업 */}
+      <MiniMapPopup
+        isOpen={Boolean(previewMapStore)}
+        onClose={() => setPreviewMapStore(null)}
+        title={previewMapStore ? `${previewMapStore.name} 위치 지도` : '매장 위치'}
+        address={previewMapStore?.address || ''}
+        detailAddress={previewMapStore?.address_detail}
+        postalCode={previewMapStore?.postal_code}
+        phone={previewMapStore?.phone}
+      />
     </div>
   );
 }

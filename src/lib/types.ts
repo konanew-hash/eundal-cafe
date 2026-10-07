@@ -29,6 +29,8 @@ export interface MenuItem {
   allergens?: string; // 알러지 유발 성분 표기
   price: number;
   image_url: string;
+  additional_images?: string[]; // 홈페이지 사진 롤링용 추가 이미지 목록
+  video_urls?: string[]; // 메뉴 설명 영상 목록 (다수 지원)
   is_sold_out: boolean;
   sort_order: number;
   is_active: boolean;

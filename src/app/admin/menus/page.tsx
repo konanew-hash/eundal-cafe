@@ -9,10 +9,11 @@ import {
   ToggleRight,
   FolderPlus,
   RefreshCw,
-  Image as ImageIcon,
   Check,
   X,
   Upload,
+  Video,
+  Film,
 } from 'lucide-react';
 import { Category, MenuItem } from '@/lib/types';
 
@@ -22,20 +23,38 @@ export default function AdminMenusPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'menus' | 'categories'>('menus');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingAddImage, setUploadingAddImage] = useState(false);
   const menuFileInputRef = useRef<HTMLInputElement>(null);
+  const addImageFileInputRef = useRef<HTMLInputElement>(null);
 
   // 메뉴 모달
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
-  const [menuForm, setMenuForm] = useState({
+  const [menuForm, setMenuForm] = useState<{
+    category_id: string;
+    name: string;
+    description: string;
+    allergens: string;
+    price: number;
+    image_url: string;
+    additional_images: string[];
+    video_urls: string[];
+    sort_order: number;
+  }>({
     category_id: '',
     name: '',
     description: '',
     allergens: '',
     price: 0,
     image_url: '',
+    additional_images: [],
+    video_urls: [],
     sort_order: 0,
   });
+
+  // 다중 이미지 및 비디오 추가 인풋 상태
+  const [inputAddImageUrl, setInputAddImageUrl] = useState('');
+  const [inputVideoUrl, setInputVideoUrl] = useState('');
 
   // 카테고리 모달
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
@@ -104,6 +123,8 @@ export default function AdminMenusPage() {
 
   // 메뉴 모달 열기 (추가/수정)
   const openMenuModal = (menu?: MenuItem) => {
+    setInputAddImageUrl('');
+    setInputVideoUrl('');
     if (menu) {
       setEditingMenu(menu);
       setMenuForm({
@@ -113,6 +134,8 @@ export default function AdminMenusPage() {
         allergens: menu.allergens || '',
         price: menu.price,
         image_url: menu.image_url,
+        additional_images: Array.isArray(menu.additional_images) ? [...menu.additional_images] : [],
+        video_urls: Array.isArray(menu.video_urls) ? [...menu.video_urls] : [],
         sort_order: menu.sort_order,
       });
     } else {
@@ -124,6 +147,8 @@ export default function AdminMenusPage() {
         allergens: '',
         price: 5000,
         image_url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80',
+        additional_images: [],
+        video_urls: [],
         sort_order: (menus.length + 1),
       });
     }
@@ -152,6 +177,72 @@ export default function AdminMenusPage() {
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  // 추가 사진 파일 직접 업로드 핸들러
+  const handleUploadAdditionalImage = async (file: File) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    setUploadingAddImage(true);
+    try {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setMenuForm((prev) => ({
+          ...prev,
+          additional_images: [...prev.additional_images, data.url],
+        }));
+      } else {
+        alert(data.error || '추가 이미지 업로드에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('추가 이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploadingAddImage(false);
+    }
+  };
+
+  // 추가 사진 URL 직접 입력 추가
+  const handleAddAdditionalImageUrl = () => {
+    const url = inputAddImageUrl.trim();
+    if (!url) return;
+    setMenuForm((prev) => ({
+      ...prev,
+      additional_images: [...prev.additional_images, url],
+    }));
+    setInputAddImageUrl('');
+  };
+
+  // 추가 사진 삭제
+  const handleRemoveAdditionalImage = (index: number) => {
+    setMenuForm((prev) => ({
+      ...prev,
+      additional_images: prev.additional_images.filter((_, idx) => idx !== index),
+    }));
+  };
+
+  // 설명 영상 URL 추가 (유튜브 등)
+  const handleAddVideoUrl = () => {
+    const url = inputVideoUrl.trim();
+    if (!url) return;
+    setMenuForm((prev) => ({
+      ...prev,
+      video_urls: [...prev.video_urls, url],
+    }));
+    setInputVideoUrl('');
+  };
+
+  // 설명 영상 삭제
+  const handleRemoveVideoUrl = (index: number) => {
+    setMenuForm((prev) => ({
+      ...prev,
+      video_urls: prev.video_urls.filter((_, idx) => idx !== index),
+    }));
   };
 
   // 메뉴 저장
@@ -369,6 +460,23 @@ export default function AdminMenusPage() {
                       </span>
                     </div>
                   )}
+
+                  {/* 추가 사진 & 영상 등록 개수 뱃지 */}
+                  {((menu.additional_images && menu.additional_images.length > 0) || (menu.video_urls && menu.video_urls.length > 0)) && (
+                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                      {menu.additional_images && menu.additional_images.length > 0 && (
+                        <span className="text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded font-medium">
+                          추가사진 {menu.additional_images.length}장
+                        </span>
+                      )}
+                      {menu.video_urls && menu.video_urls.length > 0 && (
+                        <span className="text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
+                          <Video className="w-2.5 h-2.5" />
+                          영상 {menu.video_urls.length}개
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 하단 컨트롤: 품절 토글 & 수정/삭제 */}
@@ -462,21 +570,21 @@ export default function AdminMenusPage() {
 
       {/* 메뉴 등록/수정 모달 */}
       {isMenuModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl border border-stone-200 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl border border-stone-200 text-xs max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 shrink-0">
               <h3 className="font-bold text-stone-900 text-sm">
                 {editingMenu ? '메뉴 정보 수정' : '신규 메뉴 등록'}
               </h3>
               <button
                 onClick={() => setIsMenuModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center"
+                className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center hover:bg-stone-200"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveMenu} className="py-4 space-y-3">
+            <form onSubmit={handleSaveMenu} className="py-3 space-y-3 overflow-y-auto pr-1 flex-1">
               <div>
                 <label className="block text-stone-700 font-medium mb-1">카테고리</label>
                 <select
@@ -581,9 +689,158 @@ export default function AdminMenusPage() {
                     className="w-full h-full object-cover"
                   />
                   <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold">
-                    사진 미리보기
+                    대표 사진 미리보기
                   </span>
                 </div>
+              </div>
+
+              {/* 추가 사진 등록 (홈페이지 사진 롤링용) */}
+              <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-stone-800 font-bold text-xs flex items-center gap-1">
+                      <span>추가 사진 (홈페이지 사진 롤링/슬라이더)</span>
+                      <span className="text-amber-800 bg-amber-100 text-[10px] px-1.5 py-0.5 rounded font-bold">
+                        {menuForm.additional_images.length}장
+                      </span>
+                    </label>
+                    <p className="text-[10px] text-stone-500">
+                      고객이 상세 모달에서 좌우로 넘겨볼 수 있는 추가 사진들입니다.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="file"
+                      ref={addImageFileInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadAdditionalImage(file);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploadingAddImage}
+                      onClick={() => addImageFileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-stone-300 hover:bg-stone-100 text-stone-700 font-bold text-[10px] transition-colors"
+                    >
+                      <Upload className="w-2.5 h-2.5 text-amber-700" />
+                      <span>{uploadingAddImage ? '업로드 중...' : '파일 추가'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* URL 직접 추가 입력창 */}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="url"
+                    placeholder="https://... 이미지 URL 입력 후 추가"
+                    value={inputAddImageUrl}
+                    onChange={(e) => setInputAddImageUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddAdditionalImageUrl();
+                      }
+                    }}
+                    className="flex-1 p-2 bg-white border border-stone-300 rounded-xl text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddAdditionalImageUrl}
+                    className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl text-xs shrink-0"
+                  >
+                    추가
+                  </button>
+                </div>
+
+                {/* 등록된 추가 이미지 목록 썸네일 */}
+                {menuForm.additional_images.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    {menuForm.additional_images.map((img, idx) => (
+                      <div key={idx} className="relative aspect-video rounded-xl overflow-hidden bg-stone-100 border border-stone-300 group">
+                        <img src={img} alt={`추가 사진 ${idx + 1}`} className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded font-bold">
+                          {idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAdditionalImage(idx)}
+                          className="absolute top-1 right-1 w-5 h-5 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-xs"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 메뉴 설명 영상 등록 (다수 지원) */}
+              <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                <div>
+                  <label className="text-stone-800 font-bold text-xs flex items-center gap-1">
+                    <Video className="w-3.5 h-3.5 text-red-600" />
+                    <span>메뉴 설명 영상 등록 (다수 지원)</span>
+                    <span className="text-red-700 bg-red-50 text-[10px] px-1.5 py-0.5 rounded font-bold border border-red-200">
+                      {menuForm.video_urls.length}개
+                    </span>
+                  </label>
+                  <p className="text-[10px] text-stone-500">
+                    YouTube 링크나 영상 URL을 여러 개 등록할 수 있습니다.
+                  </p>
+                </div>
+
+                {/* 영상 URL 추가 인풋 */}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=... 또는 shorts URL"
+                    value={inputVideoUrl}
+                    onChange={(e) => setInputVideoUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddVideoUrl();
+                      }
+                    }}
+                    className="flex-1 p-2 bg-white border border-stone-300 rounded-xl text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddVideoUrl}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs shrink-0"
+                  >
+                    영상 추가
+                  </button>
+                </div>
+
+                {/* 등록된 영상 목록 */}
+                {menuForm.video_urls.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    {menuForm.video_urls.map((vUrl, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2 bg-white rounded-xl border border-stone-200 text-xs"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <Film className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="truncate text-stone-700 font-mono text-[11px]">{vUrl}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVideoUrl(idx)}
+                          className="text-stone-400 hover:text-red-600 p-1 shrink-0 ml-2"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="pt-2 flex justify-end gap-2">

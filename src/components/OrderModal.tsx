@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import DaumPostcode from 'react-daum-postcode';
 import GpsGuideModal from '@/components/GpsGuideModal';
+import MiniMapPopup from '@/components/MiniMapPopup';
 import { CartItem, DeliveryPolicy, Order, Store } from '@/lib/types';
 import { getBrowserLocation, calculateDistanceInMeters, formatDistance } from '@/lib/geoUtils';
 
@@ -828,87 +829,16 @@ export default function OrderModal({
         </div>
       )}
 
-      {/* 찾아올 곳 지도 팝업 모달 (최상단 z-[100] 배치) */}
-      {mapPopupStore && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-300">
-            <div className="p-4 bg-stone-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <StoreIcon className="w-4 h-4 text-amber-400" />
-                <span className="font-bold text-sm">{mapPopupStore.name} 찾아오시는 길</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMapPopupStore(null)}
-                className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-200 flex items-center justify-center transition-colors"
-                title="닫기"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4 text-xs">
-              <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
-                <div className="text-[11px] font-bold text-amber-800">
-                  우편번호 [{mapPopupStore.postal_code || '16298'}]
-                </div>
-                <div className="font-bold text-stone-900 text-sm">
-                  {mapPopupStore.address}
-                </div>
-                {mapPopupStore.address_detail && (
-                  <div className="text-stone-600">{mapPopupStore.address_detail}</div>
-                )}
-                {mapPopupStore.phone && (
-                  <div className="text-stone-500 pt-1 border-t border-stone-200 flex items-center gap-1">
-                    <Phone className="w-3 h-3" /> 매장 전화: {mapPopupStore.phone}
-                  </div>
-                )}
-              </div>
-
-              {/* 외부 지도 앱 연동 */}
-              <div className="space-y-2">
-                <p className="font-bold text-stone-700">지도 앱 바로가기 (길찾기 / 상세위치):</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <a
-                    href={`https://map.naver.com/v5/search/${encodeURIComponent(mapPopupStore.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
-                  >
-                    <span>네이버 지도</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                  <a
-                    href={`https://map.kakao.com/link/search/${encodeURIComponent(mapPopupStore.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 bg-yellow-400 hover:bg-yellow-500 text-stone-950 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
-                  >
-                    <span>카카오맵</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapPopupStore.address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full p-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-stone-200 active:scale-95"
-                >
-                  <span>구글 지도(Google Maps) 열기</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setMapPopupStore(null)}
-                className="w-full py-2.5 bg-stone-900 text-white font-bold rounded-xl active:scale-95"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 찾아올 곳 미니 지도 팝업 (요구사항: 작은 팝업 스타일로 열고 닫는 구조) */}
+      <MiniMapPopup
+        isOpen={Boolean(mapPopupStore)}
+        onClose={() => setMapPopupStore(null)}
+        title={mapPopupStore ? `${mapPopupStore.name} 찾아오시는 길` : '매장 위치'}
+        address={mapPopupStore?.address || ''}
+        detailAddress={mapPopupStore?.address_detail}
+        postalCode={mapPopupStore?.postal_code}
+        phone={mapPopupStore?.phone}
+      />
 
       {/* GPS 위치 정보 권한 및 설정 안내 모달 (최상단 z-[120] 오버레이) */}
       <GpsGuideModal

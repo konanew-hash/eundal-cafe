@@ -41,11 +41,24 @@ export default function MenuCard({
           alt={menu.name}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        {isSoldOut && (
+        {isSoldOut ? (
           <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-[2px] flex items-center justify-center">
             <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-bold shadow-sm">
               품절 (Sold Out)
             </span>
+          </div>
+        ) : (
+          <div className="absolute top-1 right-1 flex items-center gap-1">
+            {menu.additional_images && menu.additional_images.length > 0 && (
+              <span className="px-1 py-0.5 bg-black/60 text-white rounded-md text-[9px] font-bold backdrop-blur-xs shadow-2xs">
+                +{menu.additional_images.length + 1}장
+              </span>
+            )}
+            {menu.video_urls && menu.video_urls.length > 0 && (
+              <span className="px-1 py-0.5 bg-red-600 text-white rounded-md text-[9px] font-bold shadow-2xs">
+                영상
+              </span>
+            )}
           </div>
         )}
       </div>

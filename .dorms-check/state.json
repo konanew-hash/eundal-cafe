@@ -160,6 +160,22 @@
         },
         "blocking": []
       }
+    },
+    {
+      "n": 11,
+      "at": "2026-10-07T08:40:29.271Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": false,
+        "outcome": "unavailable",
+        "coverage": {
+          "checked": 4,
+          "unverified": 2,
+          "notApplicable": 0
+        },
+        "blocking": []
+      }
     }
   ],
   "items": {

@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { CartItem, DeliveryPolicy, DistanceRule, Store } from '@/lib/types';
+import MiniMapPopup from '@/components/MiniMapPopup';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -80,6 +81,8 @@ export default function CartDrawer({
   onSelectStoreId,
   onProceedOrder,
 }: CartDrawerProps) {
+  const [selectedMapStore, setSelectedMapStore] = React.useState<Store | null>(null);
+
   if (!isOpen) return null;
 
   const activeStores = stores.length > 0 ? stores.filter((s) => s.is_active) : DEFAULT_STORES;
@@ -323,8 +326,19 @@ export default function CartDrawer({
                               <strong className="text-amber-800">[{store.postal_code || '16298'}]</strong> {store.address} {store.address_detail}
                             </p>
                           </div>
-                          {/* 지도 길찾기 링크 */}
+                          {/* 지도 길찾기 링크 및 미니 지도 팝업 */}
                           <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-end gap-1.5 pl-5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMapStore(store);
+                              }}
+                              className="px-2 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-800 text-[10px] font-bold flex items-center gap-1 transition-colors"
+                            >
+                              <MapPin className="w-2.5 h-2.5 text-amber-700" />
+                              <span>지도 보기</span>
+                            </button>
                             <a
                               href={`https://map.naver.com/v5/search/${encodeURIComponent(store.address)}`}
                               target="_blank"
@@ -440,6 +454,17 @@ export default function CartDrawer({
           </div>
         )}
       </div>
+
+      {/* 픽업 매장 미니 지도 팝업 */}
+      <MiniMapPopup
+        isOpen={Boolean(selectedMapStore)}
+        onClose={() => setSelectedMapStore(null)}
+        title={selectedMapStore ? `${selectedMapStore.name} 찾아오시는 길` : '매장 위치'}
+        address={selectedMapStore?.address || ''}
+        detailAddress={selectedMapStore?.address_detail}
+        postalCode={selectedMapStore?.postal_code}
+        phone={selectedMapStore?.phone}
+      />
     </div>
   );
 }

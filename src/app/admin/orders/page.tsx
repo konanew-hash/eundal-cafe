@@ -32,11 +32,14 @@ import {
   Map,
   ExternalLink,
   Navigation,
+  MessageSquare,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { Order, MenuItem, OrderItem } from '@/lib/types';
 import { exportOrdersToExcel } from '@/lib/excel';
 import { translateLocationToKorean } from '@/lib/location';
+import MiniMapPopup from '@/components/MiniMapPopup';
+import SmsSendModal from '@/components/SmsSendModal';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -47,8 +50,11 @@ export default function AdminOrdersPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const previousOrderCountRef = useRef(0);
 
-  // 지도 모달 상태 (요구사항: 우편번호/주소 클릭 시 구글지도/네이버지도 팝업 표시)
+  // 지도 미니 팝업 상태 (요구사항: 작은 팝업 스타일로 열고 닫을 수 있는 구조)
   const [mapModalData, setMapModalData] = useState<{ address: string; label: string } | null>(null);
+
+  // 고객 SMS 문자 발송 모달 상태
+  const [smsModalOrder, setSmsModalOrder] = useState<Order | null>(null);
 
   // 주문 수정 모달 상태
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -492,13 +498,25 @@ export default function AdminOrdersPage() {
                       <User className="w-3.5 h-3.5 text-stone-500" />
                       {order.customer_name} 님
                     </span>
-                    <a
-                      href={`tel:${order.customer_phone}`}
-                      className="flex items-center gap-1 text-amber-800 hover:underline"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                      {order.customer_phone}
-                    </a>
+                    <div className="flex items-center gap-1.5">
+                      <a
+                        href={`tel:${order.customer_phone}`}
+                        className="flex items-center gap-1 text-amber-800 hover:underline"
+                        title="전화 걸기"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        {order.customer_phone}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setSmsModalOrder(order)}
+                        className="px-1.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold flex items-center gap-0.5 transition-colors shadow-2xs"
+                        title="문자(SMS) 메시지 전송 및 템플릿 복사"
+                      >
+                        <MessageSquare className="w-2.5 h-2.5 text-amber-700" />
+                        <span>문자</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* 배달 희망 일시 */}
@@ -850,104 +868,20 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* 5. 우편번호 및 주소 지도 확인 팝업 모달 (요구사항: 우편번호를 눌렀을 때 구글지도나 네이버지도로 해당 위치 표시) */}
-      {mapModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl border border-stone-200 space-y-4">
-            {/* 모달 헤더 */}
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
-              <div>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                  <Map className="w-4 h-4 text-amber-700" />
-                  <span>위치 지도 확인</span>
-                </div>
-                <h3 className="font-bold text-stone-900 text-sm mt-0.5">
-                  {mapModalData.label}
-                </h3>
-                <p className="text-xs text-stone-500 font-medium mt-0.5 line-clamp-1">
-                  {mapModalData.address}
-                </p>
-              </div>
-              <button
-                onClick={() => setMapModalData(null)}
-                className="w-8 h-8 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center hover:bg-stone-200 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* 5. 작은 팝업 스타일 지도 (MiniMapPopup: 요구사항 반영) */}
+      <MiniMapPopup
+        isOpen={Boolean(mapModalData)}
+        onClose={() => setMapModalData(null)}
+        title={mapModalData?.label || '위치 지도 확인'}
+        address={mapModalData?.address || ''}
+      />
 
-            {/* 구글 지도 임베드 뷰어 */}
-            <div className="w-full h-72 rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 relative shadow-inner">
-              <iframe
-                title="Google Map Location Preview"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                loading="lazy"
-                allowFullScreen
-                src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                  mapModalData.address.replace(/\(우:[^)]+\)/g, '').trim()
-                )}&z=15&output=embed`}
-              />
-            </div>
-
-            {/* 외부 지도 바로가기 버튼 (네이버 지도, 구글 지도, 카카오 맵) */}
-            <div className="space-y-2">
-              <div className="text-[11px] font-bold text-stone-500">외부 지도 앱으로 상세 경로/거리 확인</div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {/* 네이버 지도 버튼 */}
-                <a
-                  href={`https://map.naver.com/v5/search/${encodeURIComponent(
-                    mapModalData.address.replace(/\(우:[^)]+\)/g, '').trim()
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2.5 px-3 bg-[#03C75A] hover:bg-[#02b150] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>네이버 지도</span>
-                </a>
-
-                {/* 구글 지도 버튼 */}
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                    mapModalData.address.replace(/\(우:[^)]+\)/g, '').trim()
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>구글 지도</span>
-                </a>
-
-                {/* 카카오 맵 버튼 */}
-                <a
-                  href={`https://map.kakao.com/link/search/${encodeURIComponent(
-                    mapModalData.address.replace(/\(우:[^)]+\)/g, '').trim()
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2.5 px-3 bg-[#FEE500] hover:bg-[#ebd300] text-stone-900 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs col-span-2 sm:col-span-1"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-stone-700" />
-                  <span>카카오 맵</span>
-                </a>
-              </div>
-            </div>
-
-            {/* 모달 하단 닫기 */}
-            <div className="pt-2 border-t border-stone-100 flex justify-end">
-              <button
-                onClick={() => setMapModalData(null)}
-                className="px-5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs transition-colors"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 6. 고객 문자(SMS) 메시지 발송 팝업 모달 */}
+      <SmsSendModal
+        isOpen={Boolean(smsModalOrder)}
+        onClose={() => setSmsModalOrder(null)}
+        order={smsModalOrder}
+      />
     </div>
   );
 }
