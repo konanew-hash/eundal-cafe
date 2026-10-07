@@ -34,6 +34,7 @@ export interface MenuItem {
   is_sold_out: boolean;
   sort_order: number;
   is_active: boolean;
+  packaging_type?: 'box' | 'special' | null; // 맞춤 세트메뉴용 구분 ('box': 포장용기, 'special': 특수포장, null: 일반메뉴)
 }
 
 export type Menu = MenuItem;

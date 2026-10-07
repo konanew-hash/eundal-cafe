@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Gift,
@@ -50,12 +50,57 @@ export default function CustomSetBuilderModal({
 }: CustomSetBuilderModalProps) {
   const [setName, setSetName] = useState('은달 맞춤 선물세트');
   const [selectedComponents, setSelectedComponents] = useState<Record<string, number>>({});
-  const [selectedBoxId, setSelectedBoxId] = useState<string>('box_craft');
-  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(['opt_can']);
+  const [selectedBoxId, setSelectedBoxId] = useState<string>('');
+  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [setQuantity, setSetQuantity] = useState<number>(1);
   const [selectedCatId, setSelectedCatId] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [addedEffect, setAddedEffect] = useState(false);
+
+  // 1. 관리자 등록 포장용기 목록 (DB 메뉴 중 packaging_type === 'box' 또는 기본 fallback)
+  const boxOptions = useMemo(() => {
+    const dbBoxes = menus.filter((m) => m.packaging_type === 'box' && m.is_active && !m.is_sold_out);
+    if (dbBoxes.length > 0) {
+      return dbBoxes.map((b) => ({
+        id: b.id,
+        name: b.name,
+        price: b.price,
+        desc: b.description || '은달 전용 선물 포장용기',
+      }));
+    }
+    return PACKAGE_BOX_OPTIONS;
+  }, [menus]);
+
+  // 2. 관리자 등록 특수포장 옵션 목록 (DB 메뉴 중 packaging_type === 'special' 또는 기본 fallback)
+  const specialOptions = useMemo(() => {
+    const dbOptions = menus.filter((m) => m.packaging_type === 'special' && m.is_active && !m.is_sold_out);
+    if (dbOptions.length > 0) {
+      return dbOptions.map((o) => ({
+        id: o.id,
+        name: o.name,
+        price: o.price,
+        desc: o.description || '은달 특별 포장 옵션',
+      }));
+    }
+    return SPECIAL_OPTIONS;
+  }, [menus]);
+
+  // 초기 포장용기 및 캔시머 옵션 기본 선택 설정
+  useEffect(() => {
+    if (boxOptions.length > 0 && (!selectedBoxId || !boxOptions.some((b) => b.id === selectedBoxId))) {
+      setSelectedBoxId(boxOptions[0].id);
+    }
+  }, [boxOptions, selectedBoxId]);
+
+  useEffect(() => {
+    // 기본으로 캔시머 옵션이 존재하면 선택
+    if (selectedOptionIds.length === 0 && specialOptions.length > 0) {
+      const canOpt = specialOptions.find((o) => o.name.includes('캔시머') || o.id === 'opt_can');
+      if (canOpt) {
+        setSelectedOptionIds([canOpt.id]);
+      }
+    }
+  }, [specialOptions, selectedOptionIds.length]);
 
   // 품목 수량 조절
   const handleUpdateComponentQty = (menuId: string, delta: number) => {
@@ -79,10 +124,13 @@ export default function CustomSetBuilderModal({
     );
   };
 
-  // 필터링된 메뉴 목록
+  // 필터링된 메뉴 목록 (요구사항: 포장용기, 특수포장 물품은 맞춤 세트메뉴 구성품 목록에서는 제외)
   const filteredMenus = useMemo(() => {
     return menus.filter((m) => {
       if (m.is_sold_out) return false;
+      // 포장용기 및 특수포장 품목 제외
+      if (m.packaging_type === 'box' || m.packaging_type === 'special') return false;
+      if (m.category_id === '77777777-7777-7777-7777-777777777777') return false;
       if (selectedCatId !== 'all' && m.category_id !== selectedCatId) return false;
       if (searchKeyword.trim() && !m.name.toLowerCase().includes(searchKeyword.toLowerCase())) {
         return false;
@@ -113,13 +161,13 @@ export default function CustomSetBuilderModal({
 
   // 선택된 포장용기
   const selectedBox = useMemo(() => {
-    return PACKAGE_BOX_OPTIONS.find((b) => b.id === selectedBoxId) || PACKAGE_BOX_OPTIONS[0];
-  }, [selectedBoxId]);
+    return boxOptions.find((b) => b.id === selectedBoxId) || boxOptions[0] || { id: 'default', name: '기본 포장', price: 0, desc: '' };
+  }, [boxOptions, selectedBoxId]);
 
   // 선택된 옵션들
   const selectedOptions = useMemo(() => {
-    return SPECIAL_OPTIONS.filter((o) => selectedOptionIds.includes(o.id));
-  }, [selectedOptionIds]);
+    return specialOptions.filter((o) => selectedOptionIds.includes(o.id));
+  }, [specialOptions, selectedOptionIds]);
 
   const optionsTotal = useMemo(() => {
     return selectedOptions.reduce((sum, o) => sum + o.price, 0);
@@ -260,20 +308,22 @@ export default function CustomSetBuilderModal({
                 >
                   전체
                 </button>
-                {categories.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setSelectedCatId(c.id)}
-                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] whitespace-nowrap transition-colors ${
-                      selectedCatId === c.id
-                        ? 'bg-stone-900 text-white'
-                        : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                ))}
+                {categories
+                  .filter((c) => c.id !== '77777777-7777-7777-7777-777777777777')
+                  .map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedCatId(c.id)}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] whitespace-nowrap transition-colors ${
+                        selectedCatId === c.id
+                          ? 'bg-stone-900 text-white'
+                          : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
               </div>
 
               <div className="relative w-36 sm:w-44 shrink-0">
@@ -353,7 +403,7 @@ export default function CustomSetBuilderModal({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {PACKAGE_BOX_OPTIONS.map((box) => {
+              {boxOptions.map((box) => {
                 const isSelected = selectedBoxId === box.id;
                 return (
                   <div
@@ -397,7 +447,7 @@ export default function CustomSetBuilderModal({
             </div>
 
             <div className="space-y-1.5">
-              {SPECIAL_OPTIONS.map((opt) => {
+              {specialOptions.map((opt) => {
                 const isChecked = selectedOptionIds.includes(opt.id);
                 return (
                   <div

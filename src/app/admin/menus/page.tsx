@@ -40,6 +40,7 @@ export default function AdminMenusPage() {
     additional_images: string[];
     video_urls: string[];
     sort_order: number;
+    packaging_type: 'box' | 'special' | null;
   }>({
     category_id: '',
     name: '',
@@ -50,6 +51,7 @@ export default function AdminMenusPage() {
     additional_images: [],
     video_urls: [],
     sort_order: 0,
+    packaging_type: null,
   });
 
   // 다중 이미지 및 비디오 추가 인풋 상태
@@ -137,6 +139,7 @@ export default function AdminMenusPage() {
         additional_images: Array.isArray(menu.additional_images) ? [...menu.additional_images] : [],
         video_urls: Array.isArray(menu.video_urls) ? [...menu.video_urls] : [],
         sort_order: menu.sort_order,
+        packaging_type: menu.packaging_type || null,
       });
     } else {
       setEditingMenu(null);
@@ -150,6 +153,7 @@ export default function AdminMenusPage() {
         additional_images: [],
         video_urls: [],
         sort_order: (menus.length + 1),
+        packaging_type: null,
       });
     }
     setIsMenuModalOpen(true);
@@ -441,9 +445,21 @@ export default function AdminMenusPage() {
                       className="w-16 h-16 rounded-xl object-cover bg-stone-100 shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block mb-1">
-                        {catName}
-                      </span>
+                      <div className="flex items-center gap-1 flex-wrap mb-1">
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block">
+                          {catName}
+                        </span>
+                        {menu.packaging_type === 'box' && (
+                          <span className="text-[10px] font-bold text-white bg-amber-800 px-2 py-0.5 rounded-full inline-block">
+                            📦 포장용기
+                          </span>
+                        )}
+                        {menu.packaging_type === 'special' && (
+                          <span className="text-[10px] font-bold text-white bg-purple-800 px-2 py-0.5 rounded-full inline-block">
+                            ✨ 특수포장
+                          </span>
+                        )}
+                      </div>
                       <h4 className="font-bold text-stone-900 text-sm line-clamp-1">{menu.name}</h4>
                       <p className="text-xs font-bold text-stone-700 mt-0.5">
                         {menu.price.toLocaleString()}원
@@ -599,6 +615,50 @@ export default function AdminMenusPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-medium mb-1">
+                  맞춤 세트메뉴 포장/패키징 구분 (선택)
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMenuForm({ ...menuForm, packaging_type: null })}
+                    className={`py-2 px-1 rounded-xl border text-center font-bold text-xs transition-colors ${
+                      !menuForm.packaging_type
+                        ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
+                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    일반 식음료 메뉴
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMenuForm({ ...menuForm, packaging_type: 'box' })}
+                    className={`py-2 px-1 rounded-xl border text-center font-bold text-xs transition-colors ${
+                      menuForm.packaging_type === 'box'
+                        ? 'bg-amber-800 text-white border-amber-800 shadow-xs'
+                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    📦 포장용기 (박스)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMenuForm({ ...menuForm, packaging_type: 'special' })}
+                    className={`py-2 px-1 rounded-xl border text-center font-bold text-xs transition-colors ${
+                      menuForm.packaging_type === 'special'
+                        ? 'bg-purple-800 text-white border-purple-800 shadow-xs'
+                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    ✨ 특수포장 (옵션)
+                  </button>
+                </div>
+                <p className="text-[10px] text-stone-500 mt-1">
+                  * 포장용기(박스)나 특수포장으로 지정된 품목은 맞춤형 세트메뉴 빌더의 포장용기/특수옵션 선택지에 자동 연동되며, 세트 내 구성품 담기 목록에서는 제외됩니다.
+                </p>
               </div>
 
               <div>
