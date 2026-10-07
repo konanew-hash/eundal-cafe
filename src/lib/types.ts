@@ -5,6 +5,7 @@ export interface CafeInfo {
   description: string;
   hero_image_url: string;
   logo_icon_url: string;
+  app_icon_url?: string; // 바탕화면 즐겨찾기/앱 아이콘
   phone: string;
   address: string;
   business_hours: string;
@@ -25,6 +26,7 @@ export interface MenuItem {
   category_id: string;
   name: string;
   description?: string;
+  allergens?: string; // 알러지 유발 성분 표기
   price: number;
   image_url: string;
   is_sold_out: boolean;
@@ -33,6 +35,23 @@ export interface MenuItem {
 }
 
 export type Menu = MenuItem;
+
+// 픽업 매장 정보
+export interface Store {
+  id: string;
+  name: string;
+  branch_name?: string;
+  address: string;
+  address_detail?: string;
+  postal_code?: string;
+  phone?: string;
+  operating_hours?: string;
+  description?: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface DistanceRule {
   label: string;
@@ -73,10 +92,13 @@ export interface OrderItem {
 export interface Order {
   id: string;
   order_number: string;
+  order_type: 'delivery' | 'pickup'; // 배달 vs 픽업
+  pickup_store_id?: string;
+  pickup_store_name?: string;
   customer_name: string;
   customer_phone: string;
   delivery_date: string;
-  delivery_time: string; // 24시간제 HH:mm
+  delivery_time: string;
   delivery_address: string;
   delivery_address_detail?: string;
   selected_distance_label: string;
@@ -89,6 +111,8 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'accepted' | 'brewing' | 'delivering';
   client_ip?: string;
   client_location?: string;
+  gps_lat?: number;
+  gps_lng?: number;
   created_at: string;
   updated_at?: string;
   items?: OrderItem[];

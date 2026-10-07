@@ -23,6 +23,7 @@ interface BeforeInstallPromptEvent extends Event {
 interface InstallPromptModalProps {
   isOpen: boolean;
   onClose: () => void;
+  appIconUrl?: string;
 }
 
 export function useHomeScreenInstall() {
@@ -86,7 +87,7 @@ export function useHomeScreenInstall() {
   };
 }
 
-export default function InstallPromptModal({ isOpen, onClose }: InstallPromptModalProps) {
+export default function InstallPromptModal({ isOpen, onClose, appIconUrl }: InstallPromptModalProps) {
   const [copied, setCopied] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isInApp, setIsInApp] = useState(false);
@@ -136,9 +137,9 @@ export default function InstallPromptModal({ isOpen, onClose }: InstallPromptMod
         {/* 은달 카페 앱 아이콘 미리보기 */}
         <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 flex items-center gap-3">
           <img
-            src="/icon.svg"
+            src={appIconUrl || '/icon.svg'}
             alt="은달 카페 아이콘"
-            className="w-12 h-12 rounded-2xl shadow-sm border border-stone-300/60"
+            className="w-12 h-12 rounded-2xl shadow-sm border border-stone-300/60 object-cover"
           />
           <div className="flex-1 min-w-0">
             <div className="font-black text-xs text-stone-900">은달 카페 (Eundal Cafe)</div>

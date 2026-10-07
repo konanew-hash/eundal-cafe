@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest) {
   const supabase = getSupabaseServer();
   try {
     const body = await req.json();
-    const { name, slogan, description, hero_image_url, logo_icon_url, phone, address, business_hours, quote_notice } = body;
+    const { name, slogan, description, hero_image_url, logo_icon_url, app_icon_url, phone, address, business_hours, quote_notice } = body;
 
     const { data: updated, error } = await supabase
       .from('eundal_cafes')
@@ -45,6 +45,7 @@ export async function PUT(req: NextRequest) {
         description,
         hero_image_url,
         logo_icon_url,
+        app_icon_url: app_icon_url !== undefined ? app_icon_url : undefined,
         phone,
         address,
         business_hours,

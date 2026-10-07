@@ -369,6 +369,32 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
+      {/* 대시보드 파트별 요약 지표 카드 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-2xs">
+          <p className="text-[11px] font-bold text-stone-500">총 접수 건수</p>
+          <p className="text-xl font-black text-stone-900 mt-0.5">{orders.length}건</p>
+        </div>
+        <div className="bg-white p-3.5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-2xs">
+          <p className="text-[11px] font-bold text-amber-800">견적 대기 (처리 필요)</p>
+          <p className="text-xl font-black text-amber-900 mt-0.5">
+            {orders.filter((o) => o.status === 'pending').length}건
+          </p>
+        </div>
+        <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-2xs">
+          <p className="text-[11px] font-bold text-stone-500">수령 방식 (픽업 / 배달)</p>
+          <p className="text-sm font-black text-stone-900 mt-1">
+            🏬 픽업 {orders.filter((o) => o.order_type === 'pickup').length}건 / 🛵 배달 {orders.filter((o) => o.order_type !== 'pickup').length}건
+          </p>
+        </div>
+        <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-2xs">
+          <p className="text-[11px] font-bold text-stone-500">총 예상 견적 금액</p>
+          <p className="text-base font-black text-amber-950 mt-1">
+            {orders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toLocaleString()}원
+          </p>
+        </div>
+      </div>
+
       {/* 검색 및 필터 바 */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-3.5 rounded-2xl border border-stone-200">
         {/* 상태 필터 탭 (견적대기 - 견적확정 - 거래완료 - 취소 4단계) */}
@@ -435,14 +461,25 @@ export default function AdminOrdersPage() {
                 ref={(el) => { cardRefs.current[order.id] = el; }}
                 className="bg-white rounded-xl p-3 border border-stone-100 shadow-2xs space-y-2"
               >
-                {/* 상단 주문번호 & 상태 */}
+                {/* 상단 주문번호 & 상태 & 수령방식 */}
                 <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                   <div>
-                    <span className="text-[10px] text-stone-500 block uppercase font-mono">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-amber-950 font-mono tracking-tight">
+                        {order.order_number}
+                      </span>
+                      {order.order_type === 'pickup' ? (
+                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-bold rounded-md border border-amber-300">
+                          🏬 픽업: {order.pickup_store_name || '매장'}
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-800 text-[10px] font-bold rounded-md border border-blue-200">
+                          🛵 배달
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-stone-500 block uppercase font-mono mt-0.5">
                       {new Date(order.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 접수
-                    </span>
-                    <span className="text-xs font-black text-amber-950 font-mono tracking-tight">
-                      {order.order_number}
                     </span>
                   </div>
                   <div>{statusBadge(order.status)}</div>
@@ -530,30 +567,36 @@ export default function AdminOrdersPage() {
               {/* 캡처 제외 영역: 고객 접속 위치 및 개인정보 수집 동의 */}
               <div className="pt-2 space-y-1.5">
                 {/* 주문자 접속 위치 및 IP (우편번호 클릭 시 지도 연동) */}
+                {/* 주문자 접속/작성 위치 (GPS 우선 표기 및 지도 연동) */}
                 <div className="py-2 px-2.5 bg-stone-50 rounded-xl border border-stone-200/80 flex items-center justify-between text-[11px] text-stone-600">
-                  <span className="flex items-center gap-1 font-medium">
-                    <Globe className="w-3.5 h-3.5 text-stone-500" />
-                    <span>접속 위치</span>
+                  <span className="flex items-center gap-1 font-medium shrink-0">
+                    <Navigation className="w-3.5 h-3.5 text-amber-600" />
+                    <span>작성자 위치</span>
                   </span>
-                  <div className="flex items-center gap-1.5 text-right">
-                    <span className="font-bold text-stone-800">
-                      {translateLocationToKorean(order.client_location || '확인 중')}
-                      {order.client_ip ? ` (${order.client_ip})` : ''}
+                  <div className="flex items-center gap-1.5 text-right min-w-0">
+                    <span className="font-bold text-stone-800 truncate">
+                      {order.gps_lat && order.gps_lng
+                        ? `GPS (${order.gps_lat.toFixed(4)}, ${order.gps_lng.toFixed(4)})`
+                        : translateLocationToKorean(order.client_location || '확인 대기')}
+                      {order.client_location && order.gps_lat ? ` · ${translateLocationToKorean(order.client_location)}` : ''}
                     </span>
-                    {order.client_location && (
+                    {(order.gps_lat || order.client_location) && (
                       <button
                         type="button"
                         onClick={() =>
                           setMapModalData({
-                            address: translateLocationToKorean(order.client_location || ''),
-                            label: '고객 접속 위치 (우편구역)',
+                            address:
+                              order.gps_lat && order.gps_lng
+                                ? `${order.gps_lat},${order.gps_lng}`
+                                : translateLocationToKorean(order.client_location || ''),
+                            label: order.gps_lat ? '주문 작성자 GPS 좌표 위치' : '고객 접속 위치 (우편구역)',
                           })
                         }
                         className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded-lg border border-amber-300 transition-colors shrink-0"
-                        title="우편번호 위치 지도 확인"
+                        title="GPS/우편번호 위치 지도 확인"
                       >
-                        <Navigation className="w-2.5 h-2.5 text-amber-700" />
-                        <span>우편번호 지도</span>
+                        <Map className="w-2.5 h-2.5 text-amber-700" />
+                        <span>지도</span>
                       </button>
                     )}
                   </div>

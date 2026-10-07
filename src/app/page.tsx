@@ -12,13 +12,14 @@ import OrderSuccessModal from '@/components/OrderSuccessModal';
 import CheckOrderModal from '@/components/CheckOrderModal';
 import MenuDetailModal from '@/components/MenuDetailModal';
 import InstallPromptModal, { useHomeScreenInstall } from '@/components/InstallPromptModal';
-import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order } from '@/lib/types';
+import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store } from '@/lib/types';
 import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus } from 'lucide-react';
 
 export default function HomePage() {
   const [cafe, setCafe] = useState<CafeInfo | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menus, setMenus] = useState<MenuItem[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [deliveryPolicy, setDeliveryPolicy] = useState<DeliveryPolicy | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,6 +56,7 @@ export default function HomePage() {
         if (data.cafe) setCafe(data.cafe);
         if (data.categories) setCategories(data.categories);
         if (data.menus) setMenus(data.menus);
+        if (data.stores) setStores(data.stores);
         if (data.deliveryPolicy) {
           setDeliveryPolicy(data.deliveryPolicy);
           if (data.deliveryPolicy.distance_rules && data.deliveryPolicy.distance_rules.length > 0) {
@@ -338,13 +340,14 @@ export default function HomePage() {
         }}
       />
 
-      {/* 주문서/견적서 작성 모달 (24시간/12h 병기 + 도로명주소 API + 개인정보동의) */}
+      {/* 주문서/견적서 작성 모달 (24시간/12h 병기 + 도로명주소 API + 개인정보동의 + 픽업/GPS) */}
       <OrderModal
         isOpen={isOrderOpen}
         onClose={() => setIsOrderOpen(false)}
         cart={cart}
         deliveryPolicy={deliveryPolicy}
         selectedDistanceLabel={selectedDistanceLabel}
+        stores={stores}
         onOrderSuccess={handleOrderSuccess}
         onOpenPrivacyModal={() => setIsPrivacyOpen(true)}
       />
@@ -399,6 +402,7 @@ export default function HomePage() {
       <InstallPromptModal
         isOpen={isInstallModalOpen}
         onClose={() => setIsInstallModalOpen(false)}
+        appIconUrl={cafe?.app_icon_url || cafe?.logo_icon_url}
       />
     </div>
   );

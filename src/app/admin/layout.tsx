@@ -69,11 +69,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const navItems = [
-    { label: '주문 관리', href: '/admin/orders', icon: ClipboardList },
-    { label: '메뉴 & 그룹', href: '/admin/menus', icon: Coffee },
+    { label: '주문·견적 관제', href: '/admin/orders', icon: ClipboardList },
+    { label: '픽업 매장 관리', href: '/admin/stores', icon: Store },
+    { label: '메뉴 & 알러지', href: '/admin/menus', icon: Coffee },
     { label: '배달비 정책', href: '/admin/delivery', icon: Truck },
-    { label: '카페 소개/이미지', href: '/admin/cafe-info', icon: Store },
-    { label: '관리자/매니저 계정', href: '/admin/staff', icon: Users },
+    { label: '카페 브랜딩/아이콘', href: '/admin/cafe-info', icon: Store },
+    { label: '직원 계정 관리', href: '/admin/staff', icon: Users },
   ];
 
   return (

@@ -68,6 +68,13 @@ export default function MenuCard({
               {menu.description}
             </p>
           )}
+          {menu.allergens && (
+            <div className="mt-1 flex items-center gap-1">
+              <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-medium line-clamp-1">
+                알레르기: {menu.allergens}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 가격 & 수량 조절 버튼 (요구사항: +와 함께 -도 포함하여 줄이기 지원) */}

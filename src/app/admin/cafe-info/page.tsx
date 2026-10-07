@@ -11,9 +11,11 @@ export default function AdminCafeInfoPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingAppIcon, setUploadingAppIcon] = useState(false);
 
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const appIconFileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -21,6 +23,7 @@ export default function AdminCafeInfoPage() {
     description: '',
     hero_image_url: '',
     logo_icon_url: '',
+    app_icon_url: '',
     phone: '',
     address: '',
     business_hours: '',
@@ -40,6 +43,7 @@ export default function AdminCafeInfoPage() {
           description: data.cafe.description || '',
           hero_image_url: data.cafe.hero_image_url || '',
           logo_icon_url: data.cafe.logo_icon_url || '',
+          app_icon_url: data.cafe.app_icon_url || '',
           phone: data.cafe.phone || '',
           address: data.cafe.address || '',
           business_hours: data.cafe.business_hours || '',
@@ -57,13 +61,14 @@ export default function AdminCafeInfoPage() {
     loadCafeInfo();
   }, []);
 
-  const handleFileUpload = async (file: File, target: 'banner' | 'logo') => {
+  const handleFileUpload = async (file: File, target: 'banner' | 'logo' | 'app_icon') => {
     if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
 
     if (target === 'banner') setUploadingBanner(true);
-    else setUploadingLogo(true);
+    else if (target === 'logo') setUploadingLogo(true);
+    else setUploadingAppIcon(true);
 
     try {
       const res = await fetch('/api/admin/upload', {
@@ -74,8 +79,10 @@ export default function AdminCafeInfoPage() {
       if (res.ok && data.url) {
         if (target === 'banner') {
           setForm((prev) => ({ ...prev, hero_image_url: data.url }));
-        } else {
+        } else if (target === 'logo') {
           setForm((prev) => ({ ...prev, logo_icon_url: data.url }));
+        } else {
+          setForm((prev) => ({ ...prev, app_icon_url: data.url }));
         }
       } else {
         alert(data.error || '이미지 업로드에 실패했습니다.');
@@ -85,7 +92,8 @@ export default function AdminCafeInfoPage() {
       alert('이미지 업로드 중 오류가 발생했습니다.');
     } finally {
       if (target === 'banner') setUploadingBanner(false);
-      else setUploadingLogo(false);
+      else if (target === 'logo') setUploadingLogo(false);
+      else setUploadingAppIcon(false);
     }
   };
 
@@ -258,6 +266,57 @@ export default function AdminCafeInfoPage() {
                   />
                   <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 text-[10px] font-bold">
                     아이콘 미리보기
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 바탕화면 즐겨찾기 / 바로가기 아이콘 (PWA) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-stone-700 font-bold flex items-center gap-1.5">
+                  <span>📱 휴대폰 바탕화면 즐겨찾기 아이콘</span>
+                  <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-full font-bold">홈화면 추가용</span>
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="file"
+                    ref={appIconFileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file, 'app_icon');
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={uploadingAppIcon}
+                    onClick={() => appIconFileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[11px] transition-colors"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>{uploadingAppIcon ? '업로드 중...' : '파일 직접 업로드'}</span>
+                  </button>
+                </div>
+              </div>
+              <input
+                type="url"
+                value={form.app_icon_url}
+                onChange={(e) => setForm({ ...form, app_icon_url: e.target.value })}
+                placeholder="https://... 또는 우측 상단 파일 업로드 (비워둘 시 기본 로고 사용)"
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:ring-2 focus:ring-amber-500"
+              />
+              {/* 즐겨찾기 아이콘 미리보기 */}
+              <div className="h-36 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center p-4">
+                <div className="text-center">
+                  <img
+                    src={form.app_icon_url || form.logo_icon_url || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=200&q=80'}
+                    alt="바탕화면 아이콘 미리보기"
+                    className="w-16 h-16 rounded-2xl object-cover mx-auto shadow-md border-2 border-amber-400"
+                  />
+                  <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 text-[10px] font-bold">
+                    바탕화면 아이콘 미리보기 (앱 아이콘 스타일)
                   </span>
                 </div>
               </div>

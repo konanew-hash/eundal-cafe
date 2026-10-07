@@ -23,6 +23,8 @@ interface CheckOrderModalProps {
 }
 
 export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProps) {
+  // 조회 방식: 전화번호(기본) vs 주문번호
+  const [searchMode, setSearchMode] = useState<'phone' | 'order_number'>('phone');
   const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
@@ -33,10 +35,32 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
 
   if (!isOpen) return null;
 
+  // 규격 외 문자 차단 핸들러
+  const handleInputChange = (val: string) => {
+    if (searchMode === 'phone') {
+      const raw = val.replace(/[^0-9]/g, '').slice(0, 11);
+      let formatted = raw;
+      if (raw.length > 3 && raw.length <= 7) {
+        formatted = `${raw.slice(0, 3)}-${raw.slice(3)}`;
+      } else if (raw.length > 7) {
+        formatted = `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7)}`;
+      }
+      setSearchInput(formatted);
+    } else {
+      const sanitized = val.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase().slice(0, 30);
+      setSearchInput(sanitized);
+    }
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchInput.trim()) {
-      setErrorMsg('주문번호 또는 연락처를 입력해주세요.');
+    const trimmed = searchInput.trim();
+    if (!trimmed) {
+      setErrorMsg(searchMode === 'phone' ? '전화번호를 입력해주세요.' : '주문번호를 입력해주세요.');
+      return;
+    }
+    if (searchMode === 'phone' && trimmed.replace(/[^0-9]/g, '').length < 9) {
+      setErrorMsg('정확한 전화번호를 입력해주세요 (예: 010-1234-5678).');
       return;
     }
 
@@ -47,7 +71,7 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
     setOrderList([]);
 
     try {
-      const res = await fetch(`/api/orders/${encodeURIComponent(searchInput.trim())}`);
+      const res = await fetch(`/api/orders/${encodeURIComponent(trimmed)}`);
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || '해당 번호의 주문/견적을 찾을 수 없습니다.');
@@ -162,20 +186,59 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
           </button>
         </div>
 
+        {/* 조회 방식 선택 라디오 버튼 (전화번호 기본값) */}
+        <div className="pt-2 flex items-center gap-4 border-t border-stone-100">
+          <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-stone-800">
+            <input
+              type="radio"
+              name="modalSearchMode"
+              value="phone"
+              checked={searchMode === 'phone'}
+              onChange={() => {
+                setSearchMode('phone');
+                setSearchInput('');
+                setErrorMsg('');
+              }}
+              className="text-amber-600 focus:ring-amber-500 h-4 w-4"
+            />
+            <span>전화번호로 조회 (기본)</span>
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-stone-800">
+            <input
+              type="radio"
+              name="modalSearchMode"
+              value="order_number"
+              checked={searchMode === 'order_number'}
+              onChange={() => {
+                setSearchMode('order_number');
+                setSearchInput('');
+                setErrorMsg('');
+              }}
+              className="text-amber-600 focus:ring-amber-500 h-4 w-4"
+            />
+            <span>주문번호로 조회</span>
+          </label>
+        </div>
+
         {/* 검색 폼 */}
-        <form onSubmit={handleSearch} className="py-3 flex gap-2">
+        <form onSubmit={handleSearch} className="pt-1 pb-2 flex gap-2">
           <input
-            type="text"
+            type={searchMode === 'phone' ? 'tel' : 'text'}
             required
-            placeholder="주문번호 또는 전화번호 (예: 010-1234-5678)"
+            placeholder={
+              searchMode === 'phone'
+                ? '휴대전화번호 입력 (예: 010-1234-5678)'
+                : '주문번호 입력 (예: EUN-202610...)'
+            }
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="flex-1 p-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
+            onChange={(e) => handleInputChange(e.target.value)}
+            maxLength={searchMode === 'phone' ? 13 : 30}
+            className="flex-1 p-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-bold"
           />
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl flex items-center gap-1 shrink-0 transition-colors"
+            className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl flex items-center gap-1 shrink-0 transition-colors shadow-sm"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             <span>조회</span>

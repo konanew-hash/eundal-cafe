@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'create_menu') {
-      const { category_id, name, description, price, image_url, sort_order } = body;
+      const { category_id, name, description, allergens, price, image_url, sort_order } = body;
       if (!name || !category_id || price === undefined) {
         return NextResponse.json({ error: '카테고리, 메뉴명, 가격은 필수입니다.' }, { status: 400 });
       }
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
           category_id,
           name,
           description,
+          allergens: allergens || '',
           price: parseInt(price, 10),
           image_url: image_url || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80',
           sort_order: sort_order || 0,
@@ -122,13 +123,14 @@ export async function PUT(req: NextRequest) {
     }
 
     if (action === 'update_menu') {
-      const { id, category_id, name, description, price, image_url, sort_order, is_sold_out, is_active } = body;
+      const { id, category_id, name, description, allergens, price, image_url, sort_order, is_sold_out, is_active } = body;
       const { data, error } = await supabase
         .from('eundal_menus')
         .update({
           category_id,
           name,
           description,
+          allergens: allergens !== undefined ? allergens : '',
           price: parseInt(price, 10),
           image_url,
           sort_order,

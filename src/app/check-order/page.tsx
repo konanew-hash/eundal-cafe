@@ -23,6 +23,13 @@ import { Order } from '@/lib/types';
 function CheckOrderContent() {
   const searchParams = useSearchParams();
   const initialNumber = searchParams.get('number') || '';
+
+  // 검색 모드: 전화번호(기본) vs 주문번호
+  const [searchMode, setSearchMode] = useState<'phone' | 'order_number'>(
+    initialNumber && (initialNumber.startsWith('EUN') || initialNumber.includes('-') && !initialNumber.startsWith('01'))
+      ? 'order_number'
+      : 'phone'
+  );
   const [searchInput, setSearchInput] = useState(initialNumber);
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
@@ -31,8 +38,36 @@ function CheckOrderContent() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
 
+  // 규격 외 문자 차단 핸들러
+  const handleInputChange = (val: string) => {
+    if (searchMode === 'phone') {
+      // 숫자만 허용, 자동 하이픈 및 최대 13자(숫자 11자)
+      const raw = val.replace(/[^0-9]/g, '').slice(0, 11);
+      let formatted = raw;
+      if (raw.length > 3 && raw.length <= 7) {
+        formatted = `${raw.slice(0, 3)}-${raw.slice(3)}`;
+      } else if (raw.length > 7) {
+        formatted = `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7)}`;
+      }
+      setSearchInput(formatted);
+    } else {
+      // 주문번호: 영문, 숫자, 하이픈만 허용 및 자동 대문자 변환
+      const sanitized = val.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase().slice(0, 30);
+      setSearchInput(sanitized);
+    }
+  };
+
   const performSearch = async (queryStr: string) => {
-    if (!queryStr.trim()) return;
+    const trimmed = queryStr.trim();
+    if (!trimmed) {
+      setErrorMsg(searchMode === 'phone' ? '전화번호를 입력해주세요.' : '주문번호를 입력해주세요.');
+      return;
+    }
+    if (searchMode === 'phone' && trimmed.replace(/[^0-9]/g, '').length < 9) {
+      setErrorMsg('정확한 전화번호를 입력해주세요 (예: 010-1234-5678).');
+      return;
+    }
+
     setLoading(true);
     setErrorMsg('');
     setCancelSuccessMsg('');
@@ -40,7 +75,7 @@ function CheckOrderContent() {
     setOrderList([]);
 
     try {
-      const res = await fetch(`/api/orders/${encodeURIComponent(queryStr.trim())}`);
+      const res = await fetch(`/api/orders/${encodeURIComponent(trimmed)}`);
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || '해당 주문/견적 또는 연락처의 접수 내역을 찾을 수 없습니다.');
@@ -172,14 +207,53 @@ function CheckOrderContent() {
             <strong>주문번호</strong> 또는 주문 시 등록하신 <strong>연락처(전화번호)</strong>를 입력하여 현재 접수 및 배달 상태를 실시간으로 확인하실 수 있습니다.
           </p>
 
+          {/* 조회 방식 선택 라디오 버튼 (전화번호 기본값) */}
+          <div className="pt-2 flex items-center gap-5 border-t border-stone-100">
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-stone-800">
+              <input
+                type="radio"
+                name="searchMode"
+                value="phone"
+                checked={searchMode === 'phone'}
+                onChange={() => {
+                  setSearchMode('phone');
+                  setSearchInput('');
+                  setErrorMsg('');
+                }}
+                className="text-amber-600 focus:ring-amber-500 h-4 w-4"
+              />
+              <span>전화번호로 조회 (기본)</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-stone-800">
+              <input
+                type="radio"
+                name="searchMode"
+                value="order_number"
+                checked={searchMode === 'order_number'}
+                onChange={() => {
+                  setSearchMode('order_number');
+                  setSearchInput('');
+                  setErrorMsg('');
+                }}
+                className="text-amber-600 focus:ring-amber-500 h-4 w-4"
+              />
+              <span>주문번호로 조회</span>
+            </label>
+          </div>
+
           {/* 검색 입력 */}
-          <form onSubmit={handleSearch} className="pt-2 flex gap-2">
+          <form onSubmit={handleSearch} className="pt-1 flex gap-2">
             <input
-              type="text"
+              type={searchMode === 'phone' ? 'tel' : 'text'}
               required
-              placeholder="주문번호 또는 전화번호 (예: 010-1234-5678)"
+              placeholder={
+                searchMode === 'phone'
+                  ? '휴대전화번호 입력 (예: 010-1234-5678)'
+                  : '주문번호 입력 (예: EUN-202610...)'
+              }
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
+              maxLength={searchMode === 'phone' ? 13 : 30}
               className="flex-1 p-3 bg-stone-50 border border-stone-300 rounded-2xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-bold"
             />
             <button

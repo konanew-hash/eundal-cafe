@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Minus, ShoppingBag, Check } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Check, ShieldAlert } from 'lucide-react';
 import { Menu } from '@/lib/types';
 
 interface MenuDetailModalProps {
@@ -99,6 +99,30 @@ export default function MenuDetailModal({
 
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100 text-stone-700 text-xs leading-relaxed whitespace-pre-line">
             {menu.description || '은달 카페만의 정성과 신선함을 담아 준비한 대표 메뉴입니다.'}
+          </div>
+
+          {/* 알레르기 유발 성분 안내 영역 */}
+          <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/80 text-xs space-y-1.5">
+            <div className="flex items-center gap-1.5 text-amber-950 font-bold">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+              <span>알레르기 유발 성분 안내</span>
+            </div>
+            {menu.allergens ? (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {menu.allergens.split(/[,/]/).map((item, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-0.5 bg-white text-amber-900 border border-amber-300 rounded-lg text-[11px] font-bold shadow-xs"
+                  >
+                    {item.trim()}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-stone-500">
+                해당 메뉴는 별도의 알레르기 유발 성분 표기가 없거나 안전합니다. 특이 체질인 경우 주문 전 매장으로 문의해주세요.
+              </p>
+            )}
           </div>
 
           {/* 수량 조절 및 소계 */}

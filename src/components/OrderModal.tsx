@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Calendar,
@@ -14,9 +14,13 @@ import {
   AlertCircle,
   Loader2,
   Search,
+  Store as StoreIcon,
+  Truck,
+  ExternalLink,
+  Navigation,
 } from 'lucide-react';
 import DaumPostcode from 'react-daum-postcode';
-import { CartItem, DeliveryPolicy, Order } from '@/lib/types';
+import { CartItem, DeliveryPolicy, Order, Store } from '@/lib/types';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -24,9 +28,39 @@ interface OrderModalProps {
   cart: CartItem[];
   deliveryPolicy: DeliveryPolicy | null;
   selectedDistanceLabel: string;
+  stores?: Store[];
   onOrderSuccess: (order: Order) => void;
   onOpenPrivacyModal: () => void;
 }
+
+const DEFAULT_STORES: Store[] = [
+  {
+    id: '74f3b811-1a2b-4c5d-9e8f-111111111111',
+    name: '은달 1호점 (조원)',
+    branch_name: '조원점',
+    address: '경기도 수원시 장안구 조원로 85',
+    address_detail: '1층 은달 카페',
+    postal_code: '16298',
+    phone: '031-241-1234',
+    operating_hours: '09:00 ~ 21:00',
+    description: '조원시장 맞은편, 넓은 픽업 대기 공간 완비',
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: 'c948e546-2b3c-4d5e-8f9a-222222222222',
+    name: '은달 2호점 (파장)',
+    branch_name: '파장점',
+    address: '경기도 수원시 장안구 파장로 48',
+    address_detail: '1층 은달 카페',
+    postal_code: '16305',
+    phone: '031-242-5678',
+    operating_hours: '10:00 ~ 22:00',
+    description: '파장시장 입구 인근, 드라이브 픽업 및 정차 가능',
+    is_active: true,
+    sort_order: 2,
+  },
+];
 
 export default function OrderModal({
   isOpen,
@@ -34,17 +68,27 @@ export default function OrderModal({
   cart,
   deliveryPolicy,
   selectedDistanceLabel,
+  stores = [],
   onOrderSuccess,
   onOpenPrivacyModal,
 }: OrderModalProps) {
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  // 주문 형태: 배달(delivery) vs 픽업(pickup)
+  const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
+
+  // 픽업 매장 목록 (props가 비었으면 기본 2개 매장 사용)
+  const activeStores = stores.length > 0 ? stores.filter((s) => s.is_active) : DEFAULT_STORES;
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(
+    activeStores[0]?.id || DEFAULT_STORES[0].id
+  );
+
   // 폼 상태
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryDate, setDeliveryDate] = useState(todayStr);
-  const [deliveryHour, setDeliveryHour] = useState('12'); // 24시간제 기준
-  const [deliveryMinute, setDeliveryMinute] = useState('00'); // 00분 또는 30분
+  const [deliveryHour, setDeliveryHour] = useState('12');
+  const [deliveryMinute, setDeliveryMinute] = useState('00');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryAddressDetail, setDeliveryAddressDetail] = useState('');
   const [orderMemo, setOrderMemo] = useState('');
@@ -53,22 +97,81 @@ export default function OrderModal({
   // 주소 검색 팝업 상태
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
 
+  // 지도 보기 팝업 상태
+  const [mapPopupStore, setMapPopupStore] = useState<Store | null>(null);
+
+  // GPS 좌표 수집 상태
+  const [gpsLat, setGpsLat] = useState<number | undefined>(undefined);
+  const [gpsLng, setGpsLng] = useState<number | undefined>(undefined);
+  const [gpsAddress, setGpsAddress] = useState<string>('');
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'success' | 'denied'>('idle');
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // 모달 오픈 시 GPS Geolocation 수집
+  useEffect(() => {
+    if (isOpen && typeof window !== 'undefined' && 'geolocation' in navigator) {
+      setGpsStatus('locating');
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setGpsLat(lat);
+          setGpsLng(lng);
+
+          // 역지오코딩으로 실제 주소명 취득 시도
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
+              {
+                headers: { 'Accept-Language': 'ko' },
+              }
+            );
+            if (res.ok) {
+              const data = await res.json();
+              const addr =
+                data.display_name ||
+                `${data.address?.city || ''} ${data.address?.borough || data.address?.suburb || ''} ${data.address?.road || ''}`.trim();
+              setGpsAddress(addr || `GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+            } else {
+              setGpsAddress(`GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+            }
+          } catch {
+            setGpsAddress(`GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+          }
+          setGpsStatus('success');
+        },
+        (err) => {
+          console.warn('GPS 수집 거부 또는 실패:', err.message);
+          setGpsStatus('denied');
+        },
+        { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
+      );
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const currentStore = activeStores.find((s) => s.id === selectedStoreId) || activeStores[0];
 
   // 금액 계산
   const itemsTotal = cart.reduce((sum, item) => sum + item.menu.price * item.quantity, 0);
-  const baseFee = deliveryPolicy?.base_fee ?? 3000;
-  const freeThreshold = deliveryPolicy?.free_threshold ?? 35000;
-  const isFreeDelivery = itemsTotal >= freeThreshold && itemsTotal > 0;
-  const distanceRule = deliveryPolicy?.distance_rules.find((r) => r.label === selectedDistanceLabel);
-  const extraFee = distanceRule ? distanceRule.extra_fee : 0;
-  const deliveryFee = (isFreeDelivery ? 0 : baseFee) + extraFee;
+  const isPickup = orderType === 'pickup';
+
+  // 픽업 시 배달비 0원
+  let deliveryFee = 0;
+  if (!isPickup) {
+    const baseFee = deliveryPolicy?.base_fee ?? 3000;
+    const freeThreshold = deliveryPolicy?.free_threshold ?? 35000;
+    const isFreeDelivery = itemsTotal >= freeThreshold && itemsTotal > 0;
+    const distanceRule = deliveryPolicy?.distance_rules.find((r) => r.label === selectedDistanceLabel);
+    const extraFee = distanceRule ? distanceRule.extra_fee : 0;
+    deliveryFee = isFreeDelivery ? 0 : baseFee + extraFee;
+  }
   const finalTotal = itemsTotal + deliveryFee;
 
-  // 24시간제 시간 옵션 포맷 (요구사항: 12시(오후12시), 14시(오후02시) 형태)
+  // 시간 옵션 포맷 (12시(오후12시) 형태)
   const hours = Array.from({ length: 24 }, (_, i) => {
     const h24 = i.toString().padStart(2, '0');
     let period = '오전';
@@ -87,14 +190,14 @@ export default function OrderModal({
     return { value: h24, label };
   });
 
-  // 휴대폰 번호 자동 하이픈 포맷
+  // 휴대폰 번호 규격 및 자동 하이픈 포맷 (숫자만, 13자 제한)
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
+    const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
     let formatted = raw;
     if (raw.length > 3 && raw.length <= 7) {
       formatted = `${raw.slice(0, 3)}-${raw.slice(3)}`;
     } else if (raw.length > 7) {
-      formatted = `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7, 11)}`;
+      formatted = `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7)}`;
     }
     setCustomerPhone(formatted);
   };
@@ -115,15 +218,15 @@ export default function OrderModal({
       setErrorMsg('요청자 성함을 입력해주세요.');
       return;
     }
-    if (!customerPhone.trim() || customerPhone.length < 10) {
-      setErrorMsg('정확한 휴대전화번호를 입력해주세요.');
+    if (!customerPhone.trim() || customerPhone.length < 11) {
+      setErrorMsg('정확한 휴대전화번호를 입력해주세요 (예: 010-1234-5678).');
       return;
     }
     if (!deliveryDate) {
-      setErrorMsg('배달 희망 날짜를 선택해주세요.');
+      setErrorMsg(isPickup ? '픽업 희망 날짜를 선택해주세요.' : '배달 희망 날짜를 선택해주세요.');
       return;
     }
-    if (!deliveryAddress.trim()) {
+    if (!isPickup && !deliveryAddress.trim()) {
       setErrorMsg('배달 장소(기본 도로명 주소)를 입력해주세요.');
       return;
     }
@@ -142,13 +245,19 @@ export default function OrderModal({
         body: JSON.stringify({
           customer_name: customerName,
           customer_phone: customerPhone,
+          order_type: orderType,
+          pickup_store_id: isPickup ? currentStore?.id : undefined,
+          pickup_store_name: isPickup ? currentStore?.name : undefined,
           delivery_date: deliveryDate,
           delivery_time: deliveryTime,
-          delivery_address: deliveryAddress,
-          delivery_address_detail: deliveryAddressDetail,
-          selected_distance_label: selectedDistanceLabel,
+          delivery_address: isPickup ? (currentStore?.address || '매장 픽업') : deliveryAddress,
+          delivery_address_detail: isPickup ? (currentStore?.name || '') : deliveryAddressDetail,
+          selected_distance_label: isPickup ? '매장 픽업 (0원)' : selectedDistanceLabel,
           order_memo: orderMemo,
           privacy_agreed: privacyAgreed,
+          gps_lat: gpsLat,
+          gps_lng: gpsLng,
+          gps_address: gpsAddress,
           items: cart.map((i) => ({
             menu_id: i.menu.id,
             quantity: i.quantity,
@@ -183,9 +292,11 @@ export default function OrderModal({
         {/* 헤더 */}
         <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
           <div>
-            <h2 className="text-base font-bold text-stone-900">은달 카페 배달 견적 요청서</h2>
+            <h2 className="text-base font-bold text-stone-900">
+              은달 카페 {isPickup ? '매장 픽업' : '배달'} 견적 요청서
+            </h2>
             <p className="text-xs text-stone-500 mt-0.5">
-              배달 희망 일시와 배송지를 입력하여 견적을 요청합니다.
+              {isPickup ? '픽업 매장과 일시를 선택해 간편하게 요청하세요.' : '배달 희망 일시와 배송지를 입력하여 견적을 요청합니다.'}
             </p>
           </div>
           <button
@@ -205,7 +316,57 @@ export default function OrderModal({
             </div>
           )}
 
-          {/* 1. 견적 요청자 정보 */}
+          {/* GPS 기반 위치정보 수집 상태 배너 */}
+          <div className="p-2.5 rounded-xl border flex items-center justify-between text-[11px] bg-stone-50 border-stone-200">
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              <Navigation className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span className="font-semibold text-stone-700 shrink-0">GPS 위치:</span>
+              <span className="text-stone-500 truncate">
+                {gpsStatus === 'locating' && '현재 위치 확인 중...'}
+                {gpsStatus === 'success' && (gpsAddress || `위도 ${gpsLat?.toFixed(3)}, 경도 ${gpsLng?.toFixed(3)}`)}
+                {gpsStatus === 'denied' && '위치 권한 미허용 (기본 진행)'}
+                {gpsStatus === 'idle' && '위치 확인 대기'}
+              </span>
+            </div>
+            {gpsStatus === 'success' && (
+              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md shrink-0">
+                인증됨
+              </span>
+            )}
+          </div>
+
+          {/* 1. 수령 방법 선택 (배달 vs 픽업) */}
+          <div className="space-y-1.5">
+            <label className="block text-stone-700 font-bold text-xs">수령 방식 선택</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setOrderType('delivery')}
+                className={`p-3 rounded-2xl border text-center flex items-center justify-center gap-2 font-bold transition-all ${
+                  orderType === 'delivery'
+                    ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
+                    : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-50'
+                }`}
+              >
+                <Truck className="w-4 h-4" />
+                <span>🛵 배달 주문</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderType('pickup')}
+                className={`p-3 rounded-2xl border text-center flex items-center justify-center gap-2 font-bold transition-all ${
+                  orderType === 'pickup'
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                    : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-50'
+                }`}
+              >
+                <StoreIcon className="w-4 h-4" />
+                <span>🏬 매장 픽업 <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full ml-1">배달비 0원</span></span>
+              </button>
+            </div>
+          </div>
+
+          {/* 2. 견적 요청자 정보 */}
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
             <h3 className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-amber-700" />
@@ -226,7 +387,7 @@ export default function OrderModal({
               <div>
                 <label className="block text-stone-600 mb-1 font-medium flex items-center gap-1">
                   <Phone className="w-3 h-3 text-stone-500" />
-                  연락처 (필수)
+                  연락처 (필수, 숫자만 입력)
                 </label>
                 <input
                   type="tel"
@@ -241,12 +402,12 @@ export default function OrderModal({
             </div>
           </div>
 
-          {/* 2. 배달 희망 일시 (30분 단위 필수) */}
+          {/* 3. 일시 선택 */}
           <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-700" />
-                배달 희망 일시 (30분 단위)
+                {isPickup ? '픽업 희망 일시' : '배달 희망 일시'} (30분 단위)
               </h3>
               <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-bold">
                 필수 기입
@@ -254,11 +415,10 @@ export default function OrderModal({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {/* 날짜 선택 */}
               <div className="sm:col-span-1">
                 <label className="block text-stone-600 mb-1 font-medium flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-stone-500" />
-                  배달 날짜
+                  희망 날짜
                 </label>
                 <input
                   type="date"
@@ -270,7 +430,6 @@ export default function OrderModal({
                 />
               </div>
 
-              {/* 시간 선택 */}
               <div>
                 <label className="block text-stone-600 mb-1 font-medium">시간 선택</label>
                 <select
@@ -286,9 +445,8 @@ export default function OrderModal({
                 </select>
               </div>
 
-              {/* 분: 00분 또는 30분만 지원 */}
               <div>
-                <label className="block text-stone-600 mb-1 font-medium">분 (00분 / 30분)</label>
+                <label className="block text-stone-600 mb-1 font-medium">분 (30분 단위)</label>
                 <select
                   value={deliveryMinute}
                   onChange={(e) => setDeliveryMinute(e.target.value)}
@@ -300,70 +458,176 @@ export default function OrderModal({
               </div>
             </div>
 
-            {/* 실시간 예약 일시 프리뷰 */}
             <div className="p-2.5 bg-white rounded-xl border border-amber-200 flex items-center justify-between text-xs">
               <span className="text-stone-500">지정 일시:</span>
               <span className="font-bold text-amber-900">{formattedPreview}</span>
             </div>
           </div>
 
-          {/* 3. 배달 장소 (도로명 주소 검색 API 연동) */}
-          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
-            <h3 className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-amber-700" />
-              배달 장소
-            </h3>
-            <div className="space-y-2">
-              <div>
-                <label className="block text-stone-600 mb-1 font-medium">
-                  도로명 주소 (필수)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    required
-                    readOnly
-                    placeholder="우측 '주소 검색' 버튼을 클릭하세요"
-                    value={deliveryAddress}
-                    onClick={() => setIsPostcodeOpen(true)}
-                    className="flex-1 p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsPostcodeOpen(true)}
-                    className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl flex items-center gap-1 shrink-0 transition-colors"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                    <span>주소 검색</span>
-                  </button>
-                </div>
+          {/* 4. 장소 선택: 픽업 매장 선택 vs 배달 주소 입력 */}
+          {isPickup ? (
+            /* 🏬 매장 픽업 상세 선택 */
+            <div className="p-4 bg-amber-50/40 rounded-2xl border border-amber-300/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
+                  <StoreIcon className="w-3.5 h-3.5 text-amber-700" />
+                  픽업 매장 선택 (은달 1호점 / 2호점)
+                </h3>
+                <span className="text-[10px] text-amber-800 bg-amber-100 font-bold px-2 py-0.5 rounded-full">
+                  배달비 0원 적용
+                </span>
+              </div>
+
+              {/* 매장 라디오 선택 */}
+              <div className="grid grid-cols-1 gap-2">
+                {activeStores.map((store) => {
+                  const isSelected = selectedStoreId === store.id;
+                  return (
+                    <div
+                      key={store.id}
+                      onClick={() => setSelectedStoreId(store.id)}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-white border-amber-600 ring-2 ring-amber-500/20 shadow-sm'
+                          : 'bg-white/80 border-stone-200 hover:border-stone-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="pickup_store"
+                            checked={isSelected}
+                            onChange={() => setSelectedStoreId(store.id)}
+                            className="text-amber-600 focus:ring-amber-500 h-4 w-4"
+                          />
+                          <span className="font-bold text-stone-900 text-xs">{store.name}</span>
+                        </div>
+                        {store.phone && (
+                          <span className="text-[11px] text-stone-500">{store.phone}</span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 text-[11px] text-stone-600 space-y-0.5 pl-6">
+                        <p className="flex items-center gap-1 font-medium">
+                          <span className="text-amber-700 font-bold">우편번호 [{store.postal_code || '16298'}]</span>
+                          <span>{store.address} {store.address_detail}</span>
+                        </p>
+                        {store.operating_hours && (
+                          <p className="text-stone-400">운영시간: {store.operating_hours}</p>
+                        )}
+                        {store.description && (
+                          <p className="text-stone-500 italic mt-0.5">{store.description}</p>
+                        )}
+                      </div>
+
+                      {/* 지도 바로가기 버튼 */}
+                      <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-end gap-1.5 pl-6">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMapPopupStore(store);
+                          }}
+                          className="px-2 py-1 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold flex items-center gap-1"
+                        >
+                          <MapPin className="w-3 h-3 text-amber-700" />
+                          찾아올 곳 지도 보기
+                        </button>
+                        <a
+                          href={`https://map.naver.com/v5/search/${encodeURIComponent(store.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 border border-emerald-200"
+                        >
+                          네이버 지도 <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                        <a
+                          href={`https://map.kakao.com/link/search/${encodeURIComponent(store.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-2 py-1 rounded bg-yellow-50 hover:bg-yellow-100 text-yellow-900 text-[10px] font-bold flex items-center gap-0.5 border border-yellow-300"
+                        >
+                          카카오맵 <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               <div>
-                <label className="block text-stone-600 mb-1 font-medium">상세 주소 (동/호수, 층 등)</label>
+                <label className="block text-stone-600 mb-1 font-medium">픽업 요청사항</label>
                 <input
                   type="text"
-                  placeholder="예: 은달빌딩 302호"
-                  value={deliveryAddressDetail}
-                  onChange={(e) => setDeliveryAddressDetail(e.target.value)}
-                  className="w-full p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-stone-600 mb-1 font-medium">배달 요청사항</label>
-                <input
-                  type="text"
-                  placeholder="예: 문 앞에 놓아주시고 문자 남겨주세요"
+                  placeholder="예: 도착 10분 전에 연락 부탁드립니다"
                   value={orderMemo}
                   onChange={(e) => setOrderMemo(e.target.value)}
                   className="w-full p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
             </div>
-          </div>
+          ) : (
+            /* 🛵 배달 장소 입력 */
+            <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
+              <h3 className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-amber-700" />
+                배달 장소
+              </h3>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-stone-600 mb-1 font-medium">
+                    도로명 주소 (필수)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      readOnly
+                      placeholder="우측 '주소 검색' 버튼을 클릭하세요"
+                      value={deliveryAddress}
+                      onClick={() => setIsPostcodeOpen(true)}
+                      className="flex-1 p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsPostcodeOpen(true)}
+                      className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl flex items-center gap-1 shrink-0 transition-colors"
+                    >
+                      <Search className="w-3.5 h-3.5" />
+                      <span>주소 검색</span>
+                    </button>
+                  </div>
+                </div>
 
-          {/* 4. 개인정보보호법상 동의 체크 (필수) */}
+                <div>
+                  <label className="block text-stone-600 mb-1 font-medium">상세 주소 (동/호수, 층 등)</label>
+                  <input
+                    type="text"
+                    placeholder="예: 은달빌딩 302호"
+                    value={deliveryAddressDetail}
+                    onChange={(e) => setDeliveryAddressDetail(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-stone-600 mb-1 font-medium">배달 요청사항</label>
+                  <input
+                    type="text"
+                    placeholder="예: 문 앞에 놓아주시고 문자 남겨주세요"
+                    value={orderMemo}
+                    onChange={(e) => setOrderMemo(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 5. 개인정보보호법상 동의 체크 (필수) */}
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2.5">
             <div className="flex items-start justify-between gap-2">
               <div
@@ -382,7 +646,7 @@ export default function OrderModal({
                     [필수] 개인정보 수집 및 이용 동의
                   </p>
                   <p className="text-[11px] text-stone-500 mt-0.5 leading-snug">
-                    견적 확인 및 배달 처리 목적 (보유 기간: <strong className="text-amber-900 font-bold">배달 완료일 이후 14일까지 보관 후 삭제</strong>)
+                    견적 확인 및 {isPickup ? '픽업' : '배달'} 처리 목적 (보유 기간: <strong className="text-amber-900 font-bold">배달 완료일 이후 14일까지 보관 후 삭제</strong>)
                   </p>
                 </div>
               </div>
@@ -398,16 +662,16 @@ export default function OrderModal({
             </div>
           </div>
 
-          {/* 5. 최종 견적 금액 요약 */}
+          {/* 6. 최종 견적 금액 요약 */}
           <div className="p-4 bg-stone-100 rounded-2xl border border-stone-200 text-xs space-y-1.5">
             <div className="flex justify-between text-stone-600">
               <span>견적 품목 ({cart.reduce((s, i) => s + i.quantity, 0)}개)</span>
               <span className="font-semibold">{itemsTotal.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between text-stone-600">
-              <span>예상 배달비 ({selectedDistanceLabel})</span>
-              <span className="font-semibold">
-                {isFreeDelivery ? '무료 (0원)' : `${deliveryFee.toLocaleString()}원`}
+              <span>{isPickup ? '매장 픽업 할인' : `예상 배달비 (${selectedDistanceLabel})`}</span>
+              <span className="font-semibold text-emerald-800">
+                {isPickup ? '0원 (픽업 무료)' : deliveryFee === 0 ? '무료 (0원)' : `${deliveryFee.toLocaleString()}원`}
               </span>
             </div>
             <div className="pt-2 border-t border-stone-300 flex justify-between items-baseline text-stone-900">
@@ -443,7 +707,7 @@ export default function OrderModal({
         </form>
       </div>
 
-      {/* 다음 카카오 도로명 주소 검색 모달 */}
+      {/* 다음 도로명 주소 검색 모달 */}
       {isPostcodeOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-300">
@@ -459,6 +723,87 @@ export default function OrderModal({
             </div>
             <div className="p-2">
               <DaumPostcode onComplete={handleCompletePostcode} autoClose={false} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 찾아올 곳 지도 팝업 모달 */}
+      {mapPopupStore && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-300">
+            <div className="p-4 bg-stone-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <StoreIcon className="w-4 h-4 text-amber-400" />
+                <span className="font-bold text-sm">{mapPopupStore.name} 찾아오시는 길</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMapPopupStore(null)}
+                className="text-stone-300 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
+                <div className="text-[11px] font-bold text-amber-800">
+                  우편번호 [{mapPopupStore.postal_code || '16298'}]
+                </div>
+                <div className="font-bold text-stone-900 text-sm">
+                  {mapPopupStore.address}
+                </div>
+                {mapPopupStore.address_detail && (
+                  <div className="text-stone-600">{mapPopupStore.address_detail}</div>
+                )}
+                {mapPopupStore.phone && (
+                  <div className="text-stone-500 pt-1 border-t border-stone-200 flex items-center gap-1">
+                    <Phone className="w-3 h-3" /> 매장 전화: {mapPopupStore.phone}
+                  </div>
+                )}
+              </div>
+
+              {/* 외부 지도 앱 연동 */}
+              <div className="space-y-2">
+                <p className="font-bold text-stone-700">지도 앱 바로가기 (길찾기 / 상세위치):</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={`https://map.naver.com/v5/search/${encodeURIComponent(mapPopupStore.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <span>네이버 지도</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <a
+                    href={`https://map.kakao.com/link/search/${encodeURIComponent(mapPopupStore.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-yellow-400 hover:bg-yellow-500 text-stone-950 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <span>카카오맵</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapPopupStore.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full p-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-stone-200"
+                >
+                  <span>구글 지도(Google Maps) 열기</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMapPopupStore(null)}
+                className="w-full py-2.5 bg-stone-900 text-white font-bold rounded-xl"
+              >
+                닫기
+              </button>
             </div>
           </div>
         </div>

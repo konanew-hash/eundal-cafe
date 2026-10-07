@@ -7,11 +7,12 @@ export async function GET() {
   const supabase = getSupabaseServer();
 
   try {
-    const [cafeRes, catRes, menuRes, policyRes] = await Promise.all([
+    const [cafeRes, catRes, menuRes, policyRes, storeRes] = await Promise.all([
       supabase.from('eundal_cafes').select('*').limit(1).single(),
       supabase.from('eundal_categories').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
       supabase.from('eundal_menus').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
       supabase.from('eundal_delivery_policies').select('*').limit(1).single(),
+      supabase.from('eundal_stores').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
     ]);
 
     return NextResponse.json({
@@ -19,6 +20,7 @@ export async function GET() {
       categories: catRes.data || [],
       menus: menuRes.data || [],
       deliveryPolicy: policyRes.data || null,
+      stores: storeRes.data || [],
     });
   } catch (error) {
     console.error('Failed to load public data:', error);

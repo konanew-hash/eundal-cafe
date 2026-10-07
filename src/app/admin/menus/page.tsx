@@ -31,6 +31,7 @@ export default function AdminMenusPage() {
     category_id: '',
     name: '',
     description: '',
+    allergens: '',
     price: 0,
     image_url: '',
     sort_order: 0,
@@ -109,6 +110,7 @@ export default function AdminMenusPage() {
         category_id: menu.category_id,
         name: menu.name,
         description: menu.description || '',
+        allergens: menu.allergens || '',
         price: menu.price,
         image_url: menu.image_url,
         sort_order: menu.sort_order,
@@ -119,6 +121,7 @@ export default function AdminMenusPage() {
         category_id: categories[0]?.id || '',
         name: '',
         description: '',
+        allergens: '',
         price: 5000,
         image_url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80',
         sort_order: (menus.length + 1),
@@ -359,6 +362,13 @@ export default function AdminMenusPage() {
                   {menu.description && (
                     <p className="text-xs text-stone-500 mt-2 line-clamp-2">{menu.description}</p>
                   )}
+                  {menu.allergens && (
+                    <div className="mt-1.5 flex items-center gap-1">
+                      <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded font-medium line-clamp-1">
+                        알레르기: {menu.allergens}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 하단 컨트롤: 품절 토글 & 수정/삭제 */}
@@ -515,6 +525,19 @@ export default function AdminMenusPage() {
                   value={menuForm.description}
                   onChange={(e) => setMenuForm({ ...menuForm, description: e.target.value })}
                   className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-medium mb-1">
+                  알레르기 유발 성분 표기 (쉼표로 구분)
+                </label>
+                <input
+                  type="text"
+                  placeholder="예: 우유, 밀, 대두, 계란, 견과류"
+                  value={menuForm.allergens}
+                  onChange={(e) => setMenuForm({ ...menuForm, allergens: e.target.value })}
+                  className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl"
                 />
               </div>
 
