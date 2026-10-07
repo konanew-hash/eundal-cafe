@@ -170,10 +170,10 @@ export default function HomePage() {
         cartCount={cartTotalItems}
       />
 
-      <main className="max-w-md mx-auto">
+      <main className="max-w-md mx-auto w-full">
         {/* 2. 상단 감성 비주얼 배너 */}
-        <section className="px-4 pt-4 pb-2">
-          <div className="relative rounded-3xl overflow-hidden shadow-lg border border-stone-200/60 bg-stone-900 h-48 sm:h-52">
+        <section className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
+          <div className="relative rounded-3xl overflow-hidden shadow-lg border border-stone-200/60 bg-stone-900 h-44 sm:h-52">
             <img
               src={cafe?.hero_image_url || 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80'}
               alt="은달 카페 무드"
@@ -181,73 +181,73 @@ export default function HomePage() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-900/40 to-transparent" />
 
-            <div className="absolute inset-0 p-5 flex flex-col justify-between text-white">
+            <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between text-white">
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-200 border border-white/10">
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-200 border border-white/10">
                   <Sparkles className="w-3 h-3 text-amber-300" />
                   당일 로스팅 & 수제 베이커리
                 </span>
-                <span className="text-[11px] text-stone-300 flex items-center gap-1">
+                <span className="text-[10px] sm:text-[11px] text-stone-300 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   09:00 ~ 21:00
                 </span>
               </div>
 
               <div>
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight leading-tight">
+                <h2 className="text-lg sm:text-2xl font-black tracking-tight leading-tight line-clamp-2">
                   {cafe?.slogan || '은은한 달빛 아래, 깊고 그윽한 한 잔의 여유'}
                 </h2>
-                <div className="flex items-center gap-2 mt-1.5 text-xs text-stone-300">
-                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="line-clamp-1">{cafe?.address || '서울특별시 마포구 월드컵북로 120'}</span>
+                <div className="flex items-center gap-1.5 mt-1 text-[11px] sm:text-xs text-stone-300">
+                  <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">{cafe?.address || '서울특별시 마포구 월드컵북로 120'}</span>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 3. 휴대폰 바탕화면 즐겨찾기 추가 배너 카드 (요구사항: 바탕화면에 즐겨찾기 추가 버튼 탑재) */}
-        <section className="px-4 py-1.5">
+        {/* 3. 휴대폰 바탕화면 즐겨찾기 추가 배너 카드 */}
+        <section className="px-3 sm:px-4 py-1.5">
           <button
             type="button"
             onClick={handleInstallClick}
-            className="w-full p-3 bg-gradient-to-r from-stone-900 via-stone-800 to-amber-950 text-white rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.99] border border-amber-800/40 text-left group"
+            className="w-full p-2.5 sm:p-3 bg-gradient-to-r from-stone-900 via-stone-800 to-amber-950 text-white rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.99] border border-amber-800/40 text-left group"
           >
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-lg border border-amber-400/20 group-hover:scale-105 transition-transform">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-base sm:text-lg border border-amber-400/20 shrink-0">
                 📱
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-xs font-bold flex items-center gap-1.5">
-                  <span>휴대폰 바탕화면에 바로가기 추가</span>
-                  <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.5 rounded-full">
+                  <span className="truncate">휴대폰 바탕화면에 바로가기 추가</span>
+                  <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
                     원클릭
                   </span>
                 </div>
-                <div className="text-[11px] text-stone-300 mt-0.5">
-                  앱처럼 터치 한 번으로 빠르고 편리하게 주문하세요
+                <div className="text-[11px] text-stone-300 mt-0.5 truncate">
+                  앱처럼 터치 한 번으로 빠르게 주문하세요
                 </div>
               </div>
             </div>
-            <div className="text-xs font-bold text-amber-300 flex items-center gap-0.5 shrink-0 pl-2">
-              <span>추가하기</span>
+            <div className="text-xs font-bold text-amber-300 flex items-center gap-0.5 shrink-0 pl-1.5">
+              <span>추가</span>
               <span className="group-hover:translate-x-0.5 transition-transform">➔</span>
             </div>
           </button>
         </section>
 
         {/* 배달비 및 픽업 정책 안내 바 & GPS 위치설정 안내 버튼 */}
-        <section className="px-4 py-1.5 space-y-1">
-          <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 flex items-center justify-between text-xs text-amber-950">
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-200 flex items-center justify-center font-bold text-[11px] text-amber-900">
+        <section className="px-3 sm:px-4 py-1 space-y-1">
+          <div className="p-2.5 sm:p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 flex items-center justify-between text-xs text-amber-950 gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-amber-200 flex items-center justify-center font-bold text-[10px] sm:text-[11px] text-amber-900 shrink-0">
                 ✦
               </span>
-              <span>
-                <strong>{deliveryPolicy?.free_threshold.toLocaleString()}원 이상</strong> 배달비 무료! (매장 픽업은 항시 <strong>0원</strong>)
+              <span className="text-[11px] sm:text-xs truncate">
+                <strong>{deliveryPolicy?.free_threshold.toLocaleString()}원↑</strong> 배달비 무료! (픽업 <strong>0원</strong>)
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsGpsGuideOpen(true)}
@@ -255,13 +255,13 @@ export default function HomePage() {
                 title="정확한 배달/픽업 관제를 위한 기기 GPS 설정 안내"
               >
                 <Navigation className="w-3 h-3 text-amber-700" />
-                <span>GPS 안내</span>
+                <span>GPS안내</span>
               </button>
               <button
                 onClick={() => setIsIntroOpen(true)}
                 className="text-[11px] text-stone-500 font-medium underline hover:text-stone-700"
               >
-                매장소개
+                소개
               </button>
             </div>
           </div>
@@ -305,34 +305,34 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* 5. 하단 고정 실시간 견적 플로팅 바 */}
+      {/* 5. 하단 고정 실시간 견적 플로팅 바 (iOS Safe Area 대응) */}
       {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 p-3 bg-gradient-to-t from-white via-white/95 to-transparent backdrop-blur-md border-t border-stone-200">
+        <div className="fixed bottom-0 left-0 right-0 z-40 p-2.5 sm:p-3 pb-safe bg-gradient-to-t from-white via-white/95 to-transparent backdrop-blur-md border-t border-stone-200">
           <div className="max-w-md mx-auto">
             <button
               onClick={() => setIsCartOpen(true)}
-              className="w-full bg-stone-900 text-white rounded-2xl p-3.5 shadow-xl flex items-center justify-between hover:bg-stone-800 active:scale-[0.99] transition-all"
+              className="w-full bg-stone-900 text-white rounded-2xl p-3 sm:p-3.5 shadow-xl flex items-center justify-between hover:bg-stone-800 active:scale-[0.99] transition-all gap-2"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="relative p-2 rounded-xl bg-amber-600 text-white font-bold">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="relative p-1.5 sm:p-2 rounded-xl bg-amber-600 text-white font-bold shrink-0">
                   <ShoppingBag className="w-4 h-4" />
                   <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white text-stone-900 text-[10px] font-black flex items-center justify-center">
                     {cartTotalItems}
                   </span>
                 </div>
-                <div className="text-left">
-                  <p className="text-[11px] text-stone-300 font-medium">실시간 예상 견적</p>
-                  <p className="text-base font-black text-amber-200 tracking-tight">
+                <div className="text-left min-w-0">
+                  <p className="text-[10px] sm:text-[11px] text-stone-300 font-medium truncate">실시간 예상 견적</p>
+                  <p className="text-sm sm:text-base font-black text-amber-200 tracking-tight truncate">
                     {finalEstimatedTotal.toLocaleString()}원
-                    <span className="text-xs font-normal text-stone-300 ml-1">
-                      {isPickup ? '(매장 픽업 배달비 0원 무료)' : `(배달비 ${isFreeDelivery ? '무료' : `${deliveryFee.toLocaleString()}원`} 포함)`}
+                    <span className="text-[11px] font-normal text-stone-300 ml-1 hidden xs:inline">
+                      {isPickup ? '(픽업 0원)' : `(배달비 ${isFreeDelivery ? '무료' : `${deliveryFee.toLocaleString()}원`})`}
                     </span>
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 text-xs font-bold bg-white/10 px-3 py-2 rounded-xl text-amber-200">
-                <span>{isPickup ? '픽업 요청하기' : '견적 요청하기'}</span>
+              <div className="flex items-center gap-1 text-xs font-bold bg-white/10 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-amber-200 shrink-0">
+                <span>{isPickup ? '픽업요청' : '견적요청'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
             </button>

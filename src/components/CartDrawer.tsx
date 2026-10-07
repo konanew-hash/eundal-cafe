@@ -165,28 +165,28 @@ export default function CartDrawer({
                 <button
                   type="button"
                   onClick={() => onSelectOrderType('delivery')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  className={`flex-1 py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all ${
                     !isPickup
                       ? 'bg-stone-900 text-white shadow-xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <Truck className="w-3.5 h-3.5" />
-                  <span>🛵 배달 주문</span>
+                  <span>배달 주문</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => onSelectOrderType('pickup')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  className={`flex-1 py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all ${
                     isPickup
                       ? 'bg-amber-600 text-white shadow-xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <StoreIcon className="w-3.5 h-3.5" />
-                  <span>🏬 매장 픽업</span>
+                  <span>매장 픽업</span>
                   <span className="text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full font-black">
-                    배달비 0원
+                    0원
                   </span>
                 </button>
               </div>
@@ -422,20 +422,20 @@ export default function CartDrawer({
           )}
         </div>
 
-        {/* 하단 주문서 작성하기 버튼 */}
+        {/* 하단 주문서 작성하기 버튼 (iOS Safe Area 대응) */}
         {cart.length > 0 && (
-          <div className="p-4 border-t border-stone-200 bg-white">
+          <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-white pb-safe">
             <button
               onClick={onProceedOrder}
               disabled={isBelowMin}
-              className={`w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md ${
+              className={`w-full py-3.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md ${
                 isBelowMin
                   ? 'bg-stone-300 text-stone-500 cursor-not-allowed'
                   : 'bg-stone-900 text-white hover:bg-amber-600 active:scale-[0.99]'
               }`}
             >
               <span>{isPickup ? '주문자 정보 입력 & 매장 픽업 예약' : '주문자 정보 입력 & 배달 예약'}</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4 shrink-0" />
             </button>
           </div>
         )}

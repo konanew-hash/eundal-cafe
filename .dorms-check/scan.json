@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-07T06:05:50.266Z",
+  "at": "2026-10-07T06:32:09.915Z",
   "url": "\\",
   "reachable": false,
   "results": [
@@ -25,7 +25,7 @@
       "observed": "하드코딩 시크릿 미검출",
       "evidence": {
         "hits": [],
-        "inspectedFiles": 53,
+        "inspectedFiles": 54,
         "readFailures": 0
       }
     },
@@ -35,7 +35,7 @@
       "observed": "클라 시크릿 노출 미검출",
       "evidence": {
         "hits": [],
-        "inspectedFiles": 47,
+        "inspectedFiles": 48,
         "readFailures": 0
       }
     },
@@ -84,7 +84,7 @@
       "bodyChecked": false,
       "unsafeTransport": false
     },
-    "scannedAt": "2026-10-07T06:05:50.162Z"
+    "scannedAt": "2026-10-07T06:32:09.751Z"
   },
   "trackResults": {
     "security": {
@@ -117,7 +117,7 @@
           "observed": "하드코딩 시크릿 미검출",
           "evidence": {
             "hits": [],
-            "inspectedFiles": 53,
+            "inspectedFiles": 54,
             "readFailures": 0
           }
         },
@@ -127,7 +127,7 @@
           "observed": "클라 시크릿 노출 미검출",
           "evidence": {
             "hits": [],
-            "inspectedFiles": 47,
+            "inspectedFiles": 48,
             "readFailures": 0
           }
         },

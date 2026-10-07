@@ -20,9 +20,11 @@ import {
   Navigation,
   RotateCw,
   HelpCircle,
+  LocateFixed,
 } from 'lucide-react';
 import DaumPostcode from 'react-daum-postcode';
 import { CartItem, DeliveryPolicy, Order, Store } from '@/lib/types';
+import { getBrowserLocation, calculateDistanceInMeters, formatDistance } from '@/lib/geoUtils';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -37,6 +39,12 @@ interface OrderModalProps {
   onOpenPrivacyModal: () => void;
   onOpenGpsGuide?: () => void;
 }
+
+// 매장 기본 좌표 (수원시 장안구 조원동, 파장동)
+const STORE_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  '74f3b811-7bf3-4793-a0f2-ceeee50da851': { lat: 37.3015, lng: 127.0178 }, // 은달 1호점 조원
+  'c948e546-490d-400d-b8d5-583465111e72': { lat: 37.3168, lng: 126.9885 }, // 은달 2호점 파장
+};
 
 const DEFAULT_STORES: Store[] = [
   {
@@ -127,51 +135,48 @@ export default function OrderModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // GPS Geolocation 수집 함수 (스마트폰 GPS 칩셋 및 기지국 신호 직접 측정)
-  const requestGpsLocation = () => {
-    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
-      setGpsStatus('unsupported');
-      return;
+  // GPS Geolocation 수집 함수 (고도화 2단계 방식: 저정밀도 즉시 획득 후 고정밀 갱신 + 서버 역지오코딩)
+  const requestGpsLocation = async () => {
+    setGpsStatus('locating');
+    try {
+      const loc = await getBrowserLocation();
+      setGpsLat(loc.latitude);
+      setGpsLng(loc.longitude);
+      setGpsAccuracy(loc.accuracy);
+      setGpsAddress(loc.address || `위도 ${loc.latitude.toFixed(4)}, 경도 ${loc.longitude.toFixed(4)}`);
+      setGpsStatus('success');
+      return loc;
+    } catch (err: any) {
+      console.warn('Geolocation 수집 실패:', err?.message || err);
+      if (err?.message === 'PERMISSION_DENIED') {
+        setGpsStatus('denied');
+      } else {
+        setGpsStatus('denied');
+      }
+      return null;
+    }
+  };
+
+  // 현재 GPS 위치로 배달 주소 자동 채우기
+  const handleAutoFillAddressWithGps = async () => {
+    let currentAddress = gpsAddress;
+    let lat = gpsLat;
+    let lng = gpsLng;
+
+    if (!gpsLat || !gpsAddress || gpsStatus !== 'success') {
+      const loc = await requestGpsLocation();
+      if (!loc) {
+        alert('위치 정보를 가져올 수 없습니다. 브라우저 위치 권한을 확인해주세요.');
+        return;
+      }
+      currentAddress = loc.roadAddress || loc.address || '';
+      lat = loc.latitude;
+      lng = loc.longitude;
     }
 
-    setGpsStatus('locating');
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const acc = Math.round(position.coords.accuracy || 0);
-        setGpsLat(lat);
-        setGpsLng(lng);
-        setGpsAccuracy(acc);
-
-        // 역지오코딩으로 실제 주소명 취득 시도
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
-            {
-              headers: { 'Accept-Language': 'ko' },
-            }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const addr =
-              data.display_name ||
-              `${data.address?.city || ''} ${data.address?.borough || data.address?.suburb || ''} ${data.address?.road || ''}`.trim();
-            setGpsAddress(addr || `GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-          } else {
-            setGpsAddress(`GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-          }
-        } catch {
-          setGpsAddress(`GPS 좌표 (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-        }
-        setGpsStatus('success');
-      },
-      (err) => {
-        console.warn('GPS 수집 거부 또는 실패:', err.code, err.message);
-        setGpsStatus('denied');
-      },
-      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
-    );
+    if (currentAddress) {
+      setDeliveryAddress(currentAddress);
+    }
   };
 
   // 모달 오픈 시 자동 1회 GPS Geolocation 수집
@@ -201,7 +206,7 @@ export default function OrderModal({
   }
   const finalTotal = itemsTotal + deliveryFee;
 
-  // 시간 옵션 포맷 (12시(오후12시) 형태)
+  // 시간 옵션 포맷 (모바일에서 줄바꿈 없이 깔끔하게 보이도록 12h/24h 최적화)
   const hours = Array.from({ length: 24 }, (_, i) => {
     const h24 = i.toString().padStart(2, '0');
     let period = '오전';
@@ -216,7 +221,7 @@ export default function OrderModal({
       period = '오후';
       h12 = i - 12;
     }
-    const label = `${h24}시 (${period} ${h12.toString().padStart(2, '0')}시)`;
+    const label = `${h24}시 (${period} ${h12}시)`;
     return { value: h24, label };
   });
 
@@ -317,28 +322,29 @@ export default function OrderModal({
   const formattedPreview = `${year || '2026'}년 ${month || '10'}월 ${day || '10'}일 ${deliveryHour}시 ${deliveryMinute}분`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-200 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-stone-200 max-h-[94vh] sm:max-h-[90vh] flex flex-col">
         {/* 헤더 */}
-        <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
-          <div>
-            <h2 className="text-base font-bold text-stone-900">
+        <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
+          <div className="min-w-0 pr-2">
+            <h2 className="text-sm sm:text-base font-bold text-stone-900 truncate">
               은달 카페 {isPickup ? '매장 픽업' : '배달'} 견적 요청서
             </h2>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 truncate">
               {isPickup ? '픽업 매장과 일시를 선택해 간편하게 요청하세요.' : '배달 희망 일시와 배송지를 입력하여 견적을 요청합니다.'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-700 flex items-center justify-center transition-colors"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-700 flex items-center justify-center transition-colors shrink-0"
+            title="닫기"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* 폼 본문 */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 text-xs">
           {errorMsg && (
             <div className="p-3 bg-red-50 text-red-700 rounded-xl flex items-center gap-2 border border-red-200">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -347,12 +353,12 @@ export default function OrderModal({
           )}
 
           {/* GPS 기반 위치정보 수집 상태 배너 */}
-          <div className="p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] bg-stone-50 border-stone-200">
+          <div className="p-2.5 sm:p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] bg-stone-50 border-stone-200">
             <div className="flex items-center gap-1.5 overflow-hidden">
               <Navigation className="w-3.5 h-3.5 text-amber-600 shrink-0" />
               <div className="min-w-0">
                 <span className="font-bold text-stone-800">
-                  {gpsStatus === 'locating' && '📍 GPS 위치 확인 중... (브라우저 허용을 눌러주세요)'}
+                  {gpsStatus === 'locating' && '📍 GPS 위치 확인 중...'}
                   {gpsStatus === 'success' && '📍 GPS 위치 인증 완료'}
                   {gpsStatus === 'denied' && '⚠️ 위치 권한이 꺼져 있거나 차단되었습니다'}
                   {gpsStatus === 'unsupported' && '⚠️ 기기에서 위치 서비스를 지원하지 않습니다'}
@@ -361,8 +367,8 @@ export default function OrderModal({
                 <p className="text-[10px] text-stone-500 truncate mt-0.5">
                   {gpsStatus === 'success' && (gpsAddress || `위도 ${gpsLat?.toFixed(4)}, 경도 ${gpsLng?.toFixed(4)}`)}
                   {gpsStatus === 'success' && gpsAccuracy && ` · 오차 ±${gpsAccuracy}m`}
-                  {gpsStatus === 'denied' && '스마트폰/PC 브라우저의 위치 권한을 허용하시면 정확한 배달/픽업 관제가 가능합니다.'}
-                  {gpsStatus === 'locating' && '단말기 GPS 센서 및 기지국 신호를 수신하는 중입니다.'}
+                  {gpsStatus === 'denied' && '스마트폰/PC 브라우저 위치 권한을 허용하시면 자동 주소 입력 및 관제가 가능합니다.'}
+                  {gpsStatus === 'locating' && '기기 GPS 센서 및 기지국 신호를 수신하는 중입니다.'}
                 </p>
               </div>
             </div>
@@ -375,22 +381,22 @@ export default function OrderModal({
                   className="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold flex items-center gap-1 transition-colors"
                 >
                   <HelpCircle className="w-3 h-3 text-amber-700" />
-                  <span>설정 방법</span>
+                  <span>설정 안내</span>
                 </button>
               )}
               <button
                 type="button"
                 onClick={requestGpsLocation}
                 disabled={gpsStatus === 'locating'}
-                className="px-2 py-1 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-[10px] font-bold flex items-center gap-1 border border-stone-300 transition-colors shadow-2xs"
+                className="px-2 py-1 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-[10px] font-bold flex items-center gap-1 border border-stone-300 transition-colors shadow-2xs active:scale-95"
                 title="GPS 위치 다시 측정"
               >
                 <RotateCw className={`w-3 h-3 ${gpsStatus === 'locating' ? 'animate-spin text-amber-600' : ''}`} />
-                <span>다시 측정</span>
+                <span>재측정</span>
               </button>
               {gpsStatus === 'success' && (
                 <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
-                  GPS 인증
+                  인증됨
                 </span>
               )}
             </div>
@@ -403,37 +409,37 @@ export default function OrderModal({
               <button
                 type="button"
                 onClick={() => setOrderType('delivery')}
-                className={`p-3 rounded-2xl border text-center flex items-center justify-center gap-2 font-bold transition-all ${
+                className={`p-2.5 sm:p-3 rounded-2xl border text-center flex items-center justify-center gap-1.5 sm:gap-2 font-bold transition-all text-xs ${
                   orderType === 'delivery'
                     ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
                     : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-50'
                 }`}
               >
-                <Truck className="w-4 h-4" />
+                <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>🛵 배달 주문</span>
               </button>
               <button
                 type="button"
                 onClick={() => setOrderType('pickup')}
-                className={`p-3 rounded-2xl border text-center flex items-center justify-center gap-2 font-bold transition-all ${
+                className={`p-2.5 sm:p-3 rounded-2xl border text-center flex items-center justify-center gap-1.5 sm:gap-2 font-bold transition-all text-xs ${
                   orderType === 'pickup'
                     ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                     : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-50'
                 }`}
               >
-                <StoreIcon className="w-4 h-4" />
-                <span>🏬 매장 픽업 <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full ml-1">배달비 0원</span></span>
+                <StoreIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>🏬 픽업 <span className="text-[10px] bg-white/20 px-1 py-0.5 rounded-full ml-0.5">0원</span></span>
               </button>
             </div>
           </div>
 
           {/* 2. 견적 요청자 정보 */}
-          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
+          <div className="p-3.5 sm:p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2.5 sm:space-y-3">
             <h3 className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-amber-700" />
               견적 요청자 정보
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
               <div>
                 <label className="block text-stone-600 mb-1 font-medium">성함 (필수)</label>
                 <input
@@ -464,7 +470,7 @@ export default function OrderModal({
           </div>
 
           {/* 3. 일시 선택 */}
-          <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
+          <div className="p-3.5 sm:p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-2.5 sm:space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-700" />
@@ -519,7 +525,7 @@ export default function OrderModal({
               </div>
             </div>
 
-            <div className="p-2.5 bg-white rounded-xl border border-amber-200 flex items-center justify-between text-xs">
+            <div className="p-2 sm:p-2.5 bg-white rounded-xl border border-amber-200 flex items-center justify-between text-xs">
               <span className="text-stone-500">지정 일시:</span>
               <span className="font-bold text-amber-900">{formattedPreview}</span>
             </div>
@@ -527,8 +533,8 @@ export default function OrderModal({
 
           {/* 4. 장소 선택: 픽업 매장 선택 vs 배달 주소 입력 */}
           {isPickup ? (
-            /* 🏬 매장 픽업 상세 선택 */
-            <div className="p-4 bg-amber-50/40 rounded-2xl border border-amber-300/80 space-y-3">
+            /* 🏬 매장 픽업 상세 선택 (내 위치와 매장 간 실시간 거리 연동) */
+            <div className="p-3.5 sm:p-4 bg-amber-50/40 rounded-2xl border border-amber-300/80 space-y-2.5 sm:space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
                   <StoreIcon className="w-3.5 h-3.5 text-amber-700" />
@@ -543,6 +549,12 @@ export default function OrderModal({
               <div className="grid grid-cols-1 gap-2">
                 {activeStores.map((store) => {
                   const isSelected = selectedStoreId === store.id;
+                  const storeCoord = STORE_COORDINATES[store.id];
+                  const distMeters =
+                    storeCoord && gpsLat && gpsLng
+                      ? calculateDistanceInMeters(gpsLat, gpsLng, storeCoord.lat, storeCoord.lng)
+                      : null;
+
                   return (
                     <div
                       key={store.id}
@@ -553,7 +565,7 @@ export default function OrderModal({
                           : 'bg-white/80 border-stone-200 hover:border-stone-300'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <input
                             type="radio"
@@ -564,14 +576,21 @@ export default function OrderModal({
                           />
                           <span className="font-bold text-stone-900 text-xs">{store.name}</span>
                         </div>
-                        {store.phone && (
-                          <span className="text-[11px] text-stone-500">{store.phone}</span>
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {distMeters !== null && (
+                            <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-md font-bold">
+                              내 위치에서 약 {formatDistance(distMeters)}
+                            </span>
+                          )}
+                          {store.phone && (
+                            <span className="text-[10px] text-stone-500">{store.phone}</span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="mt-2 text-[11px] text-stone-600 space-y-0.5 pl-6">
                         <p className="flex items-center gap-1 font-medium">
-                          <span className="text-amber-700 font-bold">우편번호 [{store.postal_code || '16298'}]</span>
+                          <span className="text-amber-700 font-bold">[{store.postal_code || '16298'}]</span>
                           <span>{store.address} {store.address_detail}</span>
                         </p>
                         {store.operating_hours && (
@@ -631,31 +650,44 @@ export default function OrderModal({
               </div>
             </div>
           ) : (
-            /* 🛵 배달 장소 입력 */
-            <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-3">
-              <h3 className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-amber-700" />
-                배달 장소
-              </h3>
+            /* 🛵 배달 장소 입력 (도로명 주소 검색 + GPS 원클릭 자동 입력 지원) */
+            <div className="p-3.5 sm:p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2.5 sm:space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-amber-700" />
+                  배달 장소 입력
+                </h3>
+                {/* 📍 현재 GPS 위치로 배달지 자동 입력 버튼 */}
+                <button
+                  type="button"
+                  onClick={handleAutoFillAddressWithGps}
+                  className="px-2.5 py-1 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-[10px] sm:text-[11px] flex items-center gap-1 border border-amber-300/80 transition-colors active:scale-95 shadow-2xs"
+                  title="현재 기기 GPS 위치의 주소를 배달지로 즉시 자동 입력합니다"
+                >
+                  <LocateFixed className="w-3 h-3 text-amber-700" />
+                  <span>내 GPS 위치로 자동 입력</span>
+                </button>
+              </div>
+
               <div className="space-y-2">
                 <div>
                   <label className="block text-stone-600 mb-1 font-medium">
                     도로명 주소 (필수)
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 sm:gap-2">
                     <input
                       type="text"
                       required
-                      readOnly
-                      placeholder="우측 '주소 검색' 버튼을 클릭하세요"
+                      placeholder="주소 검색 또는 내 GPS 위치로 자동 입력"
                       value={deliveryAddress}
-                      onClick={() => setIsPostcodeOpen(true)}
-                      className="flex-1 p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      onClick={() => !deliveryAddress && setIsPostcodeOpen(true)}
+                      className="flex-1 min-w-0 p-2.5 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none text-xs"
                     />
                     <button
                       type="button"
                       onClick={() => setIsPostcodeOpen(true)}
-                      className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl flex items-center gap-1 shrink-0 transition-colors"
+                      className="px-3 sm:px-3.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl flex items-center gap-1 shrink-0 transition-colors text-xs active:scale-95"
                     >
                       <Search className="w-3.5 h-3.5" />
                       <span>주소 검색</span>
@@ -689,7 +721,7 @@ export default function OrderModal({
           )}
 
           {/* 5. 개인정보보호법상 동의 체크 (필수) */}
-          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2.5">
+          <div className="p-3.5 sm:p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div
                 onClick={() => setPrivacyAgreed(!privacyAgreed)}
@@ -724,7 +756,7 @@ export default function OrderModal({
           </div>
 
           {/* 6. 최종 견적 금액 요약 */}
-          <div className="p-4 bg-stone-100 rounded-2xl border border-stone-200 text-xs space-y-1.5">
+          <div className="p-3.5 sm:p-4 bg-stone-100 rounded-2xl border border-stone-200 text-xs space-y-1.5">
             <div className="flex justify-between text-stone-600">
               <span>견적 품목 ({cart.reduce((s, i) => s + i.quantity, 0)}개)</span>
               <span className="font-semibold">{itemsTotal.toLocaleString()}원</span>
@@ -745,11 +777,11 @@ export default function OrderModal({
           </div>
 
           {/* 견적 요청 제출 버튼 */}
-          <div className="pt-2">
+          <div className="pt-2 pb-1">
             <button
               type="submit"
               disabled={loading || !privacyAgreed}
-              className={`w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all ${
+              className={`w-full py-3 sm:py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all ${
                 loading || !privacyAgreed
                   ? 'bg-stone-300 text-stone-500 cursor-not-allowed'
                   : 'bg-stone-900 text-white hover:bg-amber-600 active:scale-[0.99]'
@@ -768,30 +800,31 @@ export default function OrderModal({
         </form>
       </div>
 
-      {/* 다음 도로명 주소 검색 모달 */}
+      {/* 다음 도로명 주소 검색 모달 (최상단 z-[100] 배치) */}
       {isPostcodeOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in">
           <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-300">
             <div className="p-4 bg-stone-900 text-white flex items-center justify-between">
               <span className="font-bold text-sm">도로명 주소 검색</span>
               <button
                 type="button"
                 onClick={() => setIsPostcodeOpen(false)}
-                className="text-stone-300 hover:text-white"
+                className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-200 flex items-center justify-center transition-colors"
+                title="닫기"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-2">
+            <div className="p-2 bg-stone-50">
               <DaumPostcode onComplete={handleCompletePostcode} autoClose={false} />
             </div>
           </div>
         </div>
       )}
 
-      {/* 찾아올 곳 지도 팝업 모달 */}
+      {/* 찾아올 곳 지도 팝업 모달 (최상단 z-[100] 배치) */}
       {mapPopupStore && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in">
           <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-300">
             <div className="p-4 bg-stone-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -801,9 +834,10 @@ export default function OrderModal({
               <button
                 type="button"
                 onClick={() => setMapPopupStore(null)}
-                className="text-stone-300 hover:text-white"
+                className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-200 flex items-center justify-center transition-colors"
+                title="닫기"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-5 space-y-4 text-xs">
@@ -832,7 +866,7 @@ export default function OrderModal({
                     href={`https://map.naver.com/v5/search/${encodeURIComponent(mapPopupStore.address)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                    className="p-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
                   >
                     <span>네이버 지도</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -841,7 +875,7 @@ export default function OrderModal({
                     href={`https://map.kakao.com/link/search/${encodeURIComponent(mapPopupStore.address)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-3 bg-yellow-400 hover:bg-yellow-500 text-stone-950 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                    className="p-3 bg-yellow-400 hover:bg-yellow-500 text-stone-950 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
                   >
                     <span>카카오맵</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -851,7 +885,7 @@ export default function OrderModal({
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapPopupStore.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full p-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-stone-200"
+                  className="w-full p-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-stone-200 active:scale-95"
                 >
                   <span>구글 지도(Google Maps) 열기</span>
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -861,7 +895,7 @@ export default function OrderModal({
               <button
                 type="button"
                 onClick={() => setMapPopupStore(null)}
-                className="w-full py-2.5 bg-stone-900 text-white font-bold rounded-xl"
+                className="w-full py-2.5 bg-stone-900 text-white font-bold rounded-xl active:scale-95"
               >
                 닫기
               </button>

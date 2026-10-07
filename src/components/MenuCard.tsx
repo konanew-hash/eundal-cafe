@@ -30,12 +30,12 @@ export default function MenuCard({
   return (
     <div
       onClick={handleCardClick}
-      className={`group relative bg-white rounded-2xl p-3.5 border border-stone-200/90 shadow-sm transition-all hover:shadow-md flex gap-3.5 items-center cursor-pointer ${
+      className={`group relative bg-white rounded-2xl p-3 sm:p-3.5 border border-stone-200/90 shadow-sm transition-all hover:shadow-md flex gap-2.5 sm:gap-3.5 items-center cursor-pointer ${
         isSoldOut ? 'opacity-60 grayscale-[30%]' : ''
       }`}
     >
-      {/* 메뉴 썸네일 이미지 */}
-      <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-stone-100 shrink-0">
+      {/* 메뉴 썸네일 이미지 (모바일 w-20, 태블릿/PC w-24) */}
+      <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-stone-100 shrink-0">
         <img
           src={menu.image_url || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80'}
           alt={menu.name}

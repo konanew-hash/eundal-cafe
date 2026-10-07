@@ -549,21 +549,22 @@ export default function AdminStoresPage() {
         </div>
       )}
 
-      {/* 도로명 주소 검색 모달 */}
+      {/* 도로명 주소 검색 모달 (최상단 z-[100] 배치) */}
       {isPostcodeOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in">
           <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-300">
             <div className="p-4 bg-stone-900 text-white flex items-center justify-between">
               <span className="font-bold text-sm">도로명 주소 검색</span>
               <button
                 type="button"
                 onClick={() => setIsPostcodeOpen(false)}
-                className="text-stone-300 hover:text-white"
+                className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-200 flex items-center justify-center transition-colors"
+                title="닫기"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-2">
+            <div className="p-2 bg-stone-50">
               <DaumPostcode onComplete={handleCompletePostcode} autoClose={false} />
             </div>
           </div>
