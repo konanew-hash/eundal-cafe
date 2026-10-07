@@ -62,35 +62,50 @@ export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }:
   const handleSendKakaoToManager = async () => {
     const kakaoText = generateKakaoOrderText();
 
-    // 1. 모바일 Web Share API 지원 시 (카카오톡 바로 선택 전송 가능)
+    // 1. 클립보드 무조건 1순위 복사
+    try {
+      await navigator.clipboard.writeText(kakaoText);
+      setCopiedKakao(true);
+      setTimeout(() => setCopiedKakao(false), 5000);
+    } catch (e) {
+      console.warn('Clipboard write failed:', e);
+    }
+
+    // 2. 모바일 Web Share API 지원 시 (카카오톡 바로 선택 전송 가능 - 텍스트가 채팅방에 자동 입력됨)
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: `[은달카페 주문] ${order.customer_name}님 (${order.order_number})`,
+          title: `[은달카페 주문] ${order.customer_name}님`,
           text: kakaoText,
         });
         return;
       } catch {
-        // 취소 또는 에러 시 클립보드 복사 및 URL 실행
+        // 공유 취소 시 오픈채팅 링크로 계속 진행
       }
     }
 
-    // 2. 오픈채팅 링크가 등록되어 있는 경우
+    // 3. 오픈채팅 링크가 등록되어 있는 경우 (카카오톡 오픈채팅방 열기)
     if (cafe?.manager_kakao_id && cafe.manager_kakao_id.startsWith('http')) {
-      navigator.clipboard.writeText(kakaoText);
-      alert('주문 내역이 복사되었습니다! 열리는 총괄관리자 카카오톡 창에 붙여넣기(Ctrl+V) 해주세요.');
+      alert(
+        `📋 주문서 텍스트가 클립보드에 자동 복사되었습니다!\n\n` +
+        `열리는 카카오톡 채팅창에서 [붙여넣기(Ctrl+V 또는 꾹 눌러서 붙여넣기)]를 누르시면 주문서가 바로 전송됩니다.`
+      );
       window.open(cafe.manager_kakao_id, '_blank');
       return;
     }
 
-    // 3. 클립보드 복사 후 카카오톡 실행
-    navigator.clipboard.writeText(kakaoText);
-    setCopiedKakao(true);
-    setTimeout(() => setCopiedKakao(false), 3000);
+    // 4. 오픈채팅 링크가 없는 경우 카카오톡 ID 안내
+    if (cafe?.manager_kakao_id) {
+      alert(
+        `📋 주문서가 복사되었습니다!\n\n` +
+        `카카오톡에서 아이디 [${cafe.manager_kakao_id}]를 검색하여 친구 추가 후 붙여넣기(Ctrl+V)하여 전송해주세요.`
+      );
+      return;
+    }
+
     alert(
-      `[주문 내역 복사 완료!]\n\n` +
-      `총괄관리자에게 전송할 주문서 텍스트가 복사되었습니다.\n` +
-      `카카오톡을 열어 붙여넣기(Ctrl+V)하여 전송해주세요.`
+      `📋 주문서 텍스트가 복사되었습니다!\n\n` +
+      `카카오톡을 열어 은달 총괄관리자 채팅창에 붙여넣기(Ctrl+V)하여 전송해주세요.`
     );
   };
 

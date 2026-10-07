@@ -57,6 +57,13 @@ export async function PUT(req: NextRequest) {
       logo_images,
       manager_kakao_id,
       manager_phone,
+      telegram_bot_token,
+      telegram_chat_id,
+      sms_service_type,
+      sms_api_key,
+      sms_user_id,
+      sms_sender_phone,
+      sms_webhook_url,
     } = body;
 
     const finalHeroImages = Array.isArray(hero_images) ? hero_images : (hero_image_url ? [hero_image_url] : []);
@@ -86,6 +93,13 @@ export async function PUT(req: NextRequest) {
         privacy_officer: privacy_officer !== undefined ? privacy_officer : null,
         manager_kakao_id: manager_kakao_id !== undefined ? manager_kakao_id : null,
         manager_phone: manager_phone !== undefined ? manager_phone : null,
+        telegram_bot_token: telegram_bot_token !== undefined ? telegram_bot_token : null,
+        telegram_chat_id: telegram_chat_id !== undefined ? telegram_chat_id : null,
+        sms_service_type: sms_service_type || 'webhook',
+        sms_api_key: sms_api_key !== undefined ? sms_api_key : null,
+        sms_user_id: sms_user_id !== undefined ? sms_user_id : null,
+        sms_sender_phone: sms_sender_phone !== undefined ? sms_sender_phone : null,
+        sms_webhook_url: sms_webhook_url !== undefined ? sms_webhook_url : null,
         updated_at: new Date().toISOString(),
       })
       .neq('id', '00000000-0000-0000-0000-000000000000')

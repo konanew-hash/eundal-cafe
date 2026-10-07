@@ -23,6 +23,14 @@ export interface CafeInfo {
   logo_images?: string[]; // 로고 복수 이미지 목록
   manager_kakao_id?: string; // 총괄관리자 카카오톡 ID/오픈채팅 링크
   manager_phone?: string; // 총괄관리자 직통 연락처
+  // 실시간 주문 알림 연동 (텔레그램 & SMS)
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
+  sms_service_type?: 'webhook' | 'aligo' | 'none';
+  sms_api_key?: string;
+  sms_user_id?: string;
+  sms_sender_phone?: string;
+  sms_webhook_url?: string;
 }
 
 // 관리자, 매니저간 전달사항 (인수인계 및 점포 변경사항)

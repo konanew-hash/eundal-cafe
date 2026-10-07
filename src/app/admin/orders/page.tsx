@@ -34,6 +34,8 @@ import {
   Navigation,
   MessageSquare,
   Gift,
+  Store,
+  Truck,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { Order, MenuItem, OrderItem } from '@/lib/types';
@@ -417,9 +419,16 @@ export default function AdminOrdersPage() {
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-2xs">
           <p className="text-[11px] font-bold text-stone-500">수령 방식 (픽업 / 배달)</p>
-          <p className="text-sm font-black text-stone-900 mt-1">
-            🏬 픽업 {orders.filter((o) => o.order_type === 'pickup').length}건 / 🛵 배달 {orders.filter((o) => o.order_type !== 'pickup').length}건
-          </p>
+          <div className="flex items-center gap-1.5 text-xs font-bold text-stone-900 mt-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200">
+              <Store className="w-3 h-3 text-amber-700 shrink-0" />
+              <span>픽업 {orders.filter((o) => o.order_type === 'pickup').length}건</span>
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-900 border border-blue-200">
+              <Truck className="w-3 h-3 text-blue-700 shrink-0" />
+              <span>배달 {orders.filter((o) => o.order_type !== 'pickup').length}건</span>
+            </span>
+          </div>
         </div>
         <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-2xs">
           <p className="text-[11px] font-bold text-stone-500">총 예상 견적 금액</p>
@@ -496,19 +505,24 @@ export default function AdminOrdersPage() {
                 className="bg-white rounded-xl p-3 border border-stone-100 shadow-2xs space-y-2"
               >
                 {/* 상단 주문번호 & 상태 & 수령방식 */}
-                <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-amber-950 font-mono tracking-tight">
+                <div className="flex items-start justify-between gap-2 pb-2 border-b border-stone-100">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-black text-amber-950 font-mono tracking-tight shrink-0">
                         {order.order_number}
                       </span>
                       {order.order_type === 'pickup' ? (
-                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-bold rounded-md border border-amber-300">
-                          🏬 픽업: {order.pickup_store_name || '매장'}
+                        <span
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-bold rounded-md border border-amber-300 max-w-[125px] sm:max-w-[160px] truncate"
+                          title={`매장 픽업: ${order.pickup_store_name || '매장'}`}
+                        >
+                          <Store className="w-2.5 h-2.5 text-amber-800 shrink-0" />
+                          <span className="truncate">픽업: {order.pickup_store_name || '매장'}</span>
                         </span>
                       ) : (
-                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-800 text-[10px] font-bold rounded-md border border-blue-200">
-                          🛵 배달
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-800 text-[10px] font-bold rounded-md border border-blue-200 shrink-0">
+                          <Truck className="w-2.5 h-2.5 text-blue-700 shrink-0" />
+                          <span>배달</span>
                         </span>
                       )}
                     </div>
@@ -516,7 +530,7 @@ export default function AdminOrdersPage() {
                       {new Date(order.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 접수
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <div>{statusBadge(order.status)}</div>
                     <button
                       type="button"
@@ -557,36 +571,58 @@ export default function AdminOrdersPage() {
                     </div>
                   </div>
 
-                  {/* 배달 희망 일시 */}
+                  {/* 배달 / 픽업 희망 일시 및 장소 */}
                   <div className="p-2 bg-stone-50 rounded-xl border border-stone-200/80 space-y-1">
                     <div className="flex items-center gap-1.5 text-amber-950 font-bold">
                       <Calendar className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                       <span>{order.delivery_date} {order.delivery_time}</span>
                     </div>
-                    <div className="flex items-start justify-between gap-1.5 text-stone-600">
-                      <div className="flex items-start gap-1.5 flex-1">
-                        <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
-                        <span className="line-clamp-2">
-                          {order.delivery_address} {order.delivery_address_detail || ''}
-                        </span>
+
+                    {order.order_type === 'pickup' ? (
+                      <div className="flex items-start justify-between gap-1.5 text-stone-700">
+                        <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                          <Store className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <span className="font-bold text-amber-950 block truncate">
+                              [매장 픽업] {order.pickup_store_name || '은달 매장'}
+                            </span>
+                            <span className="text-[10px] text-stone-500 block truncate">
+                              {order.delivery_address || '매장 직접 방문 수령'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setMapModalData({
-                            address: order.delivery_address,
-                            label: `${order.customer_name} 님 배달 목적지`,
-                          })
-                        }
-                        className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded-lg border border-blue-200 transition-colors shrink-0"
-                        title="구글/네이버 지도로 위치 확인"
-                      >
-                        <Map className="w-3 h-3" />
-                        <span>지도</span>
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-1.5 text-stone-600">
+                        <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                          <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
+                          <span className="line-clamp-2 break-all">
+                            {order.delivery_address} {order.delivery_address_detail || ''}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setMapModalData({
+                              address: order.delivery_address,
+                              label: `${order.customer_name} 님 배달 목적지`,
+                            })
+                          }
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded-lg border border-blue-200 transition-colors shrink-0"
+                          title="구글/네이버 지도로 위치 확인"
+                        >
+                          <Map className="w-3 h-3" />
+                          <span>지도</span>
+                        </button>
+                      </div>
+                    )}
+
                     <div className="text-[10px] text-stone-500 pt-0.5">
-                      거리구간: <strong className="text-stone-700">{order.selected_distance_label}</strong>
+                      {order.order_type === 'pickup' ? (
+                        <span className="text-amber-800 font-bold">매장 방문 픽업 (배달비 0원)</span>
+                      ) : (
+                        <span>거리구간: <strong className="text-stone-700">{order.selected_distance_label}</strong></span>
+                      )}
                     </div>
                   </div>
 

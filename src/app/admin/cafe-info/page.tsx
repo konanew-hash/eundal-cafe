@@ -1,7 +1,25 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Store, Save, RefreshCw, CheckCircle, Image as ImageIcon, MapPin, Clock, Phone, Upload, FileText, Trash2 } from 'lucide-react';
+import {
+  Store,
+  Save,
+  RefreshCw,
+  CheckCircle,
+  Image as ImageIcon,
+  MapPin,
+  Clock,
+  Phone,
+  Upload,
+  FileText,
+  Trash2,
+  Send,
+  Bell,
+  Sparkles,
+  MessageCircle,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
 import { CafeInfo } from '@/lib/types';
 
 export default function AdminCafeInfoPage() {
@@ -12,6 +30,8 @@ export default function AdminCafeInfoPage() {
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingAppIcon, setUploadingAppIcon] = useState(false);
+  const [testingTelegram, setTestingTelegram] = useState(false);
+  const [testingSms, setTestingSms] = useState(false);
 
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
@@ -44,6 +64,14 @@ export default function AdminCafeInfoPage() {
     privacy_officer: '',
     manager_kakao_id: '',
     manager_phone: '',
+    // 실시간 주문 알림 연동
+    telegram_bot_token: '',
+    telegram_chat_id: '',
+    sms_service_type: 'webhook' as 'webhook' | 'aligo' | 'none',
+    sms_api_key: '',
+    sms_user_id: '',
+    sms_sender_phone: '',
+    sms_webhook_url: '',
   });
 
   const loadCafeInfo = async () => {
@@ -82,12 +110,79 @@ export default function AdminCafeInfoPage() {
           privacy_officer: data.cafe.privacy_officer || '',
           manager_kakao_id: data.cafe.manager_kakao_id || '',
           manager_phone: data.cafe.manager_phone || '',
+          telegram_bot_token: data.cafe.telegram_bot_token || '',
+          telegram_chat_id: data.cafe.telegram_chat_id || '',
+          sms_service_type: data.cafe.sms_service_type || 'webhook',
+          sms_api_key: data.cafe.sms_api_key || '',
+          sms_user_id: data.cafe.sms_user_id || '',
+          sms_sender_phone: data.cafe.sms_sender_phone || '',
+          sms_webhook_url: data.cafe.sms_webhook_url || '',
         });
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 텔레그램 테스트 발송
+  const handleTestTelegram = async () => {
+    if (!form.telegram_bot_token.trim() || !form.telegram_chat_id.trim()) {
+      alert('텔레그램 봇 토큰과 채팅방 ID를 먼저 입력해주세요.');
+      return;
+    }
+
+    try {
+      setTestingTelegram(true);
+      const res = await fetch('/api/admin/notify-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: 'telegram',
+          telegram_bot_token: form.telegram_bot_token.trim(),
+          telegram_chat_id: form.telegram_chat_id.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || '텔레그램 테스트 메시지가 전송되었습니다! 텔레그램 앱을 확인해주세요.');
+      } else {
+        alert(data.error || '텔레그램 테스트 전송에 실패했습니다.');
+      }
+    } catch {
+      alert('테스트 전송 중 네트워크 오류가 발생했습니다.');
+    } finally {
+      setTestingTelegram(false);
+    }
+  };
+
+  // SMS 테스트 발송
+  const handleTestSms = async () => {
+    try {
+      setTestingSms(true);
+      const res = await fetch('/api/admin/notify-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: 'sms',
+          sms_service_type: form.sms_service_type,
+          sms_api_key: form.sms_api_key.trim(),
+          sms_user_id: form.sms_user_id.trim(),
+          sms_sender_phone: form.sms_sender_phone.trim(),
+          sms_webhook_url: form.sms_webhook_url.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'SMS 테스트 전송이 완료되었습니다!');
+      } else {
+        alert(data.error || 'SMS 테스트 전송에 실패했습니다.');
+      }
+    } catch {
+      alert('테스트 전송 중 네트워크 오류가 발생했습니다.');
+    } finally {
+      setTestingSms(false);
     }
   };
 
@@ -752,6 +847,187 @@ export default function AdminCafeInfoPage() {
                 className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
               />
             </div>
+          </div>
+        </div>
+
+        {/* 7. 실시간 주문 자동 알림 - 텔레그램 봇 (강력 추천 / 100% 무료 & 0.1초 즉시 푸시) */}
+        <div className="bg-gradient-to-br from-amber-500/10 via-white to-amber-500/5 p-5 rounded-2xl border-2 border-amber-300 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  <Bell className="w-3.5 h-3.5" />
+                </span>
+                <h3 className="text-sm font-bold text-stone-900">
+                  실시간 주문 자동 알림 연동 — 텔레그램 봇 (강력 추천 ⭐⭐⭐⭐⭐)
+                </h3>
+              </div>
+              <p className="text-xs text-stone-600 mt-1">
+                고객이 주문서를 접수하는 즉시 관리자 스마트폰으로 소리/진동과 함께 0.1초 만에 알림이 울립니다. (100% 평생 무료)
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleTestTelegram}
+              disabled={testingTelegram}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-xs self-start sm:self-auto shrink-0"
+              title="입력한 봇 토큰과 채팅방 ID로 테스트 메시지를 전송합니다"
+            >
+              {testingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              <span>{testingTelegram ? '전송 중...' : '🔔 텔레그램 테스트 전송'}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block text-stone-800 font-bold mb-1">
+                텔레그램 봇 토큰 (Bot Token)
+              </label>
+              <input
+                type="text"
+                placeholder="예: 7123456789:AAHq_xyz..."
+                value={form.telegram_bot_token}
+                onChange={(e) => setForm({ ...form, telegram_bot_token: e.target.value })}
+                className="w-full p-2.5 bg-white border border-stone-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+              <p className="text-[11px] text-stone-500 mt-1">
+                텔레그램에서 <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800">@BotFather</code>에게 발급받은 API Token
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-stone-800 font-bold mb-1">
+                알림 수신 Chat ID (개인 ID 또는 그룹방 ID)
+              </label>
+              <input
+                type="text"
+                placeholder="예: 123456789 또는 -1001234567890"
+                value={form.telegram_chat_id}
+                onChange={(e) => setForm({ ...form, telegram_chat_id: e.target.value })}
+                className="w-full p-2.5 bg-white border border-stone-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+              <p className="text-[11px] text-stone-500 mt-1">
+                텔레그램 <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800">@userinfobot</code>으로 확인한 본인의 Chat ID (그룹방 초대 시 매니저 전원 동시 수신 가능)
+              </p>
+            </div>
+          </div>
+
+          {/* 1분 간편 가이드 박스 */}
+          <div className="bg-amber-100/60 p-3.5 rounded-xl border border-amber-200 text-xs text-amber-950 space-y-1.5">
+            <p className="font-bold flex items-center gap-1 text-amber-900">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>텔레그램 무료 실시간 알림봇 1분 세팅 가이드</span>
+            </p>
+            <ol className="list-decimal list-inside space-y-1 text-[11px] text-stone-700 pl-1 leading-relaxed">
+              <li>스마트폰 텔레그램 앱 검색창에 <strong>@BotFather</strong>를 검색하고 대화창에서 <code className="bg-white/80 px-1 rounded">/newbot</code>을 입력합니다.</li>
+              <li>봇 이름과 아이디를 정하면 나오는 <strong>HTTP API Token</strong>(긴 문자열)을 복사하여 위 [봇 토큰]에 붙여넣습니다.</li>
+              <li>검색창에 <strong>@userinfobot</strong>을 검색하고 <strong>/start</strong>를 누르면 나타나는 <strong>Id: 12345678</strong> 숫자를 위 [Chat ID]에 넣습니다.</li>
+              <li>하단 [저장] 후 <strong>[🔔 텔레그램 테스트 전송]</strong>을 누르면 스마트폰으로 즉시 '띵동!' 소리와 함께 알림이 옵니다.</li>
+            </ol>
+          </div>
+        </div>
+
+        {/* 8. 실시간 SMS 문자 및 Webhook 알림 연동 */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-stone-800 text-white flex items-center justify-center font-bold text-xs">
+                  <Phone className="w-3.5 h-3.5" />
+                </span>
+                <h3 className="text-sm font-bold text-stone-900">
+                  실시간 SMS 문자 & Webhook 알림 연동 설정
+                </h3>
+              </div>
+              <p className="text-xs text-stone-500 mt-0.5">
+                직원 관리 메뉴에서 'SMS 알림'이 켜진 관리자 휴대폰으로 주문 알림 문자를 자동 발송합니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleTestSms}
+              disabled={testingSms}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold transition-all shadow-xs self-start sm:self-auto shrink-0"
+              title="SMS/Webhook 테스트 전송"
+            >
+              {testingSms ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              <span>{testingSms ? '발송 중...' : '📱 SMS 테스트 전송'}</span>
+            </button>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">연동 방식 선택</label>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { key: 'aligo', label: '알리고(Aligo) SMS API' },
+                  { key: 'webhook', label: '외부 Webhook URL (슬랙/디스코드/게이트웨이)' },
+                  { key: 'none', label: '미사용 (텔레그램 푸시만 사용)' },
+                ].map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setForm({ ...form, sms_service_type: m.key as any })}
+                    className={`px-3 py-1.5 rounded-xl font-bold border transition-all ${
+                      form.sms_service_type === m.key
+                        ? 'bg-stone-900 text-white border-stone-900'
+                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {form.sms_service_type === 'aligo' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-stone-50 rounded-xl border border-stone-200">
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1">알리고 API Key</label>
+                  <input
+                    type="password"
+                    placeholder="알리고 관리콘솔 API Key"
+                    value={form.sms_api_key}
+                    onChange={(e) => setForm({ ...form, sms_api_key: e.target.value })}
+                    className="w-full p-2 bg-white border border-stone-300 rounded-lg font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1">알리고 사용자 ID</label>
+                  <input
+                    type="text"
+                    placeholder="알리고 아이디"
+                    value={form.sms_user_id}
+                    onChange={(e) => setForm({ ...form, sms_user_id: e.target.value })}
+                    className="w-full p-2 bg-white border border-stone-300 rounded-lg text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1">사전 등록된 발신번호</label>
+                  <input
+                    type="text"
+                    placeholder="예: 01012345678"
+                    value={form.sms_sender_phone}
+                    onChange={(e) => setForm({ ...form, sms_sender_phone: e.target.value })}
+                    className="w-full p-2 bg-white border border-stone-300 rounded-lg text-xs"
+                  />
+                  <p className="text-[10px] text-stone-400 mt-0.5">* 전기통신사업법상 알리고에 사전 등록된 발신번호만 발송 가능</p>
+                </div>
+              </div>
+            )}
+
+            {form.sms_service_type === 'webhook' && (
+              <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
+                <label className="block text-stone-700 font-bold mb-1">Webhook URL</label>
+                <input
+                  type="url"
+                  placeholder="https://hooks.slack.com/services/... 또는 SMS 게이트웨이 엔드포인트"
+                  value={form.sms_webhook_url}
+                  onChange={(e) => setForm({ ...form, sms_webhook_url: e.target.value })}
+                  className="w-full p-2 bg-white border border-stone-300 rounded-lg font-mono text-xs"
+                />
+              </div>
+            )}
           </div>
         </div>
 

@@ -14,14 +14,17 @@ import {
   Moon,
   Loader2,
   MessageSquare,
+  Smartphone,
 } from 'lucide-react';
 import { Staff } from '@/lib/types';
+import InstallPromptModal from '@/components/InstallPromptModal';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [currentStaff, setCurrentStaff] = useState<Staff | null>(null);
   const [checking, setChecking] = useState(true);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   // 세션 확인
   useEffect(() => {
@@ -108,6 +111,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             )}
 
+            <button
+              type="button"
+              onClick={() => setIsInstallModalOpen(true)}
+              title="관리자 스마트폰/태블릿/PC 바탕화면에 바로가기 앱 아이콘 추가"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-bold hover:brightness-110 transition-all shadow-xs"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">바탕화면 바로가기</span>
+              <span className="sm:hidden">앱 추가</span>
+            </button>
+
             <Link
               href="/"
               target="_blank"
@@ -131,31 +145,50 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* 탭 네비게이션 바 */}
         <div className="bg-stone-950/80 border-t border-stone-800/80 px-4 overflow-x-auto no-scrollbar">
-          <div className="max-w-7xl mx-auto flex items-center gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${
-                    isActive
-                      ? 'border-amber-500 text-amber-400 bg-stone-900/50'
-                      : 'border-transparent text-stone-400 hover:text-stone-200'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${
+                      isActive
+                        ? 'border-amber-500 text-amber-400 bg-stone-900/50'
+                        : 'border-transparent text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* 모바일 탭 바 우측 바로가기 유도 버튼 */}
+            <button
+              type="button"
+              onClick={() => setIsInstallModalOpen(true)}
+              className="sm:hidden flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 shrink-0"
+              title="바탕화면 바로가기 추가"
+            >
+              <Smartphone className="w-3 h-3" />
+              <span>바로가기</span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* 관리자 메인 컨텐츠 영역 */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">{children}</main>
+
+      {/* 바탕화면 바로가기 (PWA 설치 가이드) 모달 */}
+      <InstallPromptModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+      />
     </div>
   );
 }
