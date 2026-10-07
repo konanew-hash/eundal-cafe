@@ -76,6 +76,9 @@ export interface MenuItem {
   is_active: boolean;
   packaging_type?: 'box' | 'special' | null; // 맞춤 세트메뉴용 구분 ('box': 포장용기, 'special': 특수포장, null: 일반메뉴)
   is_available_for_set?: boolean; // 맞춤 세트메뉴 세트에 담을 품목 포함 여부 (기본 true)
+  is_set_only?: boolean; // 일반 메뉴 비노출, 맞춤세트 전용 노출 (1/2 샌드위치 등)
+  is_even_only?: boolean; // 짝수개(2, 4, 6...)만 선택 가능 (1/2 샌드위치 등)
+  max_items_count?: number | null; // 포장용기(box)에 담을 수 있는 최대 품목 가지수
 }
 
 export type Menu = MenuItem;

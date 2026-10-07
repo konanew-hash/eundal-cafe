@@ -159,13 +159,22 @@ export default function HomePage() {
     });
   };
 
-  // 장바구니 수량 변경 (+/-)
-  const handleUpdateQuantity = (menuId: string, delta: number) => {
+  // 장바구니 수량 변경 (+/- 또는 직접 입력)
+  const handleUpdateQuantity = (menuId: string, delta: number, exactQty?: number) => {
     setCart((prev) => {
       return prev
         .map((item) => {
           if (item.menu.id === menuId) {
-            const nextQty = item.quantity + delta;
+            let nextQty = exactQty !== undefined ? exactQty : item.quantity + delta;
+            const hasHalfSandwich = item.set_details?.components.some((c) =>
+              c.menu_name.includes('(1/2개)')
+            );
+            if (hasHalfSandwich && nextQty > 0) {
+              if (delta !== 0 && nextQty % 2 !== 0) {
+                nextQty += 1;
+              }
+              if (nextQty < 2) nextQty = 2;
+            }
             return nextQty > 0 ? { ...item, quantity: nextQty } : null;
           }
           return item;
@@ -198,10 +207,14 @@ export default function HomePage() {
     setCart([]);
   };
 
-  // 일반 메뉴 목록 (포장용기 및 특수포장 품목은 단품 구매 일반 목록에서 제외)
+  // 일반 메뉴 목록 (포장용기, 특수포장 품목 및 맞춤세트 전용 1/2 샌드위치는 일반 목록에서 제외)
   const regularMenus = useMemo(() => {
     return menus.filter(
-      (m) => !m.packaging_type && m.category_id !== '77777777-7777-7777-7777-777777777777'
+      (m) =>
+        !m.packaging_type &&
+        !m.is_set_only &&
+        !m.name.includes('(1/2개)') &&
+        m.category_id !== '77777777-7777-7777-7777-777777777777'
     );
   }, [menus]);
 

@@ -25,7 +25,7 @@ interface CartDrawerProps {
   onClose: () => void;
   cart: CartItem[];
   menus?: MenuItem[];
-  onUpdateQuantity: (menuId: string, delta: number) => void;
+  onUpdateQuantity: (menuId: string, delta: number, exactQty?: number) => void;
   onRemoveItem: (menuId: string) => void;
   onClearCart: () => void;
   deliveryPolicy: DeliveryPolicy | null;
@@ -331,6 +331,12 @@ export default function CartDrawer({
 
                 {cart.map((item) => {
                   const isSet = item.is_custom_set && item.set_details;
+                  const isHalfSandwichSet = Boolean(
+                    isSet && item.set_details?.components.some((c) => c.menu_name.includes('(1/2개)'))
+                  );
+                  const step = isHalfSandwichSet ? 2 : 1;
+                  const minQty = isHalfSandwichSet ? 2 : 1;
+
                   return (
                     <div
                       key={item.id || item.menu.id}
@@ -343,10 +349,17 @@ export default function CartDrawer({
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           {isSet && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-md mb-1 border border-amber-300/70">
-                              <Gift className="w-2.5 h-2.5 text-amber-700" />
-                              맞춤 세트메뉴
-                            </span>
+                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-300/70">
+                                <Gift className="w-2.5 h-2.5 text-amber-700" />
+                                맞춤 세트메뉴
+                              </span>
+                              {isHalfSandwichSet && (
+                                <span className="text-[10px] font-bold text-orange-800 bg-orange-100 border border-orange-300 px-1.5 py-0.5 rounded-md">
+                                  🥪 짝수(2개 단위) 세트
+                                </span>
+                              )}
+                            </div>
                           )}
                           <h4 className="font-bold text-stone-900 text-xs sm:text-sm line-clamp-1">
                             {item.menu.name}
@@ -367,17 +380,52 @@ export default function CartDrawer({
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="flex items-center bg-white border border-stone-300 rounded-full px-1.5 py-0.5 shadow-2xs">
                             <button
-                              onClick={() => onUpdateQuantity(item.menu.id, -1)}
+                              onClick={() => {
+                                if (item.quantity <= minQty) {
+                                  if (confirm('이 메뉴를 장바구니에서 삭제하시겠습니까?')) {
+                                    onRemoveItem(item.menu.id);
+                                  }
+                                } else {
+                                  onUpdateQuantity(item.menu.id, -step);
+                                }
+                              }}
                               className="w-6 h-6 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900"
+                              title={isHalfSandwichSet ? '2세트 줄이기' : '1개 줄이기'}
                             >
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="w-6 text-center text-xs font-bold text-stone-900">
-                              {item.quantity}
-                            </span>
+                            <input
+                              type="number"
+                              min={minQty}
+                              step={step}
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                if (!isNaN(val)) {
+                                  onUpdateQuantity(item.menu.id, 0, Math.max(0, val));
+                                }
+                              }}
+                              onBlur={() => {
+                                if (isHalfSandwichSet) {
+                                  let finalVal = item.quantity;
+                                  if (finalVal < 2) finalVal = 2;
+                                  else if (finalVal % 2 !== 0) {
+                                    finalVal += 1;
+                                  }
+                                  if (finalVal !== item.quantity) {
+                                    onUpdateQuantity(item.menu.id, 0, finalVal);
+                                  }
+                                } else if (item.quantity <= 0) {
+                                  onRemoveItem(item.menu.id);
+                                }
+                              }}
+                              className="w-8 text-center text-xs font-bold text-stone-900 bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded py-0"
+                              title="클릭하여 수량 직접 입력"
+                            />
                             <button
-                              onClick={() => onUpdateQuantity(item.menu.id, 1)}
+                              onClick={() => onUpdateQuantity(item.menu.id, step)}
                               className="w-6 h-6 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900"
+                              title={isHalfSandwichSet ? '2세트 늘리기' : '1개 늘리기'}
                             >
                               <Plus className="w-3 h-3" />
                             </button>

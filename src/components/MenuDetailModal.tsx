@@ -368,9 +368,21 @@ export default function MenuDetailModal({
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="w-8 text-center font-bold text-stone-900 text-sm font-mono">
-                    {qty}
-                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="999"
+                    value={qty === 0 ? '' : qty}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                      setQty(isNaN(val) ? 1 : Math.max(0, Math.min(999, val)));
+                    }}
+                    onBlur={() => {
+                      if (qty <= 0) setQty(1);
+                    }}
+                    className="w-12 text-center font-bold text-stone-900 text-sm font-mono bg-white rounded-xl border border-stone-300 py-1 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+                    title="클릭하여 수량을 직접 숫자로 입력할 수 있습니다"
+                  />
                   <button
                     type="button"
                     onClick={handlePlus}

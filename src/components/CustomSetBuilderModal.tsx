@@ -15,6 +15,8 @@ import {
   Square,
   ShieldCheck,
   HelpCircle,
+  Coffee,
+  AlertCircle,
 } from 'lucide-react';
 import { MenuItem, Category, CartItem, CustomSetDetails, SetComponentItem } from '@/lib/types';
 
@@ -26,12 +28,12 @@ interface CustomSetBuilderModalProps {
   onAddSetToCart: (cartItem: CartItem) => void;
 }
 
-// 1. 포장용기 옵션
+// 1. 포장용기 옵션 기본 Fallback
 const PACKAGE_BOX_OPTIONS = [
-  { id: 'box_craft', name: '은달 시그니처 크라프트 선물박스', price: 1500, desc: '고급 크라프트 재질의 은달 전용 선물 상자' },
-  { id: 'box_clear', name: '투명 손잡이 선물팩', price: 1000, desc: '디저트와 음료가 돋보이는 모던 투명 패키지' },
-  { id: 'box_premium', name: '프리미엄 기프트 하드케이스', price: 3000, desc: '격식 있는 자리에 어울리는 단단한 선물용 하드케이스' },
-  { id: 'box_carrier', name: '일반 테이크아웃 캐리어 & 백', price: 0, desc: '기본 음료 캐리어 및 종이봉투 포장' },
+  { id: 'box_craft', name: '은달 시그니처 크라프트 선물박스', price: 1500, desc: '고급 크라프트 재질의 은달 전용 선물 상자', max_items_count: 3 },
+  { id: 'box_clear', name: '투명 손잡이 선물팩', price: 1000, desc: '디저트와 음료가 돋보이는 모던 투명 패키지', max_items_count: 2 },
+  { id: 'box_premium', name: '프리미엄 기프트 하드케이스', price: 3000, desc: '격식 있는 자리에 어울리는 단단한 선물용 하드케이스', max_items_count: 4 },
+  { id: 'box_carrier', name: '일반 테이크아웃 캐리어 & 백', price: 0, desc: '기본 음료 캐리어 및 종이봉투 포장', max_items_count: 2 },
 ];
 
 // 2. 특수 포장 옵션 (캔시머, 리본 등)
@@ -51,11 +53,31 @@ export default function CustomSetBuilderModal({
   const [setName, setSetName] = useState('은달 맞춤 선물세트');
   const [selectedComponents, setSelectedComponents] = useState<Record<string, number>>({});
   const [selectedBoxId, setSelectedBoxId] = useState<string>('');
+  // 요구사항 버그 해결: 캔시머 등 특수 포장 옵션은 사용자가 원할 때만 선택하도록 기본값 빈 배열로 설정하고 강제 자동선택 완전 제거!
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [setQuantity, setSetQuantity] = useState<number>(1);
   const [selectedCatId, setSelectedCatId] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [addedEffect, setAddedEffect] = useState(false);
+
+  // 음료 카테고리/품목 판별 헬퍼
+  const isBeverage = (menu: MenuItem) => {
+    const cat = categories.find((c) => c.id === menu.category_id);
+    const catName = cat?.name || '';
+    return (
+      catName.includes('커피') ||
+      catName.includes('음료') ||
+      catName.includes('티') ||
+      catName.includes('에이드') ||
+      catName.includes('시그니처') ||
+      menu.name.includes('아메리카노') ||
+      menu.name.includes('라떼') ||
+      menu.name.includes('스무디') ||
+      menu.name.includes('티') ||
+      menu.name.includes('에이드') ||
+      menu.name.includes('밀크티')
+    );
+  };
 
   // 1. 관리자 등록 포장용기 목록 (DB 메뉴 중 packaging_type === 'box' 또는 기본 fallback)
   const boxOptions = useMemo(() => {
@@ -66,6 +88,7 @@ export default function CustomSetBuilderModal({
         name: b.name,
         price: b.price,
         desc: b.description || '은달 전용 선물 포장용기',
+        max_items_count: b.max_items_count ?? (b.name.includes('하드케이스') ? 4 : b.name.includes('크라프트') ? 3 : 2),
       }));
     }
     return PACKAGE_BOX_OPTIONS;
@@ -85,25 +108,64 @@ export default function CustomSetBuilderModal({
     return SPECIAL_OPTIONS;
   }, [menus]);
 
-  // 초기 포장용기 및 캔시머 옵션 기본 선택 설정
+  // 초기 포장용기 기본 선택 설정
   useEffect(() => {
     if (boxOptions.length > 0 && (!selectedBoxId || !boxOptions.some((b) => b.id === selectedBoxId))) {
       setSelectedBoxId(boxOptions[0].id);
     }
   }, [boxOptions, selectedBoxId]);
 
+  // 선택된 포장용기
+  const selectedBox = useMemo(() => {
+    return boxOptions.find((b) => b.id === selectedBoxId) || boxOptions[0] || { id: 'default', name: '기본 포장', price: 0, desc: '', max_items_count: 3 };
+  }, [boxOptions, selectedBoxId]);
+
+  // 구성된 품목 중에 1/2 샌드위치가 포함되어 있는지 여부
+  const hasHalfSandwich = useMemo(() => {
+    return Object.entries(selectedComponents).some(([menuId, qty]) => {
+      if (qty <= 0) return false;
+      const item = menus.find((m) => m.id === menuId);
+      return item && (item.is_set_only || item.is_even_only || item.name.includes('(1/2개)'));
+    });
+  }, [selectedComponents, menus]);
+
+  // 요구사항: 1/2 샌드위치가 포함된 경우 세트 주문 수량을 짝수로 보정
   useEffect(() => {
-    // 기본으로 캔시머 옵션이 존재하면 선택
-    if (selectedOptionIds.length === 0 && specialOptions.length > 0) {
-      const canOpt = specialOptions.find((o) => o.name.includes('캔시머') || o.id === 'opt_can');
-      if (canOpt) {
-        setSelectedOptionIds([canOpt.id]);
+    if (hasHalfSandwich && setQuantity % 2 !== 0) {
+      setSetQuantity((prev) => Math.max(2, Math.ceil(prev / 2) * 2));
+    }
+  }, [hasHalfSandwich, setQuantity]);
+
+  // 품목 수량 조절 (+/-)
+  const handleUpdateComponentQty = (menuId: string, delta: number) => {
+    const targetMenu = menus.find((m) => m.id === menuId);
+    if (!targetMenu) return;
+
+    // 1. 음료 제한 검사: 한 세트당 음료는 최대 1개만 선택 가능
+    if (delta > 0 && isBeverage(targetMenu)) {
+      const currentBevEntries = Object.entries(selectedComponents).filter(([id, qty]) => {
+        if (qty <= 0) return false;
+        const m = menus.find((item) => item.id === id);
+        return m && isBeverage(m);
+      });
+      const totalBevCount = currentBevEntries.reduce((sum, [, qty]) => sum + qty, 0);
+
+      if (totalBevCount >= 1) {
+        alert('⚠️ 한 세트당 음료는 최대 1개만 선택하실 수 있습니다.\n(다른 음료로 변경하시려면 담긴 음료를 먼저 빼주세요.)');
+        return;
       }
     }
-  }, [specialOptions, selectedOptionIds.length]);
 
-  // 품목 수량 조절
-  const handleUpdateComponentQty = (menuId: string, delta: number) => {
+    // 2. 포장용기 담을 수 있는 가지수 제한 검사
+    if (delta > 0 && (!selectedComponents[menuId] || selectedComponents[menuId] <= 0)) {
+      const currentKindsCount = Object.keys(selectedComponents).filter((id) => selectedComponents[id] > 0).length;
+      const maxKinds = selectedBox.max_items_count || 3;
+      if (currentKindsCount >= maxKinds) {
+        alert(`⚠️ 선택하신 포장용기 [${selectedBox.name}]에는 최대 ${maxKinds}가지 품목까지만 담을 수 있습니다.\n(다른 품목을 담으시려면 기존 품목을 먼저 빼주세요.)`);
+        return;
+      }
+    }
+
     setSelectedComponents((prev) => {
       const next = { ...prev };
       const current = next[menuId] || 0;
@@ -117,6 +179,42 @@ export default function CustomSetBuilderModal({
     });
   };
 
+  // 품목 수량 직접 입력 처리
+  const handleDirectSetComponentQty = (menuId: string, val: number) => {
+    const targetMenu = menus.find((m) => m.id === menuId);
+    if (!targetMenu) return;
+
+    if (isNaN(val) || val <= 0) {
+      setSelectedComponents((prev) => {
+        const next = { ...prev };
+        delete next[menuId];
+        return next;
+      });
+      return;
+    }
+
+    // 음료인 경우 최대 1개 제한
+    if (isBeverage(targetMenu) && val > 1) {
+      alert('⚠️ 한 세트당 음료는 최대 1개만 선택 가능합니다.');
+      val = 1;
+    }
+
+    // 신규 가지수 초과 검사
+    if (!selectedComponents[menuId] || selectedComponents[menuId] <= 0) {
+      const currentKindsCount = Object.keys(selectedComponents).filter((id) => selectedComponents[id] > 0).length;
+      const maxKinds = selectedBox.max_items_count || 3;
+      if (currentKindsCount >= maxKinds) {
+        alert(`⚠️ 선택하신 포장용기 [${selectedBox.name}]에는 최대 ${maxKinds}가지 품목까지만 담을 수 있습니다.`);
+        return;
+      }
+    }
+
+    setSelectedComponents((prev) => ({
+      ...prev,
+      [menuId]: val,
+    }));
+  };
+
   // 특수 옵션 토글
   const handleToggleOption = (optId: string) => {
     setSelectedOptionIds((prev) =>
@@ -124,13 +222,11 @@ export default function CustomSetBuilderModal({
     );
   };
 
-  // 필터링된 메뉴 목록 (요구사항: 포장용기/특수포장 제외 및 관리자 설정 세트 품목 허용 여부(is_available_for_set) 반영)
+  // 필터링된 메뉴 목록 (포장용기/특수포장 제외, 세트 허용 품목 + 1/2 샌드위치 포함)
   const filteredMenus = useMemo(() => {
     return menus.filter((m) => {
       if (m.is_sold_out) return false;
-      // 포장용기 및 특수포장 품목 제외
       if (m.packaging_type === 'box' || m.packaging_type === 'special') return false;
-      // 관리자 설정에서 세트 구성품 담기 제외된 항목 필터링
       if (m.is_available_for_set === false) return false;
       if (m.category_id === '77777777-7777-7777-7777-777777777777') return false;
       if (selectedCatId !== 'all' && m.category_id !== selectedCatId) return false;
@@ -161,11 +257,6 @@ export default function CustomSetBuilderModal({
     return componentsList.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [componentsList]);
 
-  // 선택된 포장용기
-  const selectedBox = useMemo(() => {
-    return boxOptions.find((b) => b.id === selectedBoxId) || boxOptions[0] || { id: 'default', name: '기본 포장', price: 0, desc: '' };
-  }, [boxOptions, selectedBoxId]);
-
   // 선택된 옵션들
   const selectedOptions = useMemo(() => {
     return specialOptions.filter((o) => selectedOptionIds.includes(o.id));
@@ -182,12 +273,48 @@ export default function CustomSetBuilderModal({
 
   const totalItemsCount = componentsList.reduce((sum, i) => sum + i.quantity, 0);
 
+  // 세트 수량 변경 핸들러 (1/2 샌드위치가 있으면 짝수 2씩 증감)
+  const handleUpdateSetQty = (delta: number) => {
+    if (hasHalfSandwich) {
+      const step = 2;
+      const next = setQuantity + delta * step;
+      setSetQuantity(Math.max(2, next));
+    } else {
+      setSetQuantity((prev) => Math.max(1, prev + delta));
+    }
+  };
+
+  // 세트 수량 직접 입력 핸들러
+  const handleDirectSetQuantity = (val: number) => {
+    if (isNaN(val) || val <= 0) {
+      setSetQuantity(hasHalfSandwich ? 2 : 1);
+      return;
+    }
+    if (hasHalfSandwich) {
+      if (val % 2 !== 0) {
+        const adjusted = Math.max(2, Math.ceil(val / 2) * 2);
+        alert(`🥪 1/2 샌드위치가 포함된 세트메뉴는 온전한 빵 제조를 위해 짝수 수량(2, 4, 6...세트) 단위로 주문 가능합니다.\n(${adjusted}세트로 자동 보정됩니다.)`);
+        setSetQuantity(adjusted);
+      } else {
+        setSetQuantity(Math.max(2, val));
+      }
+    } else {
+      setSetQuantity(Math.max(1, val));
+    }
+  };
+
   if (!isOpen) return null;
 
   // 장바구니에 세트메뉴 담기
   const handleAddToCart = () => {
     if (componentsList.length === 0) {
       alert('세트메뉴에 포함할 품목을 최소 1개 이상 담아주세요.');
+      return;
+    }
+
+    if (hasHalfSandwich && setQuantity % 2 !== 0) {
+      alert('🥪 1/2 샌드위치가 포함된 세트메뉴는 짝수 세트(2개, 4개, 6개...) 단위로만 주문하실 수 있습니다.');
+      setSetQuantity((prev) => Math.max(2, Math.ceil(prev / 2) * 2));
       return;
     }
 
@@ -253,7 +380,7 @@ export default function CustomSetBuilderModal({
             <div>
               <h3 className="font-bold text-base sm:text-lg">은달 맞춤 세트메뉴 만들기</h3>
               <p className="text-[11px] text-amber-200/90">
-                원하는 음료·디저트를 자유롭게 담고, 포장용기와 캔시머 등 옵션을 지정하여 나만의 세트를 구성합니다.
+                원하는 음료·디저트를 자유롭게 담고, 포장용기와 옵션을 지정하여 나만의 세트를 구성합니다.
               </p>
             </div>
           </div>
@@ -268,31 +395,68 @@ export default function CustomSetBuilderModal({
 
         {/* 본문 스크롤 영역 */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1 text-xs">
-          {/* 세트 이름 지정 */}
-          <div className="p-3.5 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-1.5">
-            <label className="block text-xs font-bold text-amber-950">
-              세트메뉴 이름 지정
-            </label>
-            <input
-              type="text"
-              value={setName}
-              onChange={(e) => setSetName(e.target.value)}
-              placeholder="예: 승진 축하 다과세트, VIP 티타임 선물세트 등"
-              className="w-full p-2.5 bg-white border border-amber-300 rounded-xl font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
+          {/* 요구사항: 세트메뉴 이름 지정 개선 (수정이 가능하다는 안내 및 자율 입력 지원) */}
+          <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                <span>✏️ 세트메뉴 이름 지정</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-amber-200/80 text-amber-900 rounded font-bold">
+                  자유롭게 수정 가능
+                </span>
+              </label>
+              <span className="text-[11px] text-amber-800 hidden sm:inline">
+                견적서 및 주문서에 표기될 명칭입니다
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={setName}
+                onChange={(e) => setSetName(e.target.value)}
+                placeholder="예: VIP 간담회 샌드위치 세트, 선생님 감사 선물세트 등"
+                className="w-full pl-3.5 pr-16 py-2.5 bg-white border border-amber-300 rounded-xl font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs text-xs sm:text-sm"
+              />
+              {setName && (
+                <button
+                  type="button"
+                  onClick={() => setSetName('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-stone-400 hover:text-stone-700 bg-stone-100 hover:bg-stone-200 px-2 py-1 rounded-md"
+                >
+                  지우기
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-stone-500">
+              * 기본 이름 대신 행사명이나 용도에 맞게 원하는 이름으로 자유롭게 입력하실 수 있습니다.
+            </p>
           </div>
 
-          {/* 1단계: 세트에 포함할 품목 담기 */}
+          {/* 1단계: 세트에 포함할 품목 담기 (음료 1개 제한 및 가지수 제한 안내) */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <div className="flex items-center gap-1.5 font-bold text-stone-900 text-sm">
                 <span className="w-5 h-5 rounded-full bg-amber-700 text-white text-[11px] flex items-center justify-center font-bold">
                   1
                 </span>
-                <span>세트에 담을 품목 선택 (다수 선택 가능)</span>
+                <span>세트에 담을 품목 선택</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200 font-normal">
+                  포장용기 한도: 최대 {selectedBox.max_items_count || 3}가지 품목
+                </span>
               </div>
               <span className="text-[11px] text-stone-500 font-medium">
-                담긴 품목: <strong className="text-amber-800">{totalItemsCount}개</strong> ({componentsTotal.toLocaleString()}원)
+                선택된 가지수: <strong className="text-amber-800">{componentsList.length}/{selectedBox.max_items_count || 3}가지</strong> (총 {totalItemsCount}개 / {componentsTotal.toLocaleString()}원)
+              </span>
+            </div>
+
+            {/* 안내 뱃지 바: 음료 1개 제한 & 1/2 샌드위치 안내 */}
+            <div className="flex items-center gap-2 flex-wrap text-[11px] text-stone-600 bg-stone-50 p-2 rounded-xl border border-stone-200">
+              <span className="inline-flex items-center gap-1 text-amber-900 font-semibold">
+                <Coffee className="w-3 h-3 text-amber-700" />
+                음료는 한 세트당 최대 1개만 선택 가능
+              </span>
+              <span className="text-stone-300">|</span>
+              <span className="inline-flex items-center gap-1 text-stone-700">
+                🥪 1/2 샌드위치 포함 시 세트 주문 수량은 짝수개(2, 4, 6...)로 제한
               </span>
             </div>
 
@@ -344,6 +508,9 @@ export default function CustomSetBuilderModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 bg-stone-50 rounded-2xl border border-stone-200">
               {filteredMenus.map((menu) => {
                 const count = selectedComponents[menu.id] || 0;
+                const isHalf = menu.is_set_only || menu.is_even_only || menu.name.includes('(1/2개)');
+                const isBev = isBeverage(menu);
+
                 return (
                   <div
                     key={menu.id}
@@ -360,15 +527,27 @@ export default function CustomSetBuilderModal({
                         className="w-10 h-10 rounded-lg object-cover bg-stone-100 shrink-0"
                       />
                       <div className="min-w-0">
-                        <h4 className="font-bold text-stone-900 text-xs truncate">{menu.name}</h4>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <h4 className="font-bold text-stone-900 text-xs truncate">{menu.name}</h4>
+                          {isHalf && (
+                            <span className="px-1 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[9px] shrink-0">
+                              1/2 하프
+                            </span>
+                          )}
+                          {isBev && (
+                            <span className="px-1 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[9px] shrink-0">
+                              음료(1개한도)
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] font-bold text-amber-900">
                           {menu.price.toLocaleString()}원
                         </p>
                       </div>
                     </div>
 
-                    {/* 수량 컨트롤러 */}
-                    <div className="flex items-center gap-1.5 bg-white border border-stone-300 rounded-lg px-1.5 py-0.5 shrink-0 shadow-2xs">
+                    {/* 수량 컨트롤러 (요구사항: +,-버튼은 1씩, 숫자를 클릭시 직접 수량 기입 가능) */}
+                    <div className="flex items-center gap-1 bg-white border border-stone-300 rounded-lg px-1 py-0.5 shrink-0 shadow-2xs">
                       {count > 0 && (
                         <button
                           type="button"
@@ -378,9 +557,21 @@ export default function CustomSetBuilderModal({
                           <Minus className="w-3 h-3" />
                         </button>
                       )}
-                      <span className={`w-4 text-center font-bold text-[11px] ${count > 0 ? 'text-amber-900' : 'text-stone-400'}`}>
-                        {count}
-                      </span>
+
+                      {/* 수량 직접 입력 지원 인풋 */}
+                      <input
+                        type="number"
+                        min="0"
+                        max="999"
+                        value={count === 0 ? '' : count}
+                        placeholder="0"
+                        onChange={(e) => handleDirectSetComponentQty(menu.id, parseInt(e.target.value, 10))}
+                        className={`w-7 text-center font-bold text-xs bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded p-0 ${
+                          count > 0 ? 'text-amber-900 font-black' : 'text-stone-400'
+                        }`}
+                        title="클릭하여 수량을 직접 숫자로 입력할 수 있습니다"
+                      />
+
                       <button
                         type="button"
                         onClick={() => handleUpdateComponentQty(menu.id, 1)}
@@ -395,13 +586,18 @@ export default function CustomSetBuilderModal({
             </div>
           </div>
 
-          {/* 2단계: 포장용기 선택 */}
+          {/* 2단계: 포장용기 선택 (요구사항: 포장용기별 담을 수 있는 가지수 표기) */}
           <div className="space-y-2.5">
-            <div className="flex items-center gap-1.5 font-bold text-stone-900 text-sm">
-              <span className="w-5 h-5 rounded-full bg-amber-700 text-white text-[11px] flex items-center justify-center font-bold">
-                2
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-bold text-stone-900 text-sm">
+                <span className="w-5 h-5 rounded-full bg-amber-700 text-white text-[11px] flex items-center justify-center font-bold">
+                  2
+                </span>
+                <span>포장용기 선택 (필수 1종)</span>
+              </div>
+              <span className="text-[11px] text-amber-800 font-semibold">
+                선택 용기 수용 한도: 최대 {selectedBox.max_items_count || 3}가지 품목
               </span>
-              <span>포장용기 선택 (필수 1종)</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -425,13 +621,18 @@ export default function CustomSetBuilderModal({
                       className="text-amber-600 focus:ring-amber-500 h-4 w-4 mt-0.5"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
                         <span className="font-bold text-stone-900 text-xs">{box.name}</span>
                         <span className="font-bold text-amber-900 text-[11px]">
                           {box.price === 0 ? '무료' : `+${box.price.toLocaleString()}원`}
                         </span>
                       </div>
                       <p className="text-[10px] text-stone-500 mt-0.5">{box.desc}</p>
+                      <div className="mt-1">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
+                          최대 {box.max_items_count || 3}가지 품목 담기 가능
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -439,13 +640,18 @@ export default function CustomSetBuilderModal({
             </div>
           </div>
 
-          {/* 3단계: 특수 옵션 선택 (캔시머, 리본 선물포장 등) */}
+          {/* 3단계: 특수 옵션 선택 (요구사항 버그 수정: 1개가 선택 안 되어도 캔시머 강제 선택되지 않고 완전 자유 선택!) */}
           <div className="space-y-2.5">
-            <div className="flex items-center gap-1.5 font-bold text-stone-900 text-sm">
-              <span className="w-5 h-5 rounded-full bg-amber-700 text-white text-[11px] flex items-center justify-center font-bold">
-                3
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-bold text-stone-900 text-sm">
+                <span className="w-5 h-5 rounded-full bg-amber-700 text-white text-[11px] flex items-center justify-center font-bold">
+                  3
+                </span>
+                <span>특수 포장 & 선물 옵션 (선택 안 해도 됨 / 자유 선택)</span>
+              </div>
+              <span className="text-[11px] text-stone-400">
+                {selectedOptionIds.length}개 선택됨
               </span>
-              <span>특수 포장 & 선물 옵션 (선택 가능)</span>
             </div>
 
             <div className="space-y-1.5">
@@ -463,9 +669,9 @@ export default function CustomSetBuilderModal({
                   >
                     <div className="flex items-center gap-2">
                       {isChecked ? (
-                        <CheckSquare className="w-4 h-4 text-amber-700" />
+                        <CheckSquare className="w-4 h-4 text-amber-700 shrink-0" />
                       ) : (
-                        <Square className="w-4 h-4 text-stone-400" />
+                        <Square className="w-4 h-4 text-stone-400 shrink-0" />
                       )}
                       <div>
                         <span className="font-bold text-stone-900 text-xs">{opt.name}</span>
@@ -483,99 +689,98 @@ export default function CustomSetBuilderModal({
 
           {/* 4단계: 세트 주문 수량 및 요약 카드 */}
           <div className="p-4 bg-stone-900 text-white rounded-2xl space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-stone-800">
-              <span className="text-stone-300 font-medium">세트 주문 수량</span>
-              <div className="flex items-center gap-2 bg-stone-800 p-1 rounded-xl">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-800 flex-wrap gap-2">
+              <div>
+                <span className="text-stone-300 font-medium block">세트 주문 수량</span>
+                {hasHalfSandwich && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold mt-0.5">
+                    🥪 1/2 샌드위치 포함: 짝수(2, 4, 6...) 세트 단위 주문
+                  </span>
+                )}
+              </div>
+
+              {/* 세트 수량 컨트롤러 (+,-버튼 1 또는 2씩, 숫자 직접 기입 가능) */}
+              <div className="flex items-center gap-2 bg-stone-800 p-1.5 rounded-xl border border-stone-700">
                 <button
                   type="button"
-                  onClick={() => setSetQuantity((prev) => Math.max(1, prev - 1))}
+                  onClick={() => handleUpdateSetQty(-1)}
                   className="w-7 h-7 rounded-lg bg-stone-700 hover:bg-stone-600 text-white flex items-center justify-center font-bold"
+                  title={hasHalfSandwich ? '2세트 감소' : '1세트 감소'}
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span className="w-8 text-center font-black text-sm font-mono text-amber-300">
-                  {setQuantity}
-                </span>
+
+                {/* 세트 수량 직접 입력 지원 */}
+                <input
+                  type="number"
+                  min={hasHalfSandwich ? 2 : 1}
+                  step={hasHalfSandwich ? 2 : 1}
+                  value={setQuantity}
+                  onChange={(e) => handleDirectSetQuantity(parseInt(e.target.value, 10))}
+                  className="w-12 text-center font-black text-sm font-mono text-amber-300 bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded p-0"
+                  title="클릭하여 세트 수량을 직접 숫자로 입력할 수 있습니다"
+                />
+
                 <button
                   type="button"
-                  onClick={() => setSetQuantity((prev) => prev + 1)}
+                  onClick={() => handleUpdateSetQty(1)}
                   className="w-7 h-7 rounded-lg bg-stone-700 hover:bg-stone-600 text-white flex items-center justify-center font-bold"
+                  title={hasHalfSandwich ? '2세트 증가' : '1세트 증가'}
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* 세부 항목 브레이크다운 */}
+            {/* 세트 구성 요약 */}
             <div className="space-y-1 text-[11px] text-stone-300">
               <div className="flex justify-between">
-                <span>포함 품목 합계 ({totalItemsCount}개):</span>
+                <span>포함 품목 ({componentsList.length}가지 / 총 {totalItemsCount}개):</span>
                 <span>{componentsTotal.toLocaleString()}원</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between text-stone-400">
                 <span>포장용기 ({selectedBox.name}):</span>
-                <span>+{selectedBox.price.toLocaleString()}원</span>
+                <span>{selectedBox.price.toLocaleString()}원</span>
               </div>
               {selectedOptions.length > 0 && (
-                <div className="flex justify-between">
-                  <span>추가 옵션 ({selectedOptions.map((o) => o.name.split(' ')[0]).join(', ')}):</span>
-                  <span>+{optionsTotal.toLocaleString()}원</span>
+                <div className="flex justify-between text-stone-400">
+                  <span>특수포장 옵션 ({selectedOptions.map((o) => o.name).join(', ')}):</span>
+                  <span>{optionsTotal.toLocaleString()}원</span>
                 </div>
               )}
-              <div className="flex justify-between text-stone-200 pt-1 border-t border-stone-800 font-bold">
-                <span>세트 1개 단가:</span>
-                <span className="text-amber-300">{unitSetPrice.toLocaleString()}원</span>
-              </div>
-            </div>
-
-            {/* 최종 통합 금액 */}
-            <div className="pt-2 border-t border-dashed border-stone-700 flex items-center justify-between">
-              <div>
-                <span className="text-xs text-stone-300">세트메뉴 통합 견적 합계</span>
-                <p className="text-[10px] text-stone-400">({setQuantity}세트 구성)</p>
-              </div>
-              <span className="text-xl font-black text-amber-400 font-mono">
-                {totalSetAmount.toLocaleString()}원
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 하단 담기 버튼 바 */}
-        <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="py-3 px-4 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold rounded-2xl text-xs transition-colors"
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            disabled={componentsList.length === 0}
-            className={`flex-1 py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 ${
-              componentsList.length === 0
-                ? 'bg-stone-300 text-stone-500 cursor-not-allowed'
-                : addedEffect
-                ? 'bg-emerald-600 text-white'
-                : 'bg-amber-700 hover:bg-amber-800 text-white'
-            }`}
-          >
-            {addedEffect ? (
-              <>
-                <Check className="w-4 h-4" />
-                <span>견적서에 반영되었습니다!</span>
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="w-4 h-4" />
-                <span>
-                  세트메뉴 견적서에 담기 ({totalSetAmount.toLocaleString()}원)
+              <div className="pt-2 border-t border-stone-800 flex justify-between items-baseline font-bold">
+                <span className="text-xs text-stone-200">
+                  세트 1개당 단가 {setQuantity > 1 && `(x ${setQuantity}세트)`}:
                 </span>
-              </>
-            )}
-          </button>
+                <span className="text-base text-amber-400 font-mono font-black">
+                  {totalSetAmount.toLocaleString()}원
+                </span>
+              </div>
+            </div>
+
+            {/* 담기 액션 버튼 */}
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={componentsList.length === 0}
+              className={`w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md ${
+                componentsList.length > 0
+                  ? addedEffect
+                    ? 'bg-emerald-600 text-white scale-98'
+                    : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 active:scale-98'
+                  : 'bg-stone-800 text-stone-500 cursor-not-allowed'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>
+                {componentsList.length === 0
+                  ? '세트에 담을 품목을 먼저 선택해주세요'
+                  : addedEffect
+                  ? '✓ 세트메뉴가 장바구니에 담겼습니다!'
+                  : `이 세트메뉴 장바구니에 담기 (${totalSetAmount.toLocaleString()}원)`}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

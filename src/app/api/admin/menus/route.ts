@@ -53,7 +53,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'create_menu') {
-      const { category_id, name, description, allergens, price, image_url, additional_images, video_urls, sort_order, packaging_type, is_available_for_set } = body;
+      const {
+        category_id,
+        name,
+        description,
+        allergens,
+        price,
+        image_url,
+        additional_images,
+        video_urls,
+        sort_order,
+        packaging_type,
+        is_available_for_set,
+        is_set_only,
+        is_even_only,
+        max_items_count,
+      } = body;
       if (!name || !category_id || price === undefined) {
         return NextResponse.json({ error: '카테고리, 메뉴명, 가격은 필수입니다.' }, { status: 400 });
       }
@@ -74,6 +89,9 @@ export async function POST(req: NextRequest) {
           is_active: true,
           packaging_type: packaging_type || null,
           is_available_for_set: is_available_for_set !== undefined ? is_available_for_set : true,
+          is_set_only: !!is_set_only,
+          is_even_only: !!is_even_only,
+          max_items_count: max_items_count ? parseInt(max_items_count, 10) : null,
         })
         .select('*')
         .single();
@@ -140,7 +158,25 @@ export async function PUT(req: NextRequest) {
     }
 
     if (action === 'update_menu') {
-      const { id, category_id, name, description, allergens, price, image_url, additional_images, video_urls, sort_order, is_sold_out, is_active, packaging_type, is_available_for_set } = body;
+      const {
+        id,
+        category_id,
+        name,
+        description,
+        allergens,
+        price,
+        image_url,
+        additional_images,
+        video_urls,
+        sort_order,
+        is_sold_out,
+        is_active,
+        packaging_type,
+        is_available_for_set,
+        is_set_only,
+        is_even_only,
+        max_items_count,
+      } = body;
       const { data, error } = await supabase
         .from('eundal_menus')
         .update({
@@ -157,6 +193,9 @@ export async function PUT(req: NextRequest) {
           is_active,
           packaging_type: packaging_type !== undefined ? packaging_type : null,
           is_available_for_set: is_available_for_set !== undefined ? is_available_for_set : true,
+          is_set_only: is_set_only !== undefined ? !!is_set_only : false,
+          is_even_only: is_even_only !== undefined ? !!is_even_only : false,
+          max_items_count: max_items_count !== undefined ? (max_items_count ? parseInt(max_items_count, 10) : null) : null,
         })
         .eq('id', id)
         .select('*')

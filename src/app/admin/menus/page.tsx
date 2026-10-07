@@ -42,6 +42,8 @@ export default function AdminMenusPage() {
     sort_order: number;
     packaging_type: 'box' | 'special' | null;
     is_available_for_set: boolean;
+    max_items_count: number;
+    is_set_only: boolean;
   }>({
     category_id: '',
     name: '',
@@ -54,6 +56,8 @@ export default function AdminMenusPage() {
     sort_order: 0,
     packaging_type: null,
     is_available_for_set: true,
+    max_items_count: 4,
+    is_set_only: false,
   });
 
   // 다중 이미지 및 비디오 추가 인풋 상태
@@ -167,6 +171,8 @@ export default function AdminMenusPage() {
         sort_order: menu.sort_order,
         packaging_type: menu.packaging_type || null,
         is_available_for_set: menu.is_available_for_set !== false,
+        max_items_count: menu.max_items_count || 4,
+        is_set_only: menu.is_set_only || false,
       });
     } else {
       setEditingMenu(null);
@@ -182,6 +188,8 @@ export default function AdminMenusPage() {
         sort_order: (menus.length + 1),
         packaging_type: null,
         is_available_for_set: true,
+        max_items_count: 4,
+        is_set_only: false,
       });
     }
     setIsMenuModalOpen(true);
@@ -478,9 +486,14 @@ export default function AdminMenusPage() {
                           {catName}
                         </span>
                         {menu.packaging_type === 'box' && (
-                          <span className="text-[10px] font-bold text-white bg-amber-800 px-2 py-0.5 rounded-full inline-block">
-                            📦 포장용기
-                          </span>
+                          <>
+                            <span className="text-[10px] font-bold text-white bg-amber-800 px-2 py-0.5 rounded-full inline-block">
+                              📦 포장용기
+                            </span>
+                            <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full inline-block">
+                              최대 {menu.max_items_count || 4}가지
+                            </span>
+                          </>
                         )}
                         {menu.packaging_type === 'special' && (
                           <span className="text-[10px] font-bold text-white bg-purple-800 px-2 py-0.5 rounded-full inline-block">
@@ -488,15 +501,22 @@ export default function AdminMenusPage() {
                           </span>
                         )}
                         {!menu.packaging_type && (
-                          menu.is_available_for_set !== false ? (
-                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-block">
-                              🎁 맞춤세트 포함
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full inline-block">
-                              ⛔ 세트제외
-                            </span>
-                          )
+                          <>
+                            {menu.is_set_only && (
+                              <span className="text-[10px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full inline-block">
+                                🥪 맞춤세트 전용
+                              </span>
+                            )}
+                            {menu.is_available_for_set !== false ? (
+                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-block">
+                                🎁 세트포함
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full inline-block">
+                                ⛔ 세트제외
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                       <h4 className="font-bold text-stone-900 text-sm line-clamp-1">{menu.name}</h4>
@@ -714,27 +734,78 @@ export default function AdminMenusPage() {
                   * 포장용기(박스)나 특수포장으로 지정된 품목은 맞춤형 세트메뉴 빌더의 포장용기/특수옵션 선택지에 자동 연동되며, 세트 내 구성품 담기 목록에서는 제외됩니다.
                 </p>
 
-                {/* 일반 식음료 메뉴일 경우 맞춤 세트메뉴 1단계(담을 품목) 포함 여부 설정 */}
-                {!menuForm.packaging_type && (
-                  <div className="mt-2.5 p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={menuForm.is_available_for_set}
-                        onChange={(e) =>
-                          setMenuForm({ ...menuForm, is_available_for_set: e.target.checked })
-                        }
-                        className="mt-0.5 w-4 h-4 text-amber-600 rounded border-stone-300 focus:ring-amber-500"
-                      />
-                      <div>
-                        <span className="text-xs font-bold text-stone-900">
-                          은달 맞춤 세트메뉴 1단계(세트 담을 품목) 목록에 포함
-                        </span>
-                        <p className="text-[11px] text-stone-600 mt-0.5 leading-snug">
-                          체크 해제 시 고객이 홈페이지에서 맞춤 세트메뉴를 구성할 때 담을 품목 목록에서 제외됩니다.
-                        </p>
-                      </div>
+                {/* 포장용기(박스)일 경우 최대 담을 수 있는 가지수 설정 */}
+                {menuForm.packaging_type === 'box' && (
+                  <div className="mt-2.5 p-3 bg-amber-50/90 border border-amber-300 rounded-xl space-y-1.5">
+                    <label className="block text-xs font-bold text-amber-950">
+                      📦 포장용기에 담을 수 있는 최대 품목 가지수 설정
                     </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={menuForm.max_items_count || 4}
+                        onChange={(e) =>
+                          setMenuForm({
+                            ...menuForm,
+                            max_items_count: Math.max(1, parseInt(e.target.value, 10) || 1),
+                          })
+                        }
+                        className="w-24 p-2 bg-white border border-stone-300 rounded-lg text-center font-bold text-sm"
+                      />
+                      <span className="text-xs text-stone-700 font-medium">가지 (예: 크라프트 3가지, 하드케이스 4가지)</span>
+                    </div>
+                    <p className="text-[11px] text-stone-500">
+                      * 고객이 맞춤 세트메뉴 구성 시, 이 포장용기를 선택하면 여기서 지정한 품목 가지수를 초과하여 담을 수 없습니다.
+                    </p>
+                  </div>
+                )}
+
+                {/* 일반 식음료 메뉴일 경우 맞춤 세트메뉴 포함 및 맞춤세트 전용 여부 설정 */}
+                {!menuForm.packaging_type && (
+                  <div className="mt-2.5 space-y-2">
+                    <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={menuForm.is_available_for_set}
+                          onChange={(e) =>
+                            setMenuForm({ ...menuForm, is_available_for_set: e.target.checked })
+                          }
+                          className="mt-0.5 w-4 h-4 text-amber-600 rounded border-stone-300 focus:ring-amber-500"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-stone-900">
+                            은달 맞춤 세트메뉴 1단계(세트 담을 품목) 목록에 포함
+                          </span>
+                          <p className="text-[11px] text-stone-600 mt-0.5 leading-snug">
+                            체크 해제 시 고객이 홈페이지에서 맞춤 세트메뉴를 구성할 때 담을 품목 목록에서 제외됩니다.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={menuForm.is_set_only}
+                          onChange={(e) =>
+                            setMenuForm({ ...menuForm, is_set_only: e.target.checked })
+                          }
+                          className="mt-0.5 w-4 h-4 text-stone-900 rounded border-stone-300 focus:ring-stone-500"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-stone-900">
+                            맞춤 세트메뉴 전용 (일반 홈페이지 메뉴 비노출)
+                          </span>
+                          <p className="text-[11px] text-stone-600 mt-0.5 leading-snug">
+                            체크 시 일반 홈페이지 메뉴판에는 비노출되며, 맞춤 세트메뉴 만들기에서만 선택 가능합니다 (예: 샌드위치 1/2개 품목 등).
+                          </p>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>

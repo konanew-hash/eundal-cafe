@@ -8,7 +8,7 @@ interface MenuCardProps {
   menu: MenuItem;
   inCartCount: number;
   onAddToCart: (menu: MenuItem) => void;
-  onUpdateQuantity?: (menuId: string, delta: number) => void;
+  onUpdateQuantity?: (menuId: string, delta: number, exactQty?: number) => void;
   onOpenDetail?: (menu: MenuItem) => void;
 }
 
@@ -116,9 +116,22 @@ export default function MenuCard({
               >
                 <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
               </button>
-              <span className="w-6 text-center text-xs font-black text-amber-900 select-none">
-                {inCartCount}
-              </span>
+              <input
+                type="number"
+                min="0"
+                max="999"
+                value={inCartCount}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) {
+                    onUpdateQuantity(menu.id, 0, Math.max(0, val));
+                  }
+                }}
+                className="w-8 text-center text-xs font-black text-amber-900 bg-white/80 rounded border border-stone-200/80 focus:outline-none focus:ring-1 focus:ring-amber-500 py-0.5"
+                title="클릭하여 수량 직접 입력"
+              />
               <button
                 type="button"
                 onClick={(e) => {
