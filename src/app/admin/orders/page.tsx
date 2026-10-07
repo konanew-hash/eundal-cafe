@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Navigation,
   MessageSquare,
+  Gift,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { Order, MenuItem, OrderItem } from '@/lib/types';
@@ -565,12 +566,46 @@ export default function AdminOrdersPage() {
                     <span className="text-[11px] font-bold text-stone-500">주문 메뉴 내역</span>
                     <span className="text-[10px] text-stone-400">총 {order.items?.length || 0}종</span>
                   </div>
-                  {order.items?.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-stone-700">
-                      <span className="line-clamp-1">{item.menu_name} x {item.quantity}</span>
-                      <span className="font-semibold text-stone-900 shrink-0 ml-2">{item.subtotal.toLocaleString()}원</span>
-                    </div>
-                  ))}
+                  {order.items?.map((item, idx) => {
+                    const isSet = !!item.set_details;
+                    return (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex justify-between text-stone-700">
+                          <span className="line-clamp-1 font-medium">
+                            {isSet && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded mr-1 border border-amber-300">
+                                <Gift className="w-2.5 h-2.5 text-amber-700 inline" />
+                                세트
+                              </span>
+                            )}
+                            {item.menu_name} x {item.quantity}
+                          </span>
+                          <span className="font-semibold text-stone-900 shrink-0 ml-2">
+                            {item.subtotal.toLocaleString()}원
+                          </span>
+                        </div>
+                        {isSet && item.set_details && (
+                          <div className="ml-2 pl-2 border-l-2 border-amber-400 text-[10px] text-stone-600 space-y-0.5 bg-amber-50/60 p-1.5 rounded-r-lg">
+                            <div>
+                              <strong className="text-stone-800">구성:</strong>{' '}
+                              {item.set_details.components?.map((c) => `${c.menu_name} x${c.quantity}`).join(', ') || '-'}
+                            </div>
+                            <div>
+                              <strong className="text-stone-800">포장:</strong>{' '}
+                              {item.set_details.package_box?.name}
+                              {item.set_details.package_box?.price > 0 && ` (+${item.set_details.package_box.price.toLocaleString()}원)`}
+                            </div>
+                            {item.set_details.packaging_options && item.set_details.packaging_options.length > 0 && (
+                              <div>
+                                <strong className="text-stone-800">옵션:</strong>{' '}
+                                {item.set_details.packaging_options.map((opt) => `${opt.name} (+${opt.price.toLocaleString()}원)`).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   <div className="pt-1.5 flex justify-between text-[11px] text-stone-500">
                     <span>배달비 ({order.selected_distance_label})</span>
                     <span>{order.delivery_fee.toLocaleString()}원</span>

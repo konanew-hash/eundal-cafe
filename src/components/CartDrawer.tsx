@@ -13,6 +13,7 @@ import {
   Sparkles,
   MapPin,
   ExternalLink,
+  Gift,
 } from 'lucide-react';
 import { CartItem, DeliveryPolicy, DistanceRule, Store } from '@/lib/types';
 import MiniMapPopup from '@/components/MiniMapPopup';
@@ -33,6 +34,7 @@ interface CartDrawerProps {
   selectedStoreId: string;
   onSelectStoreId: (storeId: string) => void;
   onProceedOrder: () => void;
+  onOpenSetBuilder?: () => void;
 }
 
 const DEFAULT_STORES: Store[] = [
@@ -80,6 +82,7 @@ export default function CartDrawer({
   selectedStoreId,
   onSelectStoreId,
   onProceedOrder,
+  onOpenSetBuilder,
 }: CartDrawerProps) {
   const [selectedMapStore, setSelectedMapStore] = React.useState<Store | null>(null);
 
@@ -230,52 +233,114 @@ export default function CartDrawer({
                 </div>
               )}
 
-              {/* 3. 담긴 메뉴 리스트 */}
+              {/* 3. 담긴 메뉴 리스트 및 세트메뉴 세부 정리 */}
               <div className="space-y-2.5">
-                {cart.map((item) => (
-                  <div
-                    key={item.menu.id}
-                    className="p-3 bg-stone-50 rounded-2xl border border-stone-200/70 flex items-center justify-between gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-stone-900 text-xs sm:text-sm line-clamp-1">
-                        {item.menu.name}
-                      </h4>
-                      <p className="text-xs text-stone-500 mt-0.5">
-                        {item.menu.price.toLocaleString()}원
-                      </p>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-700">담긴 품목 ({cart.length}종류)</span>
+                  {onOpenSetBuilder && (
+                    <button
+                      type="button"
+                      onClick={onOpenSetBuilder}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100/80 hover:bg-amber-200/80 px-2 py-0.5 rounded-lg border border-amber-300 transition-colors shadow-2xs"
+                    >
+                      <Gift className="w-3 h-3 text-amber-700" />
+                      <span>+ 맞춤 세트메뉴 만들기</span>
+                    </button>
+                  )}
+                </div>
 
-                    {/* 수량 증감 컨트롤 */}
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center bg-white border border-stone-300 rounded-full px-1.5 py-0.5 shadow-2xs">
-                        <button
-                          onClick={() => onUpdateQuantity(item.menu.id, -1)}
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-6 text-center text-xs font-bold text-stone-900">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => onUpdateQuantity(item.menu.id, 1)}
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
+                {cart.map((item) => {
+                  const isSet = item.is_custom_set && item.set_details;
+                  return (
+                    <div
+                      key={item.id || item.menu.id}
+                      className={`p-3 rounded-2xl border transition-all ${
+                        isSet
+                          ? 'bg-amber-50/40 border-amber-300/80 shadow-2xs'
+                          : 'bg-stone-50 border-stone-200/70'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          {isSet && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-md mb-1 border border-amber-300/70">
+                              <Gift className="w-2.5 h-2.5 text-amber-700" />
+                              맞춤 세트메뉴
+                            </span>
+                          )}
+                          <h4 className="font-bold text-stone-900 text-xs sm:text-sm line-clamp-1">
+                            {item.menu.name}
+                          </h4>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs font-bold text-amber-950">
+                              {(item.menu.price * item.quantity).toLocaleString()}원
+                            </span>
+                            {item.quantity > 1 && (
+                              <span className="text-[10px] text-stone-400">
+                                (개당 {item.menu.price.toLocaleString()}원)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 수량 증감 컨트롤 */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center bg-white border border-stone-300 rounded-full px-1.5 py-0.5 shadow-2xs">
+                            <button
+                              onClick={() => onUpdateQuantity(item.menu.id, -1)}
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="w-6 text-center text-xs font-bold text-stone-900">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => onUpdateQuantity(item.menu.id, 1)}
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          <button
+                            onClick={() => onRemoveItem(item.menu.id)}
+                            className="text-stone-400 hover:text-red-500 p-1"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
-                      <button
-                        onClick={() => onRemoveItem(item.menu.id)}
-                        className="text-stone-400 hover:text-red-500 p-1"
-                        title="삭제"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {/* 세트메뉴인 경우 각 항목 세부 정리 (포함 품목, 포장용기, 옵션) */}
+                      {isSet && item.set_details && (
+                        <div className="mt-2.5 pt-2 border-t border-amber-200/80 text-[11px] text-stone-600 space-y-1 bg-white/70 p-2 rounded-xl border border-amber-100">
+                          <div>
+                            <strong className="text-stone-800">포함 품목:</strong>{' '}
+                            {item.set_details.components.map((c) => `${c.menu_name}(${c.quantity}개)`).join(', ')}
+                          </div>
+                          <div className="flex items-center justify-between text-stone-500">
+                            <span>
+                              <strong>포장용기:</strong> {item.set_details.package_box.name}
+                            </span>
+                            {item.set_details.package_box.price > 0 && (
+                              <span className="font-semibold text-amber-900">
+                                +{item.set_details.package_box.price.toLocaleString()}원
+                              </span>
+                            )}
+                          </div>
+                          {item.set_details.packaging_options.length > 0 && (
+                            <div className="text-stone-500">
+                              <strong>추가 옵션:</strong>{' '}
+                              {item.set_details.packaging_options.map((o) => `${o.name}(+${o.price.toLocaleString()}원)`).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* 4. 배달 vs 픽업 옵션 영역 (상호 호환 연동) */}

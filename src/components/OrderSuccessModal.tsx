@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle2, Copy, MapPin, Calendar, Clock, ShoppingBag, MessageCircle } from 'lucide-react';
+import { CheckCircle2, Copy, MapPin, Calendar, Clock, ShoppingBag, MessageCircle, Gift } from 'lucide-react';
 import { Order } from '@/lib/types';
 
 interface OrderSuccessModalProps {
@@ -84,12 +84,44 @@ export default function OrderSuccessModal({ order, quoteNotice, onClose }: Order
                 견적 요청 품목 ({order.items.length}종)
               </div>
               <div className="space-y-1.5">
-                {order.items.map((it, idx) => (
-                  <div key={idx} className="flex justify-between text-stone-600">
-                    <span>{it.menu_name} x {it.quantity}</span>
-                    <span className="font-medium text-stone-900">{it.subtotal.toLocaleString()}원</span>
-                  </div>
-                ))}
+                {order.items.map((it, idx) => {
+                  const isSet = !!it.set_details;
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between text-stone-700">
+                        <span className="font-medium">
+                          {isSet && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded mr-1 border border-amber-300">
+                              <Gift className="w-2.5 h-2.5 text-amber-700 inline" />
+                              세트
+                            </span>
+                          )}
+                          {it.menu_name} x {it.quantity}
+                        </span>
+                        <span className="font-bold text-stone-900 shrink-0 ml-2">
+                          {it.subtotal.toLocaleString()}원
+                        </span>
+                      </div>
+                      {isSet && it.set_details && (
+                        <div className="ml-2 pl-2 border-l-2 border-amber-400 text-[10px] text-stone-600 space-y-0.5 bg-amber-50/70 p-1.5 rounded-r-lg">
+                          <div>
+                            <strong className="text-stone-800">구성:</strong>{' '}
+                            {it.set_details.components?.map((c) => `${c.menu_name} x${c.quantity}`).join(', ') || '-'}
+                          </div>
+                          <div>
+                            <strong className="text-stone-800">포장:</strong> {it.set_details.package_box?.name}
+                          </div>
+                          {it.set_details.packaging_options && it.set_details.packaging_options.length > 0 && (
+                            <div>
+                              <strong className="text-stone-800">옵션:</strong>{' '}
+                              {it.set_details.packaging_options.map((opt) => opt.name).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

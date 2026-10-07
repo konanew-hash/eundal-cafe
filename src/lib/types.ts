@@ -81,14 +81,43 @@ export interface Staff {
   created_at?: string;
 }
 
+// 문자 발송 템플릿
+export interface SmsTemplate {
+  id: string;
+  title: string;
+  content: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// 세트메뉴 구성 요소
+export interface SetComponentItem {
+  menu_id: string;
+  menu_name: string;
+  price: number;
+  quantity: number;
+}
+
+// 커스텀 세트메뉴 상세 내역
+export interface CustomSetDetails {
+  set_name: string; // 예: "은달 힐링 티타임 세트"
+  components: SetComponentItem[]; // 포함된 메뉴 및 수량
+  package_box: { name: string; price: number }; // 포장용기 (예: 크라프트 박스)
+  packaging_options: { name: string; price: number }[]; // 캔시머, 리본 등 추가 옵션
+  unit_price: number; // 1세트당 단가
+}
+
 export interface OrderItem {
   id?: string;
   order_id?: string;
-  menu_id?: string;
+  menu_id?: string | null;
   menu_name: string;
   price: number;
   quantity: number;
   subtotal: number;
+  set_details?: CustomSetDetails | null;
 }
 
 export interface Order {
@@ -121,6 +150,9 @@ export interface Order {
 }
 
 export interface CartItem {
+  id?: string; // 카트 내 고유 식별자 (세트메뉴 등 고유 키 구분용)
   menu: MenuItem;
   quantity: number;
+  is_custom_set?: boolean;
+  set_details?: CustomSetDetails;
 }

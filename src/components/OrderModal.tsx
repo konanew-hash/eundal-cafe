@@ -299,8 +299,11 @@ export default function OrderModal({
           gps_lng: gpsLng,
           gps_address: gpsAddress,
           items: cart.map((i) => ({
-            menu_id: i.menu.id,
+            menu_id: i.is_custom_set ? null : i.menu.id,
+            menu_name: i.menu.name,
+            price: i.menu.price,
             quantity: i.quantity,
+            set_details: i.set_details || null,
           })),
         }),
       });
@@ -762,10 +765,31 @@ export default function OrderModal({
             </div>
           </div>
 
-          {/* 6. 최종 견적 금액 요약 */}
-          <div className="p-3.5 sm:p-4 bg-stone-100 rounded-2xl border border-stone-200 text-xs space-y-1.5">
+          {/* 6. 최종 견적 금액 요약 및 품목 세부 확인 */}
+          <div className="p-3.5 sm:p-4 bg-stone-100 rounded-2xl border border-stone-200 text-xs space-y-2">
+            <div className="space-y-1.5 pb-2 border-b border-stone-200">
+              <span className="font-bold text-stone-700 block mb-1">견적 요청 품목 내역</span>
+              {cart.map((item, idx) => (
+                <div key={idx} className="bg-white/80 p-2 rounded-xl border border-stone-200/60">
+                  <div className="flex justify-between font-bold text-stone-800">
+                    <span>{item.menu.name} x {item.quantity}</span>
+                    <span>{(item.menu.price * item.quantity).toLocaleString()}원</span>
+                  </div>
+                  {item.set_details && (
+                    <div className="mt-1 pl-2 border-l-2 border-amber-500 text-[11px] text-stone-600 space-y-0.5">
+                      <div>• 포함 품목: {item.set_details.components.map((c) => `${c.menu_name}(${c.quantity})`).join(', ')}</div>
+                      <div>• 포장용기: {item.set_details.package_box.name}</div>
+                      {item.set_details.packaging_options.length > 0 && (
+                        <div>• 추가옵션: {item.set_details.packaging_options.map((o) => o.name).join(', ')}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
             <div className="flex justify-between text-stone-600">
-              <span>견적 품목 ({cart.reduce((s, i) => s + i.quantity, 0)}개)</span>
+              <span>품목 합계 ({cart.reduce((s, i) => s + i.quantity, 0)}개)</span>
               <span className="font-semibold">{itemsTotal.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between text-stone-600">

@@ -13,8 +13,9 @@ import CheckOrderModal from '@/components/CheckOrderModal';
 import MenuDetailModal from '@/components/MenuDetailModal';
 import InstallPromptModal, { useHomeScreenInstall } from '@/components/InstallPromptModal';
 import GpsGuideModal from '@/components/GpsGuideModal';
+import CustomSetBuilderModal from '@/components/CustomSetBuilderModal';
 import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store } from '@/lib/types';
-import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation, Gift } from 'lucide-react';
 
 export default function HomePage() {
   const [cafe, setCafe] = useState<CafeInfo | null>(null);
@@ -43,6 +44,7 @@ export default function HomePage() {
   const [isCheckOrderOpen, setIsCheckOrderOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [isGpsGuideOpen, setIsGpsGuideOpen] = useState(false);
+  const [isSetBuilderOpen, setIsSetBuilderOpen] = useState(false);
   const [selectedDetailMenu, setSelectedDetailMenu] = useState<MenuItem | null>(null);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
@@ -157,6 +159,12 @@ export default function HomePage() {
     }
   };
 
+  // 커스텀 세트메뉴 장바구니 추가
+  const handleAddSetToCart = (setCartItem: CartItem) => {
+    setCart((prev) => [...prev, setCartItem]);
+    setIsCartOpen(true);
+  };
+
   // 주문 접수 성공 콜백
   const handleOrderSuccess = (order: Order) => {
     setCompletedOrder(order);
@@ -267,6 +275,36 @@ export default function HomePage() {
             </div>
             <div className="text-xs font-bold text-amber-300 flex items-center gap-0.5 shrink-0 pl-1.5">
               <span>추가</span>
+              <span className="group-hover:translate-x-0.5 transition-transform">➔</span>
+            </div>
+          </button>
+        </section>
+
+        {/* 4. 맞춤 세트메뉴 만들기 배너 (원하는 품목 + 포장용기 + 캔시머/옵션) */}
+        <section className="px-3 sm:px-4 py-1.5">
+          <button
+            type="button"
+            onClick={() => setIsSetBuilderOpen(true)}
+            className="w-full p-3 bg-gradient-to-r from-amber-900 via-amber-800 to-amber-950 text-white rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.99] border border-amber-700/60 text-left group"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center text-lg shrink-0 font-black shadow-xs">
+                🎁
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold flex items-center gap-1.5">
+                  <span className="truncate">나만의 맞춤 세트메뉴 만들기</span>
+                  <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
+                    추천
+                  </span>
+                </div>
+                <div className="text-[11px] text-amber-200 mt-0.5 truncate">
+                  원하는 음료·디저트 + 포장용기 + 캔시머/선물포장 옵션 구성
+                </div>
+              </div>
+            </div>
+            <div className="text-xs font-bold text-amber-300 flex items-center gap-0.5 shrink-0 pl-1.5">
+              <span>세트구성</span>
               <span className="group-hover:translate-x-0.5 transition-transform">➔</span>
             </div>
           </button>
@@ -418,10 +456,20 @@ export default function HomePage() {
         stores={stores}
         selectedStoreId={selectedStoreId}
         onSelectStoreId={setSelectedStoreId}
+        onOpenSetBuilder={() => setIsSetBuilderOpen(true)}
         onProceedOrder={() => {
           setIsCartOpen(false);
           setIsOrderOpen(true);
         }}
+      />
+
+      {/* 나만의 맞춤 세트메뉴 커스텀 빌더 모달 */}
+      <CustomSetBuilderModal
+        isOpen={isSetBuilderOpen}
+        onClose={() => setIsSetBuilderOpen(false)}
+        menus={menus}
+        categories={categories}
+        onAddSetToCart={handleAddSetToCart}
       />
 
       {/* 주문서/견적서 작성 모달 (24시간/12h 병기 + 도로명주소 API + 개인정보동의 + 픽업/GPS) */}

@@ -73,13 +73,23 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. DB에서 메뉴 목록과 배달비 정책 로드하여 안전하게 금액 계산
-    const menuIds = items.map((i: { menu_id: string }) => i.menu_id);
+    // 세트메뉴에 포함된 단품들의 id 및 일반 단품의 id 모두 수집
+    const regularMenuIds = items
+      .filter((i: any) => !i.set_details && i.menu_id)
+      .map((i: any) => i.menu_id);
+
+    const setComponentMenuIds = items
+      .filter((i: any) => i.set_details && Array.isArray(i.set_details.components))
+      .flatMap((i: any) => i.set_details.components.map((c: any) => c.menu_id));
+
+    const allNeededMenuIds = Array.from(new Set([...regularMenuIds, ...setComponentMenuIds]));
+
     const { data: dbMenus, error: menuErr } = await supabase
       .from('eundal_menus')
       .select('id, name, price, is_sold_out, is_active')
-      .in('id', menuIds);
+      .in('id', allNeededMenuIds.length > 0 ? allNeededMenuIds : ['00000000-0000-0000-0000-000000000000']);
 
-    if (menuErr || !dbMenus) {
+    if (menuErr) {
       return NextResponse.json({ error: '메뉴 정보를 조회할 수 없습니다.' }, { status: 500 });
     }
 
@@ -96,32 +106,68 @@ export async function POST(req: NextRequest) {
     // 품절 검사 및 상품 소계 계산
     let itemsTotal = 0;
     const orderItemsToInsert: Array<{
-      menu_id: string;
+      menu_id: string | null;
       menu_name: string;
       price: number;
       quantity: number;
       subtotal: number;
+      set_details: any | null;
     }> = [];
 
-    for (const item of items) {
-      const found = dbMenus.find((m) => m.id === item.menu_id);
-      if (!found || !found.is_active) {
-        return NextResponse.json({ error: `주문 불가능한 메뉴가 포함되어 있습니다.` }, { status: 400 });
-      }
-      if (found.is_sold_out) {
-        return NextResponse.json({ error: `[${found.name}] 메뉴는 현재 품절입니다.` }, { status: 400 });
-      }
-      const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
-      const subtotal = found.price * qty;
-      itemsTotal += subtotal;
+    const menuMap = new Map((dbMenus || []).map((m) => [m.id, m]));
 
-      orderItemsToInsert.push({
-        menu_id: found.id,
-        menu_name: found.name,
-        price: found.price,
-        quantity: qty,
-        subtotal,
-      });
+    for (const item of items) {
+      const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
+
+      if (item.set_details) {
+        // [세트메뉴 처리]
+        const setDetails = item.set_details;
+        // 세트 내 부속 품목들의 품절 검사
+        if (Array.isArray(setDetails.components)) {
+          for (const comp of setDetails.components) {
+            const found = menuMap.get(comp.menu_id);
+            if (found && found.is_sold_out) {
+              return NextResponse.json(
+                { error: `세트메뉴에 포함된 [${found.name}] 메뉴가 현재 품절입니다.` },
+                { status: 400 }
+              );
+            }
+          }
+        }
+
+        const unitPrice = parseInt(setDetails.unit_price, 10) || parseInt(item.price, 10) || 0;
+        const subtotal = unitPrice * qty;
+        itemsTotal += subtotal;
+
+        orderItemsToInsert.push({
+          menu_id: null,
+          menu_name: `[세트] ${setDetails.set_name || '은달 맞춤 세트메뉴'}`,
+          price: unitPrice,
+          quantity: qty,
+          subtotal,
+          set_details: setDetails,
+        });
+      } else {
+        // [일반 단품 메뉴 처리]
+        const found = menuMap.get(item.menu_id);
+        if (!found || !found.is_active) {
+          return NextResponse.json({ error: `주문 불가능한 메뉴가 포함되어 있습니다.` }, { status: 400 });
+        }
+        if (found.is_sold_out) {
+          return NextResponse.json({ error: `[${found.name}] 메뉴는 현재 품절입니다.` }, { status: 400 });
+        }
+        const subtotal = found.price * qty;
+        itemsTotal += subtotal;
+
+        orderItemsToInsert.push({
+          menu_id: found.id,
+          menu_name: found.name,
+          price: found.price,
+          quantity: qty,
+          subtotal,
+          set_details: null,
+        });
+      }
     }
 
     // 배달비 정책 연동 계산 (픽업은 배달비 0원)

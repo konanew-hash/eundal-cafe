@@ -77,7 +77,7 @@ export async function PUT(
   try {
     // 상품 합계 계산
     let itemsTotal = 0;
-    const formattedItems = items.map((it: { menu_id?: string; menu_name: string; price: number; quantity: number }) => {
+    const formattedItems = items.map((it: { menu_id?: string; menu_name: string; price: number; quantity: number; set_details?: unknown }) => {
       const qty = Math.max(1, parseInt(String(it.quantity), 10) || 1);
       const price = parseInt(String(it.price), 10) || 0;
       const subtotal = price * qty;
@@ -89,6 +89,7 @@ export async function PUT(
         price,
         quantity: qty,
         subtotal,
+        set_details: it.set_details || null,
       };
     });
 
