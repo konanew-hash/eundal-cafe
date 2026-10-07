@@ -29,6 +29,9 @@ import {
   Check,
   Download,
   Globe,
+  Map,
+  ExternalLink,
+  Navigation,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { Order, MenuItem, OrderItem } from '@/lib/types';
@@ -43,6 +46,9 @@ export default function AdminOrdersPage() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const previousOrderCountRef = useRef(0);
+
+  // 지도 모달 상태 (요구사항: 우편번호/주소 클릭 시 구글지도/네이버지도 팝업 표시)
+  const [mapModalData, setMapModalData] = useState<{ address: string; label: string } | null>(null);
 
   // 주문 수정 모달 상태
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -464,11 +470,27 @@ export default function AdminOrdersPage() {
                       <Calendar className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                       <span>{order.delivery_date} {order.delivery_time}</span>
                     </div>
-                    <div className="flex items-start gap-1.5 text-stone-600">
-                      <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
-                      <span className="line-clamp-2">
-                        {order.delivery_address} {order.delivery_address_detail || ''}
-                      </span>
+                    <div className="flex items-start justify-between gap-1.5 text-stone-600">
+                      <div className="flex items-start gap-1.5 flex-1">
+                        <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">
+                          {order.delivery_address} {order.delivery_address_detail || ''}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMapModalData({
+                            address: order.delivery_address,
+                            label: `${order.customer_name} 님 배달 목적지`,
+                          })
+                        }
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded-lg border border-blue-200 transition-colors shrink-0"
+                        title="구글/네이버 지도로 위치 확인"
+                      >
+                        <Map className="w-3 h-3" />
+                        <span>지도</span>
+                      </button>
                     </div>
                     <div className="text-[10px] text-stone-500 pt-0.5">
                       거리구간: <strong className="text-stone-700">{order.selected_distance_label}</strong>
@@ -507,16 +529,34 @@ export default function AdminOrdersPage() {
 
               {/* 캡처 제외 영역: 고객 접속 위치 및 개인정보 수집 동의 */}
               <div className="pt-2 space-y-1.5">
-                {/* 주문자 접속 위치 및 IP */}
+                {/* 주문자 접속 위치 및 IP (우편번호 클릭 시 지도 연동) */}
                 <div className="py-2 px-2.5 bg-stone-50 rounded-xl border border-stone-200/80 flex items-center justify-between text-[11px] text-stone-600">
                   <span className="flex items-center gap-1 font-medium">
                     <Globe className="w-3.5 h-3.5 text-stone-500" />
                     <span>접속 위치</span>
                   </span>
-                  <span className="font-bold text-stone-800 text-right">
-                    {translateLocationToKorean(order.client_location || '확인 중')}
-                    {order.client_ip ? ` (${order.client_ip})` : ''}
-                  </span>
+                  <div className="flex items-center gap-1.5 text-right">
+                    <span className="font-bold text-stone-800">
+                      {translateLocationToKorean(order.client_location || '확인 중')}
+                      {order.client_ip ? ` (${order.client_ip})` : ''}
+                    </span>
+                    {order.client_location && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMapModalData({
+                            address: translateLocationToKorean(order.client_location || ''),
+                            label: '고객 접속 위치 (우편구역)',
+                          })
+                        }
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded-lg border border-amber-300 transition-colors shrink-0"
+                        title="우편번호 위치 지도 확인"
+                      >
+                        <Navigation className="w-2.5 h-2.5 text-amber-700" />
+                        <span>우편번호 지도</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* 개인정보보호 동의 확인 표기 */}
@@ -763,6 +803,105 @@ export default function AdminOrdersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. 우편번호 및 주소 지도 확인 팝업 모달 (요구사항: 우편번호를 눌렀을 때 구글지도나 네이버지도로 해당 위치 표시) */}
+      {mapModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-5 shadow-2xl border border-stone-200 space-y-4">
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                  <Map className="w-4 h-4 text-amber-700" />
+                  <span>위치 지도 확인</span>
+                </div>
+                <h3 className="font-bold text-stone-900 text-sm mt-0.5">
+                  {mapModalData.label}
+                </h3>
+                <p className="text-xs text-stone-500 font-medium mt-0.5 line-clamp-1">
+                  {mapModalData.address}
+                </p>
+              </div>
+              <button
+                onClick={() => setMapModalData(null)}
+                className="w-8 h-8 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center hover:bg-stone-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 구글 지도 임베드 뷰어 */}
+            <div className="w-full h-72 rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 relative shadow-inner">
+              <iframe
+                title="Google Map Location Preview"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                  mapModalData.address.replace(/\(우:[^)]+\)/g, '').trim()
+                )}&z=15&output=embed`}
+              />
+            </div>
+
+            {/* 외부 지도 바로가기 버튼 (네이버 지도, 구글 지도, 카카오 맵) */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-stone-500">외부 지도 앱으로 상세 경로/거리 확인</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {/* 네이버 지도 버튼 */}
+                <a
+                  href={`https://map.naver.com/v5/search/${encodeURIComponent(
+                    mapModalData.address.replace(/\(우:[^)]+\)/g, '').trim()
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2.5 px-3 bg-[#03C75A] hover:bg-[#02b150] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>네이버 지도</span>
+                </a>
+
+                {/* 구글 지도 버튼 */}
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    mapModalData.address.replace(/\(우:[^)]+\)/g, '').trim()
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>구글 지도</span>
+                </a>
+
+                {/* 카카오 맵 버튼 */}
+                <a
+                  href={`https://map.kakao.com/link/search/${encodeURIComponent(
+                    mapModalData.address.replace(/\(우:[^)]+\)/g, '').trim()
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2.5 px-3 bg-[#FEE500] hover:bg-[#ebd300] text-stone-900 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs col-span-2 sm:col-span-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-stone-700" />
+                  <span>카카오 맵</span>
+                </a>
+              </div>
+            </div>
+
+            {/* 모달 하단 닫기 */}
+            <div className="pt-2 border-t border-stone-100 flex justify-end">
+              <button
+                onClick={() => setMapModalData(null)}
+                className="px-5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs transition-colors"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}

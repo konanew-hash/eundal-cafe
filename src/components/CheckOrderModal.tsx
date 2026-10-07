@@ -6,7 +6,6 @@ import {
   Search,
   Clock,
   CheckCircle,
-  Bike,
   PackageCheck,
   XCircle,
   Calendar,
@@ -14,7 +13,7 @@ import {
   Phone,
   AlertCircle,
   Loader2,
-  Copy,
+  Trash2,
 } from 'lucide-react';
 import { Order } from '@/lib/types';
 
@@ -24,31 +23,37 @@ interface CheckOrderModalProps {
 }
 
 export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProps) {
-  const [orderNumberInput, setOrderNumberInput] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
+  const [orderList, setOrderList] = useState<Order[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
 
   if (!isOpen) return null;
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderNumberInput.trim()) {
-      setErrorMsg('주문/견적 번호를 입력해주세요.');
+    if (!searchInput.trim()) {
+      setErrorMsg('주문번호 또는 연락처를 입력해주세요.');
       return;
     }
 
     setLoading(true);
     setErrorMsg('');
+    setCancelSuccessMsg('');
     setOrder(null);
+    setOrderList([]);
 
     try {
-      const res = await fetch(`/api/orders/${orderNumberInput.trim()}`);
+      const res = await fetch(`/api/orders/${encodeURIComponent(searchInput.trim())}`);
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || '해당 번호의 주문/견적을 찾을 수 없습니다.');
       }
       setOrder(data.order);
+      setOrderList(data.orders || [data.order]);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setErrorMsg(err.message);
@@ -57,6 +62,44 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!order) return;
+    if (order.status !== 'pending' && order.status !== 'confirmed') {
+      alert('이미 처리 중이거나 취소/완료된 견적은 취소할 수 없습니다.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `[주문번호: ${order.order_number}]\n정말 이 견적 요청을 취소하시겠습니까?\n취소 후에는 복구할 수 없습니다.`
+    );
+    if (!confirmed) return;
+
+    setCancelling(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(order.order_number)}`, {
+        method: 'PATCH',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || '견적 취소에 실패했습니다.');
+      }
+      setOrder(data.order);
+      setOrderList((prev) =>
+        prev.map((o) => (o.id === data.order.id ? data.order : o))
+      );
+      setCancelSuccessMsg('견적 요청이 성공적으로 취소되었습니다.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert(err.message);
+      } else {
+        alert('견적 취소 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -98,6 +141,8 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
     }
   };
 
+  const canCancel = order && (order.status === 'pending' || order.status === 'confirmed');
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl border border-stone-200 max-h-[90vh] flex flex-col text-xs">
@@ -106,7 +151,7 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
           <div>
             <h3 className="font-bold text-stone-900 text-base">견적 및 주문 상태 조회</h3>
             <p className="text-stone-500 text-[11px] mt-0.5">
-              발급받으신 견적/주문 번호로 현재 진행 상태를 확인하세요.
+              주문번호 또는 등록하신 연락처(전화번호)로 실시간 상태를 조회하세요.
             </p>
           </div>
           <button
@@ -122,10 +167,10 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
           <input
             type="text"
             required
-            placeholder="예: EUN-20261010-1234"
-            value={orderNumberInput}
-            onChange={(e) => setOrderNumberInput(e.target.value)}
-            className="flex-1 p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            placeholder="주문번호 또는 전화번호 (예: 010-1234-5678)"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="flex-1 p-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
           />
           <button
             type="submit"
@@ -138,9 +183,41 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
         </form>
 
         {errorMsg && (
-          <div className="p-3 bg-red-50 text-red-700 rounded-xl flex items-center gap-2 border border-red-200 my-2">
+          <div className="p-3 bg-red-50 text-red-700 rounded-xl flex items-center gap-2 border border-red-200 my-1">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {cancelSuccessMsg && (
+          <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl flex items-center gap-2 border border-emerald-200 my-1 font-medium">
+            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{cancelSuccessMsg}</span>
+          </div>
+        )}
+
+        {/* 동일 전화번호로 여러 건의 주문이 검색된 경우 탭 표시 */}
+        {orderList.length > 1 && (
+          <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1.5 my-1">
+            <span className="text-[10px] font-bold text-stone-500 block">
+              접수된 견적 내역 ({orderList.length}건)
+            </span>
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {orderList.map((o) => (
+                <button
+                  key={o.id}
+                  onClick={() => setOrder(o)}
+                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold shrink-0 transition-all border ${
+                    order?.id === o.id
+                      ? 'bg-amber-900 text-white border-amber-900'
+                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
+                  }`}
+                >
+                  <div>{o.order_number}</div>
+                  <div className="text-[10px] opacity-80">{o.delivery_date}</div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -158,13 +235,16 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
 
             {/* 일정 & 배달 정보 */}
             <div className="space-y-1.5 text-stone-700">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span>배달 희망일: <strong>{order.delivery_date}</strong></span>
+              <div className="flex items-center justify-between">
+                <span>주문자: <strong>{order.customer_name} 님</strong></span>
+                <span className="flex items-center gap-1 text-[11px]">
+                  <Phone className="w-3 h-3 text-stone-400" />
+                  {order.customer_phone}
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span>배달 희망시간: <strong>{order.delivery_time}</strong></span>
+                <Calendar className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span>배달 희망일: <strong>{order.delivery_date} {order.delivery_time}</strong></span>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
@@ -191,9 +271,33 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
 
             {/* 금액 */}
             <div className="pt-2 border-t border-stone-200 flex justify-between items-baseline font-bold text-stone-900">
-              <span>총 견적 금액 (배달비 포함)</span>
+              <span>총 견적 금액</span>
               <span className="text-base text-amber-900 font-black">{order.total_amount.toLocaleString()}원</span>
             </div>
+
+            {/* 견적 취소 버튼 */}
+            {canCancel && (
+              <div className="pt-2 border-t border-stone-200">
+                <button
+                  onClick={handleCancelOrder}
+                  disabled={cancelling}
+                  className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl border border-rose-200 flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  {cancelling ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>{cancelling ? '취소 중...' : '이 견적 요청 취소하기'}</span>
+                </button>
+              </div>
+            )}
+
+            {order.status === 'cancelled' && (
+              <div className="p-2 bg-stone-100 text-stone-600 rounded-xl text-center text-xs font-medium border border-stone-200">
+                취소 처리된 견적입니다.
+              </div>
+            )}
           </div>
         )}
 
