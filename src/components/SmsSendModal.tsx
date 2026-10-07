@@ -165,7 +165,16 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
     if (!captureCardRef.current) return;
     setSharing(true);
     try {
-      // 1. 고화질 이미지 Blob 생성
+      // 0. 클립보드에 메시지 본문 1순위 복사 (카카오톡 앱이 파일 수신 시 텍스트 필드를 무시하더라도 채팅창 붙여넣기 100% 보장)
+      try {
+        await navigator.clipboard.writeText(messageText);
+        setCopiedText(true);
+        setTimeout(() => setCopiedText(false), 4000);
+      } catch (clipTextErr) {
+        console.warn('Text copy warning:', clipTextErr);
+      }
+
+      // 1. 고화질 이미지 Blob 생성 (안내 텍스트가 카드 하단에 포함되어 합성됨)
       const blob = await toBlob(captureCardRef.current, {
         pixelRatio: 2.5,
         backgroundColor: '#ffffff',
@@ -694,6 +703,27 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
                     {order.total_amount.toLocaleString()}원
                   </span>
                 </div>
+
+                {/* 8. 고객 안내 메시지 본문 (카카오톡 전송 시 글자가 누락되지 않도록 이미지에 함께 합성) */}
+                {messageText && (
+                  <div style={{
+                    marginTop: '14px',
+                    padding: '12px 14px',
+                    backgroundColor: '#fffbeb',
+                    borderRadius: '14px',
+                    border: '1px solid #fde68a',
+                    fontSize: '12px',
+                    color: '#78350f',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                  }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px', color: '#92400e' }}>
+                      <span>💬 은달카페 고객 안내 말씀</span>
+                    </div>
+                    <div>{messageText}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -707,6 +737,7 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
             onClick={handleSendImageAndText}
             disabled={sharing}
             className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950 text-white font-extrabold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:bg-stone-300"
+            title="문자 본문이 합성된 주문서 이미지와 텍스트를 함께 전송합니다 (클립보드 자동복사)"
           >
             {sharing ? (
               <span>이미지 및 문자 발송 준비 중...</span>
@@ -716,6 +747,36 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
                 <span>📱 이미지 + 문자 함께 전송 (MMS / 카카오톡)</span>
               </>
             )}
+          </button>
+
+          {/* 카카오톡 텍스트 전용 전송 버튼 (이미지 없이 글자만 카톡으로 보낼 때) */}
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(messageText);
+                setCopiedText(true);
+                setTimeout(() => setCopiedText(false), 3000);
+              } catch {}
+
+              if (typeof navigator !== 'undefined' && navigator.share) {
+                try {
+                  await navigator.share({
+                    title: `[은달카페] ${order.customer_name}님 주문 안내`,
+                    text: messageText,
+                  });
+                  return;
+                } catch {}
+              }
+              alert('메시지 본문이 복사되었습니다! 카카오톡 대화방에 붙여넣기(Ctrl+V) 해주세요.');
+            }}
+            className="w-full py-2.5 px-3 bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs border border-[#E6CF00]"
+            title="카카오톡으로 본문 텍스트 바로 공유"
+          >
+            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3c-5.523 0-10 3.582-10 8 0 2.868 1.865 5.394 4.675 6.777l-.95 3.52c-.105.39.296.72.648.537l4.31-2.247c.432.046.87.07 1.317.07 5.523 0 10-3.582 10-8s-4.477-8-10-8z"/>
+            </svg>
+            <span>💬 카카오톡 본문 텍스트 공유 (글자만 전송 시)</span>
           </button>
 
           <div className="flex items-center gap-2">

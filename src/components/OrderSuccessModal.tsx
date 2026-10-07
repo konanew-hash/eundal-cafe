@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle2, Copy, MapPin, Calendar, Clock, ShoppingBag, MessageCircle, Gift, Send, Check } from 'lucide-react';
+import React from 'react';
+import { CheckCircle2, Copy, MapPin, Calendar, Clock, ShoppingBag, MessageCircle, Gift } from 'lucide-react';
 import { Order, CafeInfo } from '@/lib/types';
 
 interface OrderSuccessModalProps {
@@ -9,9 +9,7 @@ interface OrderSuccessModalProps {
   onClose: () => void;
 }
 
-export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }: OrderSuccessModalProps) {
-  const [copiedKakao, setCopiedKakao] = useState(false);
-
+export default function OrderSuccessModal({ order, quoteNotice, onClose }: OrderSuccessModalProps) {
   if (!order) return null;
 
   const defaultNotice =
@@ -23,96 +21,10 @@ export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }:
     alert('견적/주문번호가 복사되었습니다: ' + order.order_number);
   };
 
-  // 요구사항: 주문이 접수되면 카톡으로 은달 총괄관리자에게 전송할 수 있도록 조치
-  const generateKakaoOrderText = () => {
-    const isPickup = order.order_type === 'pickup';
-    const deliveryMethod = isPickup
-      ? `매장 픽업 (${order.pickup_store_name || '은달 매장'})`
-      : `배달 (${order.delivery_address} ${order.delivery_address_detail || ''})`;
-
-    let itemsText = '';
-    if (order.items && order.items.length > 0) {
-      itemsText = order.items
-        .map((it, idx) => {
-          let line = `${idx + 1}. ${it.menu_name} x ${it.quantity} (${it.subtotal.toLocaleString()}원)`;
-          if (it.set_details) {
-            const comps = it.set_details.components?.map((c) => `${c.menu_name}x${c.quantity}`).join(', ');
-            line += `\n   └ 구성: ${comps || '-'}\n   └ 포장: ${it.set_details.package_box?.name || '-'}`;
-          }
-          return line;
-        })
-        .join('\n');
-    }
-
-    return (
-      `[은달카페 신규 주문 접수]\n` +
-      `■ 주문번호: ${order.order_number}\n` +
-      `■ 주문고객: ${order.customer_name} (${order.customer_phone})\n` +
-      `■ 수령방식: ${deliveryMethod}\n` +
-      `■ 희망일시: ${order.delivery_date} ${order.delivery_time}\n` +
-      `■ 주문품목:\n${itemsText}\n` +
-      (order.packaging_box ? `■ 선물/포장용기: ${order.packaging_box.name}\n` : '') +
-      `■ 배달비: ${order.delivery_fee.toLocaleString()}원\n` +
-      `■ 총 견적금액: ${order.total_amount.toLocaleString()}원\n` +
-      `-------------------------\n` +
-      `* 은달카페 주문조회: https://eundal.vercel.app/check-order`
-    );
-  };
-
-  const handleSendKakaoToManager = async () => {
-    const kakaoText = generateKakaoOrderText();
-
-    // 1. 클립보드 무조건 1순위 복사
-    try {
-      await navigator.clipboard.writeText(kakaoText);
-      setCopiedKakao(true);
-      setTimeout(() => setCopiedKakao(false), 5000);
-    } catch (e) {
-      console.warn('Clipboard write failed:', e);
-    }
-
-    // 2. 모바일 Web Share API 지원 시 (카카오톡 바로 선택 전송 가능 - 텍스트가 채팅방에 자동 입력됨)
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: `[은달카페 주문] ${order.customer_name}님`,
-          text: kakaoText,
-        });
-        return;
-      } catch {
-        // 공유 취소 시 오픈채팅 링크로 계속 진행
-      }
-    }
-
-    // 3. 오픈채팅 링크가 등록되어 있는 경우 (카카오톡 오픈채팅방 열기)
-    if (cafe?.manager_kakao_id && cafe.manager_kakao_id.startsWith('http')) {
-      alert(
-        `📋 주문서 텍스트가 클립보드에 자동 복사되었습니다!\n\n` +
-        `열리는 카카오톡 채팅창에서 [붙여넣기(Ctrl+V 또는 꾹 눌러서 붙여넣기)]를 누르시면 주문서가 바로 전송됩니다.`
-      );
-      window.open(cafe.manager_kakao_id, '_blank');
-      return;
-    }
-
-    // 4. 오픈채팅 링크가 없는 경우 카카오톡 ID 안내
-    if (cafe?.manager_kakao_id) {
-      alert(
-        `📋 주문서가 복사되었습니다!\n\n` +
-        `카카오톡에서 아이디 [${cafe.manager_kakao_id}]를 검색하여 친구 추가 후 붙여넣기(Ctrl+V)하여 전송해주세요.`
-      );
-      return;
-    }
-
-    alert(
-      `📋 주문서 텍스트가 복사되었습니다!\n\n` +
-      `카카오톡을 열어 은달 총괄관리자 채팅창에 붙여넣기(Ctrl+V)하여 전송해주세요.`
-    );
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 max-h-[90vh] flex flex-col text-xs">
-        {/* 상단 완료 배너 (요구사항: 견적이 정상 접수되었습니다!) */}
+        {/* 상단 완료 배너 */}
         <div className="text-center py-2 space-y-2">
           <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
             <CheckCircle2 className="w-8 h-8" />
@@ -120,7 +32,7 @@ export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }:
           <h2 className="text-xl font-bold text-stone-900 tracking-tight">견적이 정상 접수되었습니다!</h2>
         </div>
 
-        {/* 요구사항: 견적 확인 안내 문구 박스 */}
+        {/* 견적 확인 안내 문구 박스 */}
         <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/90 text-amber-950 flex items-start gap-2.5 my-2">
           <MessageCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <p className="font-semibold text-xs leading-relaxed">
@@ -145,20 +57,24 @@ export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }:
             </button>
           </div>
 
-          {/* 배달 희망 예약 정보 */}
+          {/* 배달 / 픽업 희망 예약 정보 */}
           <div className="space-y-1.5 text-stone-700">
             <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-              <span>배달일자: <strong>{order.delivery_date}</strong></span>
+              <span>수령일자: <strong>{order.delivery_date}</strong></span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-              <span>배달시간: <strong>{order.delivery_time} (24h 기준)</strong></span>
+              <span>수령시간: <strong>{order.delivery_time} (24h 기준)</strong></span>
             </div>
             <div className="flex items-start gap-2">
               <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
               <span>
-                배달장소: <strong>{order.delivery_address} {order.delivery_address_detail || ''}</strong>
+                {order.order_type === 'pickup' ? (
+                  <span>수령방식: <strong>매장 픽업 ({order.pickup_store_name || '은달 매장'})</strong></span>
+                ) : (
+                  <span>배달장소: <strong>{order.delivery_address} {order.delivery_address_detail || ''}</strong></span>
+                )}
               </span>
             </div>
           </div>
@@ -220,7 +136,7 @@ export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }:
               <span>{order.items_total.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between text-stone-600">
-              <span>배달비 ({order.selected_distance_label})</span>
+              <span>{order.order_type === 'pickup' ? '배달비 (매장 픽업)' : `배달비 (${order.selected_distance_label})`}</span>
               <span>{order.delivery_fee.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between items-baseline pt-1 font-bold text-stone-900">
@@ -232,32 +148,11 @@ export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }:
           </div>
         </div>
 
-        {/* 요구사항: 카톡으로 은달 총괄관리자에게 전송 버튼 */}
-        <div className="space-y-2 pt-1">
-          <button
-            type="button"
-            onClick={handleSendKakaoToManager}
-            className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99] border border-[#E6CF00]"
-          >
-            {copiedKakao ? (
-              <>
-                <Check className="w-4 h-4 text-emerald-700" />
-                <span className="text-emerald-900">주문서 텍스트 복사 완료! (카톡에 붙여넣기)</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 3c-5.523 0-10 3.582-10 8 0 2.868 1.865 5.394 4.675 6.777l-.95 3.52c-.105.39.296.72.648.537l4.31-2.247c.432.046.87.07 1.317.07 5.523 0 10-3.582 10-8s-4.477-8-10-8z"/>
-                </svg>
-                <span>💬 카카오톡으로 은달 총괄관리자에게 전송</span>
-              </>
-            )}
-          </button>
-
-          {/* 닫기 버튼 */}
+        {/* 닫기 버튼 */}
+        <div className="pt-2">
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-sm"
+            className="w-full py-3.5 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-sm text-sm"
           >
             확인 (홈으로 이동)
           </button>
