@@ -148,7 +148,7 @@ function CheckOrderContent() {
             <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-200/60 space-y-2 text-stone-800">
               <div className="flex items-center gap-2 font-bold text-amber-950">
                 <Calendar className="w-4 h-4 text-amber-700" />
-                <span>배달 희망일시: {order.delivery_date} {order.delivery_time} (24시간제)</span>
+                <span>배달 희망일시: {order.delivery_date} {order.delivery_time}</span>
               </div>
               <div className="flex items-start gap-2 text-stone-600">
                 <MapPin className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />

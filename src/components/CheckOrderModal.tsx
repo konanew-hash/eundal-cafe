@@ -164,7 +164,7 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span>배달 희망시간: <strong>{order.delivery_time} (24시간제)</strong></span>
+                <span>배달 희망시간: <strong>{order.delivery_time}</strong></span>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />

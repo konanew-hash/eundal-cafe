@@ -175,8 +175,7 @@ export default function OrderModal({
   };
 
   const [year, month, day] = deliveryDate.split('-');
-  const hourObj = hours.find((h) => h.value === deliveryHour);
-  const formattedPreview = `${year || '2026'}년 ${month || '10'}월 ${day || '10'}일 ${hourObj?.label || `${deliveryHour}시`} ${deliveryMinute}분`;
+  const formattedPreview = `${year || '2026'}년 ${month || '10'}월 ${day || '10'}일 ${deliveryHour}시 ${deliveryMinute}분`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -242,12 +241,12 @@ export default function OrderModal({
             </div>
           </div>
 
-          {/* 2. 배달 희망 일시 (24시간제 & 12시간제 병기, 00분/30분 필수) */}
+          {/* 2. 배달 희망 일시 (30분 단위 필수) */}
           <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-700" />
-                배달 희망 일시 (24시간제 / 30분 단위)
+                배달 희망 일시 (30분 단위)
               </h3>
               <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-bold">
                 필수 기입
@@ -271,9 +270,9 @@ export default function OrderModal({
                 />
               </div>
 
-              {/* 시간 선택 (요구사항: 12시(오후12시), 14시(오후02시) 표기) */}
+              {/* 시간 선택 */}
               <div>
-                <label className="block text-stone-600 mb-1 font-medium">시간 (24시간제 / 12h)</label>
+                <label className="block text-stone-600 mb-1 font-medium">시간 선택</label>
                 <select
                   value={deliveryHour}
                   onChange={(e) => setDeliveryHour(e.target.value)}

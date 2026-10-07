@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase';
 import { dispatchStaffNotifications } from '@/lib/notify';
 import { DistanceRule } from '@/lib/types';
+import { resolveDetailedKoreanLocation } from '@/lib/location';
 
 export async function POST(req: NextRequest) {
   const supabase = getSupabaseServer();
@@ -135,35 +136,18 @@ export async function POST(req: NextRequest) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const orderNumber = `EUN-${dateStr}-${randomSuffix}`;
 
-    // 클라이언트 IP 추출 및 접속 위치 조회
+    // 클라이언트 IP 추출 및 상세 한글 접속 위치 조회
     const forwarded = req.headers.get('x-forwarded-for');
     const realIp = req.headers.get('x-real-ip');
     const rawIp = forwarded ? forwarded.split(',')[0].trim() : realIp || '';
     const clientIp = rawIp.replace(/^::ffff:/, '');
 
-    let clientLocation = '로컬/내부망 접속';
-    if (clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1' && !clientIp.startsWith('192.168.') && !clientIp.startsWith('10.')) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
-        const geoRes = await fetch(`http://ip-api.com/json/${clientIp}?lang=ko&fields=status,country,regionName,city,district`, {
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          if (geoData.status === 'success') {
-            const parts = [geoData.regionName, geoData.city, geoData.district].filter(Boolean);
-            const uniqueParts = Array.from(new Set(parts));
-            clientLocation = uniqueParts.length > 0 ? uniqueParts.join(' ') : (geoData.country || '대한민국');
-          } else {
-            clientLocation = '위치 확인 불가';
-          }
-        }
-      } catch {
-        clientLocation = '위치 확인 불가';
-      }
-    }
+    const clientLocation = await resolveDetailedKoreanLocation({
+      clientIp,
+      vercelCity: req.headers.get('x-vercel-ip-city') || '',
+      vercelRegion: req.headers.get('x-vercel-ip-country-region') || '',
+      vercelCountry: req.headers.get('x-vercel-ip-country') || '',
+    });
 
     // 7. eundal_orders INSERT
     const { data: createdOrder, error: orderInsertErr } = await supabase

@@ -15,9 +15,9 @@ export async function PATCH(
   const { id } = await params;
   const { status } = await req.json();
 
-  const validStatuses = ['pending', 'accepted', 'brewing', 'delivering', 'completed', 'cancelled'];
+  const validStatuses = ['pending', 'confirmed', 'accepted', 'brewing', 'delivering', 'completed', 'cancelled'];
   if (!validStatuses.includes(status)) {
-    return NextResponse.json({ error: '유효하지 않은 주문 상태입니다.' }, { status: 400 });
+    return NextResponse.json({ error: `유효하지 않은 주문 상태입니다: ${status}` }, { status: 400 });
   }
 
   const supabase = getSupabaseServer();

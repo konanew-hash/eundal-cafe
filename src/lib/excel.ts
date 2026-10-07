@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Order } from './types';
+import { translateLocationToKorean } from './location';
 
 export function exportOrdersToExcel(orders: Order[], fileNamePrefix = '은달카페_주문내역') {
   const statusMap: Record<string, string> = {
@@ -25,7 +26,7 @@ export function exportOrdersToExcel(orders: Order[], fileNamePrefix = '은달카
       '고객성함': order.customer_name,
       '연락처': order.customer_phone,
       '배달예정일': order.delivery_date,
-      '배달시간 (24h)': order.delivery_time,
+      '배달시간': order.delivery_time,
       '배달지 주소': order.delivery_address,
       '상세 주소': order.delivery_address_detail || '',
       '배달거리 구간': order.selected_distance_label,
@@ -34,7 +35,7 @@ export function exportOrdersToExcel(orders: Order[], fileNamePrefix = '은달카
       '배달비(원)': order.delivery_fee,
       '총 결제금액(원)': order.total_amount,
       '요청사항': order.order_memo || '',
-      '접속 위치': order.client_location || '-',
+      '접속 위치': order.client_location ? translateLocationToKorean(order.client_location) : '-',
       '접속 IP': order.client_ip || '-',
       '개인정보 수집동의': order.privacy_agreed ? '동의완료' : '미동의',
       '동의일시': order.privacy_agreed_at ? new Date(order.privacy_agreed_at).toLocaleString('ko-KR') : '',

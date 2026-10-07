@@ -33,6 +33,7 @@ import {
 import { toPng } from 'html-to-image';
 import { Order, MenuItem, OrderItem } from '@/lib/types';
 import { exportOrdersToExcel } from '@/lib/excel';
+import { translateLocationToKorean } from '@/lib/location';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -127,12 +128,13 @@ export default function AdminOrdersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),
       });
+      const data = await res.json();
       if (res.ok) {
         setOrders((prev) =>
           prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus as Order['status'] } : o))
         );
       } else {
-        alert('주문 상태 변경에 실패했습니다.');
+        alert(data.error || '주문 상태 변경에 실패했습니다.');
       }
     } catch (e) {
       console.error(e);
@@ -422,10 +424,13 @@ export default function AdminOrdersPage() {
                   : 'border-stone-200'
               }`}
             >
-              {/* 이미지 캡처 대상 영역 Ref 지정 */}
-              <div ref={(el) => { cardRefs.current[order.id] = el; }} className="bg-white rounded-xl p-1">
+              {/* 이미지 캡처 대상 영역 Ref 지정: 총 결제금액까지만 포함 (접속위치/개인정보/관리자도구 제외) */}
+              <div
+                ref={(el) => { cardRefs.current[order.id] = el; }}
+                className="bg-white rounded-xl p-3 border border-stone-100 shadow-2xs space-y-2"
+              >
                 {/* 상단 주문번호 & 상태 */}
-                <div className="flex items-center justify-between pb-2.5 border-b border-stone-100">
+                <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                   <div>
                     <span className="text-[10px] text-stone-500 block uppercase font-mono">
                       {new Date(order.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 접수
@@ -437,8 +442,8 @@ export default function AdminOrdersPage() {
                   <div>{statusBadge(order.status)}</div>
                 </div>
 
-                {/* 고객 정보 & 배달일시 (24시간제) */}
-                <div className="py-3 space-y-1.5 text-xs text-stone-700 border-b border-stone-100">
+                {/* 고객 정보 & 배달일시 */}
+                <div className="py-2 space-y-1.5 text-xs text-stone-700 border-b border-stone-100">
                   <div className="flex items-center justify-between font-bold text-stone-900">
                     <span className="flex items-center gap-1">
                       <User className="w-3.5 h-3.5 text-stone-500" />
@@ -453,11 +458,11 @@ export default function AdminOrdersPage() {
                     </a>
                   </div>
 
-                  {/* 배달 희망 일시 (24시간제/00,30분 강조) */}
+                  {/* 배달 희망 일시 */}
                   <div className="p-2 bg-stone-50 rounded-xl border border-stone-200/80 space-y-1">
                     <div className="flex items-center gap-1.5 text-amber-950 font-bold">
                       <Calendar className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                      <span>{order.delivery_date} {order.delivery_time} (24시간제)</span>
+                      <span>{order.delivery_date} {order.delivery_time}</span>
                     </div>
                     <div className="flex items-start gap-1.5 text-stone-600">
                       <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
@@ -477,8 +482,8 @@ export default function AdminOrdersPage() {
                   )}
                 </div>
 
-                {/* 품목 상세 */}
-                <div className="py-2.5 space-y-1 text-xs border-b border-stone-100">
+                {/* 품목 상세 및 총 결제금액 (캡처 하단 마감선) */}
+                <div className="pt-1 pb-1 space-y-1 text-xs">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] font-bold text-stone-500">주문 메뉴 내역</span>
                     <span className="text-[10px] text-stone-400">총 {order.items?.length || 0}종</span>
@@ -493,26 +498,29 @@ export default function AdminOrdersPage() {
                     <span>배달비 ({order.selected_distance_label})</span>
                     <span>{order.delivery_fee.toLocaleString()}원</span>
                   </div>
-                  <div className="pt-1 flex justify-between font-bold text-stone-900">
-                    <span>총 결제금액</span>
+                  <div className="pt-1.5 mt-1 border-t border-dashed border-stone-200 flex justify-between font-bold text-stone-900">
+                    <span className="text-xs">총 결제금액</span>
                     <span className="text-sm font-black text-amber-900">{order.total_amount.toLocaleString()}원</span>
                   </div>
                 </div>
+              </div>
 
-                {/* 주문자 접속 위치 및 IP (요구사항: 고객 접속 IP 기반 위치 표시) */}
-                <div className="py-2 px-2.5 bg-stone-50 rounded-xl border border-stone-200/80 flex items-center justify-between text-[11px] text-stone-600 mt-2">
+              {/* 캡처 제외 영역: 고객 접속 위치 및 개인정보 수집 동의 */}
+              <div className="pt-2 space-y-1.5">
+                {/* 주문자 접속 위치 및 IP */}
+                <div className="py-2 px-2.5 bg-stone-50 rounded-xl border border-stone-200/80 flex items-center justify-between text-[11px] text-stone-600">
                   <span className="flex items-center gap-1 font-medium">
                     <Globe className="w-3.5 h-3.5 text-stone-500" />
                     <span>접속 위치</span>
                   </span>
-                  <span className="font-bold text-stone-800">
-                    {order.client_location || '확인 중'}
+                  <span className="font-bold text-stone-800 text-right">
+                    {translateLocationToKorean(order.client_location || '확인 중')}
                     {order.client_ip ? ` (${order.client_ip})` : ''}
                   </span>
                 </div>
 
                 {/* 개인정보보호 동의 확인 표기 */}
-                <div className="py-2 flex items-center justify-between text-[10px] text-stone-500">
+                <div className="px-1 flex items-center justify-between text-[10px] text-stone-500">
                   <span className="flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-emerald-600" />
                     개인정보 수집 동의 완료 (완료 후 14일 보관)
