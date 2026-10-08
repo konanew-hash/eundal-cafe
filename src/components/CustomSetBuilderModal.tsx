@@ -28,6 +28,11 @@ interface CustomSetBuilderModalProps {
   menus: MenuItem[];
   categories: Category[];
   presetSets?: PresetSet[];
+  initialPortfolioData?: {
+    title: string;
+    itemsSummary: string;
+    memo?: string;
+  } | null;
   onAddSetToCart: (cartItem: CartItem) => void;
 }
 
@@ -52,6 +57,7 @@ export default function CustomSetBuilderModal({
   menus,
   categories,
   presetSets = [],
+  initialPortfolioData = null,
   onAddSetToCart,
 }: CustomSetBuilderModalProps) {
   const [setName, setSetName] = useState('은달 맞춤 선물세트');
@@ -63,6 +69,32 @@ export default function CustomSetBuilderModal({
   const [selectedCatId, setSelectedCatId] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [addedEffect, setAddedEffect] = useState(false);
+
+  // 포트폴리오 '이 구성 그대로 견적 문의' 연동 시 초기 세트 구성 자동 프리필
+  useEffect(() => {
+    if (initialPortfolioData && isOpen) {
+      if (initialPortfolioData.title) {
+        setSetName(initialPortfolioData.title);
+      }
+      const summaryText = (initialPortfolioData.itemsSummary || '').toLowerCase();
+      const compMap: Record<string, number> = {};
+
+      if (summaryText && menus.length > 0) {
+        menus.forEach((m) => {
+          if (m.packaging_type === 'box' || m.packaging_type === 'special') return;
+          const cleanName = m.name.replace(/\(.*?\)/g, '').trim().toLowerCase();
+          if (cleanName && summaryText.includes(cleanName)) {
+            compMap[m.id] = 1;
+          }
+        });
+      }
+
+      if (Object.keys(compMap).length > 0) {
+        setSelectedComponents(compMap);
+      }
+      setSetQuantity(20); // 단체 납품 기본 20세트 권장
+    }
+  }, [initialPortfolioData, isOpen, menus]);
 
   // 음료 카테고리/품목 판별 헬퍼
   const isBeverage = (menu: MenuItem) => {
@@ -479,6 +511,31 @@ export default function CustomSetBuilderModal({
 
         {/* 본문 스크롤 영역 */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1 text-xs">
+          {/* 포트폴리오 연동 안내 배너 */}
+          {initialPortfolioData && (
+            <div className="p-4 bg-gradient-to-r from-amber-500/15 to-amber-600/10 rounded-2xl border-2 border-amber-500/40 shadow-xs flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-amber-500 text-stone-950 font-bold shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-extrabold text-stone-900 text-xs sm:text-sm">
+                      {initialPortfolioData.title}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-bold">
+                      납품 사례 구성 적용됨
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 mt-0.5">
+                    {initialPortfolioData.itemsSummary ? `참고 구성: ${initialPortfolioData.itemsSummary}` : '선택하신 납품 사례를 기반으로 세트 구성이 프리필되었습니다.'}
+                    <span className="text-amber-800 font-semibold ml-1">아래에서 품목·수량·포장을 확인하고 수정하신 후 견적서에 담아보세요!</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 요구사항: 서브웨이 썹픽 스타일 추천 세트 조합 (은픽) 섹션 */}
           {presetSets && presetSets.filter((p) => p.is_active).length > 0 && (
             <div className="p-4 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent rounded-2xl border-2 border-amber-400/40 shadow-xs space-y-3">

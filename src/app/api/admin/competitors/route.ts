@@ -28,20 +28,60 @@ export async function GET() {
       throw menuError;
     }
 
-    // 은달 카페 자체 메뉴 정보 조회 (비교용)
-    const { data: eundalMenus } = await supabase
-      .from('eundal_menus')
-      .select('id, name, price, is_sold_out, category_id')
+    // 은달 카페 자체 카테고리 & 메뉴 정보 조회 (정밀 비교용)
+    const { data: eundalCategories } = await supabase
+      .from('eundal_categories')
+      .select('id, name')
       .eq('is_active', true);
 
-    // 은달 아메리카노 & 카테고리별 평균 가격 산출
-    const eundalAmericano = (eundalMenus || []).find(m => m.name.includes('아메리카노'))?.price || 2500;
-    const eundalLatte = (eundalMenus || []).find(m => m.name.includes('카페라떼') || m.name.includes('라떼'))?.price || 3500;
+    const { data: eundalMenus } = await supabase
+      .from('eundal_menus')
+      .select('id, name, price, is_sold_out, category_id, image_url')
+      .eq('is_active', true);
+
+    // 카테고리 맵 생성
+    const catMap = new Map((eundalCategories || []).map(c => [c.id, c.name]));
+
+    // 음료류 카테고리 (커피, 논커피, 음료, 은달 시그니처, 티, 에이드 등)
+    const drinkKeywords = ['커피', '논커피', '음료', '시그니처', '에이드', '티', '라떼', '스무디', '주스'];
+    const eundalDrinkMenus = (eundalMenus || []).filter(m => {
+      const catName = catMap.get(m.category_id) || '';
+      return drinkKeywords.some(k => catName.includes(k));
+    });
+
+    // 디저트류 카테고리 (수제 디저트, 수제 샌드위치 등)
+    const dessertKeywords = ['디저트', '샌드위치', '베이커리', '빵', '쿠키', '타르트'];
+    const eundalDessertMenus = (eundalMenus || []).filter(m => {
+      const catName = catMap.get(m.category_id) || '';
+      return dessertKeywords.some(k => catName.includes(k));
+    });
+
+    // 은달 실시간 음료류 평균가 (커피+논커피+음료+은달 시그니처 23종 모두 포함)
+    const eundalAvgDrink = eundalDrinkMenus.length > 0
+      ? Math.round(eundalDrinkMenus.reduce((sum, m) => sum + m.price, 0) / eundalDrinkMenus.length)
+      : 5000;
+
+    // 은달 실시간 디저트류 평균가 (수제디저트 14종 + 샌드위치 12종)
+    const eundalAvgDessert = eundalDessertMenus.length > 0
+      ? Math.round(eundalDessertMenus.reduce((sum, m) => sum + m.price, 0) / eundalDessertMenus.length)
+      : 4400;
+
+    // 은달 대표 커피 가격
+    const eundalAmericano = (eundalMenus || []).find(m => m.name.includes('아메리카노'))?.price || 3000;
+    const eundalLatte = (eundalMenus || []).find(m => m.name.includes('카페라떼') || m.name.includes('라떼'))?.price || 4000;
 
     // 은달 추천 세트 가격 정보도 조회
     const { data: eundalSets } = await supabase.from('eundal_preset_sets').select('price').eq('is_active', true);
     const eundalSetPrices = (eundalSets || []).map(s => s.price).filter(p => p > 0);
     const eundalAvgSet = eundalSetPrices.length > 0 ? Math.round(eundalSetPrices.reduce((a, b) => a + b, 0) / eundalSetPrices.length) : 7500;
+
+    // 은달 메뉴에 카테고리 이름 부착
+    const enrichedEundalMenus = (eundalMenus || []).map(m => ({
+      ...m,
+      category_name: catMap.get(m.category_id) || '기타',
+      is_drink: drinkKeywords.some(k => (catMap.get(m.category_id) || '').includes(k)),
+      is_dessert: dessertKeywords.some(k => (catMap.get(m.category_id) || '').includes(k)),
+    }));
 
     // 메뉴를 각 경쟁사 객체에 조인하고 카테고리별 평균 가격 산출
     const menuMap = new Map<string, any[]>();
@@ -81,11 +121,12 @@ export async function GET() {
 
     return NextResponse.json({
       competitors: mergedCompetitors,
+      eundalMenus: enrichedEundalMenus,
       eundalBenchmark: {
         americanoPrice: eundalAmericano,
         lattePrice: eundalLatte,
-        avgDrinkPrice: 3200, // 은달 전체 음료 평균 (가성비 우수)
-        avgDessertPrice: 3100, // 은달 수제 디저트 평균
+        avgDrinkPrice: eundalAvgDrink, // 은달 전체 음료 실제 평균 (커피+논커피+음료+은달 시그니처 23종 정밀 계산)
+        avgDessertPrice: eundalAvgDessert, // 은달 수제 디저트+샌드위치 실제 평균
         avgSetPrice: eundalAvgSet, // 은달 세트 평균
         store1: EUNDAL_STORE1_COORDS,
         store2: EUNDAL_STORE2_COORDS,

@@ -35,11 +35,12 @@ import { EUNDAL_STORE1_COORDS, EUNDAL_STORE2_COORDS } from '@/lib/geoUtils';
 
 export default function AdminCompetitorsPage() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [eundalMenus, setEundalMenus] = useState<any[]>([]);
   const [eundalBenchmark, setEundalBenchmark] = useState({
-    americanoPrice: 2500,
-    lattePrice: 3500,
-    avgDrinkPrice: 3200,
-    avgDessertPrice: 3100,
+    americanoPrice: 3000,
+    lattePrice: 4000,
+    avgDrinkPrice: 5000,
+    avgDessertPrice: 4400,
     avgSetPrice: 7500,
     store1: EUNDAL_STORE1_COORDS,
     store2: EUNDAL_STORE2_COORDS,
@@ -48,11 +49,15 @@ export default function AdminCompetitorsPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
 
-  // 뷰 모드: 'cards' | 'chart' | 'matrix'
-  const [viewMode, setViewMode] = useState<'cards' | 'chart' | 'matrix'>('cards');
+  // 뷰 모드: 'cards' | 'chart' | 'matrix' | 'similarity'
+  const [viewMode, setViewMode] = useState<'cards' | 'chart' | 'matrix' | 'similarity'>('similarity');
 
   // 차트 비교 카테고리: 'drink' | 'dessert' | 'set'
   const [chartCategory, setChartCategory] = useState<'drink' | 'dessert' | 'set'>('drink');
+
+  // 유사도 비교 필터: 'all' | 'drink' | 'dessert'
+  const [similarityCategoryFilter, setSimilarityCategoryFilter] = useState<'all' | 'drink' | 'dessert'>('all');
+  const [similaritySearch, setSimilaritySearch] = useState('');
 
   // 필터 상태
   const [selectedBranch, setSelectedBranch] = useState<'all' | 'store1' | 'store2'>('all');
@@ -119,6 +124,9 @@ export default function AdminCompetitorsPage() {
       if (data.competitors) {
         setCompetitors(data.competitors);
       }
+      if (data.eundalMenus) {
+        setEundalMenus(data.eundalMenus);
+      }
       if (data.eundalBenchmark) {
         setEundalBenchmark(data.eundalBenchmark);
       }
@@ -132,6 +140,142 @@ export default function AdminCompetitorsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // 메뉴명 텍스트 정규화 (공백, 괄호, 불용어 제거)
+  const normalizeMenuName = (name: string): string => {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/\(.*?\)/g, '')
+      .replace(/\[.*?\]/g, '')
+      .replace(/\{.*?\}/g, '')
+      .replace(/수제|은달|시그니처|프리미엄|스페셜|유기농|클래식|오리지널|아이스|핫|ice|hot/gi, '');
+  };
+
+  // 2글자 묶음(Bigram) 기반 Jaccard 유사도 + 포함관계 가중치
+  const calculateMenuSimilarity = (name1: string, name2: string): number => {
+    const n1 = normalizeMenuName(name1);
+    const n2 = normalizeMenuName(name2);
+
+    if (!n1 || !n2) return 0;
+    if (n1 === n2) return 1.0;
+
+    // 한쪽이 다른 쪽에 완전히 포함되어 있고 길이 비율이 65% 이상인 경우
+    if (n1.includes(n2) || n2.includes(n1)) {
+      const minLen = Math.min(n1.length, n2.length);
+      const maxLen = Math.max(n1.length, n2.length);
+      const ratio = minLen / maxLen;
+      if (minLen >= 3 && ratio >= 0.65) {
+        return Math.max(0.85, Math.round(ratio * 100) / 100);
+      }
+    }
+
+    // 2-gram (Bigram) 생성
+    const getBigrams = (str: string) => {
+      const set = new Set<string>();
+      for (let i = 0; i < str.length - 1; i++) {
+        set.add(str.slice(i, i + 2));
+      }
+      return set;
+    };
+
+    const b1 = getBigrams(n1);
+    const b2 = getBigrams(n2);
+    if (b1.size === 0 || b2.size === 0) return 0;
+
+    let common = 0;
+    b1.forEach((item) => {
+      if (b2.has(item)) common++;
+    });
+    const union = b1.size + b2.size - common;
+    const score = union > 0 ? common / union : 0;
+    return Math.round(score * 100) / 100;
+  };
+
+  // 은달 메뉴 vs 주변 경쟁사 메뉴 1:1 유사도 (80% 이상) 비교 매칭 결과
+  const similarMenuComparison = useMemo(() => {
+    if (eundalMenus.length === 0 || competitors.length === 0) return [];
+
+    // 모든 경쟁사 메뉴 수집
+    const allCompMenus: Array<{
+      competitorId: string;
+      competitorName: string;
+      brandType: string;
+      distance1: number;
+      distance2: number;
+      name: string;
+      price: number;
+      category: string;
+    }> = [];
+
+    competitors.forEach((c) => {
+      (c.menus || []).forEach((m) => {
+        if (m.name && m.price > 0) {
+          allCompMenus.push({
+            competitorId: c.id,
+            competitorName: c.name,
+            brandType: c.brand_type || 'small_coffee',
+            distance1: c.distance_store1,
+            distance2: c.distance_store2,
+            name: m.name,
+            price: m.price,
+            category: m.category || 'drink',
+          });
+        }
+      });
+    });
+
+    return eundalMenus.map((eMenu) => {
+      // 동일 경쟁사 내 중복 매칭 방지 위해 경쟁사별 최고 유사도 1건만 선택
+      const compBestMap = new Map<string, any>();
+
+      allCompMenus.forEach((cMenu) => {
+        const sim = calculateMenuSimilarity(eMenu.name, cMenu.name);
+        if (sim >= 0.8) {
+          const priceDiff = cMenu.price - eMenu.price;
+          const priceDiffPercent = eMenu.price > 0 ? Math.round((priceDiff / eMenu.price) * 100) : 0;
+          const entry = {
+            competitorId: cMenu.competitorId,
+            competitorName: cMenu.competitorName,
+            brandType: cMenu.brandType,
+            distance1: cMenu.distance1,
+            distance2: cMenu.distance2,
+            menuName: cMenu.name,
+            price: cMenu.price,
+            similarity: sim,
+            priceDiff,
+            priceDiffPercent,
+          };
+
+          const existing = compBestMap.get(cMenu.competitorId);
+          if (!existing || sim > existing.similarity) {
+            compBestMap.set(cMenu.competitorId, entry);
+          }
+        }
+      });
+
+      const compMatches = Array.from(compBestMap.values()).sort((a, b) => b.similarity - a.similarity);
+
+      const prices = compMatches.map((m) => m.price);
+      const avgCompPrice = prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0;
+      const minCompPrice = prices.length > 0 ? Math.min(...prices) : 0;
+      const maxCompPrice = prices.length > 0 ? Math.max(...prices) : 0;
+      const overallDiff = avgCompPrice > 0 ? avgCompPrice - eMenu.price : 0;
+      const overallDiffPercent = eMenu.price > 0 && avgCompPrice > 0 ? Math.round((overallDiff / eMenu.price) * 100) : 0;
+
+      return {
+        eundalMenu: eMenu,
+        compMatches,
+        matchCount: compMatches.length,
+        avgCompPrice,
+        minCompPrice,
+        maxCompPrice,
+        overallDiff,
+        overallDiffPercent,
+      };
+    });
+  }, [eundalMenus, competitors]);
 
   // 2. 수동 일일 동기화 트리거
   const handleDailySync = async () => {
@@ -672,11 +816,20 @@ export default function AdminCompetitorsPage() {
             </button>
           </div>
 
-          {/* 뷰 모드 전환 (상세 카드 / 가격 비교 차트 / 인지도 매트릭스) */}
-          <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-2xl self-start lg:self-auto">
+          {/* 뷰 모드 전환 (1:1 메뉴 유사도 비교 / 상세 카드 / 가격 비교 차트 / 인지도 매트릭스) */}
+          <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-2xl self-start lg:self-auto overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setViewMode('similarity')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                viewMode === 'similarity' ? 'bg-amber-500 text-stone-950 shadow-xs' : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+              <span>1:1 메뉴 유사도 비교 (80%+)</span>
+            </button>
             <button
               onClick={() => setViewMode('cards')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all whitespace-nowrap ${
                 viewMode === 'cards' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-800'
               }`}
             >
@@ -685,7 +838,7 @@ export default function AdminCompetitorsPage() {
             </button>
             <button
               onClick={() => setViewMode('chart')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all whitespace-nowrap ${
                 viewMode === 'chart' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-800'
               }`}
             >
@@ -694,7 +847,7 @@ export default function AdminCompetitorsPage() {
             </button>
             <button
               onClick={() => setViewMode('matrix')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all whitespace-nowrap ${
                 viewMode === 'matrix' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-800'
               }`}
             >
@@ -756,6 +909,200 @@ export default function AdminCompetitorsPage() {
 
       {/* 5. 뷰 모드별 렌더링 */}
 
+      {/* 모드 0: 은달 메뉴 vs 주변 경쟁사 동일·유사 메뉴 (유사도 80% 이상) 1:1 가격 비교 */}
+      {viewMode === 'similarity' && (
+        <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span>은달 메뉴 vs 주변 매장 유사 메뉴 (유사율 80% 이상) 1:1 정밀 가격 비교</span>
+              </h3>
+              <p className="text-xs text-stone-500 mt-1">
+                은달 메뉴와 이름·특성이 유사한 주변 경쟁사 메뉴를 자동 매칭하여 가격 경쟁력과 시장가격을 1:1로 비교합니다.
+                <span className="text-stone-400 ml-1.5">* 살짝 두꺼운 빨간색 화살표(▲)는 주변 매장이 비쌈, 파란색 화살표(▼)는 저렴함을 나타냅니다.</span>
+              </p>
+            </div>
+
+            {/* 필터 탭 & 검색창 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
+                <button
+                  onClick={() => setSimilarityCategoryFilter('all')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    similarityCategoryFilter === 'all' ? 'bg-stone-900 text-white shadow-2xs' : 'text-stone-600'
+                  }`}
+                >
+                  전체 ({similarMenuComparison.length})
+                </button>
+                <button
+                  onClick={() => setSimilarityCategoryFilter('drink')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    similarityCategoryFilter === 'drink' ? 'bg-amber-600 text-white shadow-2xs' : 'text-stone-600'
+                  }`}
+                >
+                  <Coffee className="w-3 h-3" />
+                  <span>음료류</span>
+                </button>
+                <button
+                  onClick={() => setSimilarityCategoryFilter('dessert')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    similarityCategoryFilter === 'dessert' ? 'bg-rose-600 text-white shadow-2xs' : 'text-stone-600'
+                  }`}
+                >
+                  <Cake className="w-3 h-3" />
+                  <span>디저트/샌드위치</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <Search className="w-3 h-3 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="은달 메뉴 검색..."
+                  value={similaritySearch}
+                  onChange={(e) => setSimilaritySearch(e.target.value)}
+                  className="pl-7 pr-2.5 py-1 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white w-36 sm:w-44"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 은달 전체 메뉴 유사도 비교 스크롤 컨테이너 */}
+          <div className="space-y-4 max-h-[620px] overflow-y-auto pr-1">
+            {similarMenuComparison
+              .filter((item) => {
+                if (similarityCategoryFilter === 'drink' && !item.eundalMenu.is_drink) return false;
+                if (similarityCategoryFilter === 'dessert' && !item.eundalMenu.is_dessert) return false;
+                if (similaritySearch.trim()) {
+                  const kw = similaritySearch.toLowerCase();
+                  return item.eundalMenu.name.toLowerCase().includes(kw) ||
+                    item.compMatches.some((m: any) => m.menuName.toLowerCase().includes(kw) || m.competitorName.toLowerCase().includes(kw));
+                }
+                return true;
+              })
+              .map((item) => {
+                const { eundalMenu, compMatches, matchCount, avgCompPrice, minCompPrice, maxCompPrice, overallDiff, overallDiffPercent } = item;
+
+                return (
+                  <div
+                    key={eundalMenu.id}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-300 shadow-2xs transition-all space-y-3"
+                  >
+                    {/* 상단: 은달 메뉴 요약 & 주변 평균 요약 바 */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-stone-100">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                          eundalMenu.is_drink
+                            ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                            : 'bg-rose-100 text-rose-900 border border-rose-200'
+                        }`}>
+                          {eundalMenu.category_name || (eundalMenu.is_drink ? '음료' : '디저트')}
+                        </span>
+                        <h4 className="font-extrabold text-sm text-stone-900">
+                          {eundalMenu.name}
+                        </h4>
+                        <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg text-xs">
+                          은달가 {eundalMenu.price.toLocaleString()}원
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs flex-wrap">
+                        {matchCount > 0 ? (
+                          <>
+                            <span className="text-[11px] text-stone-500 font-medium">
+                              주변 유사 메뉴 <strong>{matchCount}곳</strong> 매칭
+                            </span>
+                            <span className="text-stone-300">|</span>
+                            <span className="font-bold text-stone-700">
+                              주변 평균 {avgCompPrice.toLocaleString()}원
+                            </span>
+                            <span className="text-stone-400 text-[10px]">
+                              ({minCompPrice.toLocaleString()} ~ {maxCompPrice.toLocaleString()}원)
+                            </span>
+                            {overallDiff > 0 ? (
+                              <span className="text-[10.5px] font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 flex items-center gap-1">
+                                <span className="font-black text-rose-600 text-xs">▲</span>
+                                <span>주변이 +{overallDiff.toLocaleString()}원 (+{overallDiffPercent}%)</span>
+                              </span>
+                            ) : overallDiff < 0 ? (
+                              <span className="text-[10.5px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 flex items-center gap-1">
+                                <span className="font-black text-blue-600 text-xs">▼</span>
+                                <span>주변이 {overallDiff.toLocaleString()}원 ({overallDiffPercent}%)</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">
+                                가격 동일
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-stone-400">
+                            주변 5km 내 유사율 80% 이상 매칭 메뉴 없음 (은달 독점/차별화 메뉴)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 매칭된 주변 매장 메뉴 목록 */}
+                    {matchCount > 0 ? (
+                      <div className="space-y-1.5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {compMatches.map((m: any, idx: number) => {
+                            return (
+                              <div
+                                key={idx}
+                                className="p-2.5 rounded-xl bg-stone-50 hover:bg-stone-100/80 border border-stone-200/60 text-xs flex items-center justify-between gap-2 transition-colors"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-stone-900 truncate text-[11.5px]">
+                                      {m.competitorName}
+                                    </span>
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-stone-200/70 text-stone-600 shrink-0">
+                                      유사도 {Math.round(m.similarity * 100)}%
+                                    </span>
+                                  </div>
+                                  <p className="text-[10.5px] text-stone-500 truncate mt-0.5">
+                                    {m.menuName}
+                                  </p>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <div className="font-bold text-stone-900 text-xs">
+                                    {m.price.toLocaleString()}원
+                                  </div>
+                                  {m.priceDiff > 0 ? (
+                                    <span className="text-[10px] font-bold text-rose-600 flex items-center justify-end gap-0.5">
+                                      <span className="font-black text-rose-600 text-[11px]">▲</span>
+                                      <span>+{m.priceDiff.toLocaleString()}원</span>
+                                    </span>
+                                  ) : m.priceDiff < 0 ? (
+                                    <span className="text-[10px] font-bold text-blue-600 flex items-center justify-end gap-0.5">
+                                      <span className="font-black text-blue-600 text-[11px]">▼</span>
+                                      <span>{m.priceDiff.toLocaleString()}원</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-stone-400">동일</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 bg-stone-50/50 rounded-xl text-[11px] text-stone-400 italic text-center">
+                        유사 메뉴가 감지되지 않은 은달 고유의 시그니처 품목입니다.
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* 모드 1: 음료류/디저트류/세트류 3대 카테고리 가격 비교 차트 */}
       {viewMode === 'chart' && (
         <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-6">
@@ -808,7 +1155,11 @@ export default function AdminCompetitorsPage() {
               <span className="px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 text-[10px]">기준점</span>
               <span>
                 ★ 은달 카페 (
-                {chartCategory === 'drink' ? '음료 평균 3,200원' : chartCategory === 'dessert' ? '디저트 평균 3,100원' : '추천세트 평균 7,500원'}
+                {chartCategory === 'drink'
+                  ? `음료 평균 ${eundalBenchmark.avgDrinkPrice.toLocaleString()}원`
+                  : chartCategory === 'dessert'
+                  ? `디저트 평균 ${eundalBenchmark.avgDessertPrice.toLocaleString()}원`
+                  : `추천세트 평균 ${eundalBenchmark.avgSetPrice.toLocaleString()}원`}
                 )
               </span>
             </div>
@@ -852,12 +1203,18 @@ export default function AdminCompetitorsPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="font-bold text-stone-800">{compPrice.toLocaleString()}원</span>
                       {diff > 0 ? (
-                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                          +{diff.toLocaleString()}원 ({Math.round((diff / benchmarkPrice) * 100)}% 高)
+                        <span className="text-[10.5px] font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 flex items-center gap-1">
+                          <span className="font-black text-rose-600 text-xs">▲</span>
+                          <span>+{diff.toLocaleString()}원 (+{Math.round((diff / benchmarkPrice) * 100)}%)</span>
+                        </span>
+                      ) : diff < 0 ? (
+                        <span className="text-[10.5px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 flex items-center gap-1">
+                          <span className="font-black text-blue-600 text-xs">▼</span>
+                          <span>{diff.toLocaleString()}원 ({Math.round((diff / benchmarkPrice) * 100)}%)</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                          {diff.toLocaleString()}원
+                        <span className="text-[10px] font-bold text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                          동일 (0원)
                         </span>
                       )}
                     </div>

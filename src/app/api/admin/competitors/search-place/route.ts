@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EUNDAL_STORE1_COORDS, EUNDAL_STORE2_COORDS, calculateDistanceKm } from '@/lib/geoUtils';
+import { getSupabaseServer } from '@/lib/supabase';
 
 const CHAIN_KEYWORDS = [
   '스타벅스', 'STARBUCKS', '투썸플레이스', '투썸', 'TWOSOME',
@@ -225,7 +226,7 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get('query')?.trim() || '';
 
   try {
-    const results: any[] = [];
+    let results: any[] = [];
     const queryLower = query.toLowerCase();
 
     // 1단계: 네이버 지도 오픈 검색 시도
@@ -366,6 +367,27 @@ export async function GET(request: NextRequest) {
         avg_dessert_price: 3800,
         avg_set_price: 7500,
       });
+    }
+
+    // 4단계: 이미 등록된 경쟁사는 검색 결과에서 제외 (사용자 요구사항 반영)
+    try {
+      const supabase = getSupabaseServer();
+      const { data: existingCompetitors } = await supabase
+        .from('eundal_competitors')
+        .select('name');
+
+      if (existingCompetitors && existingCompetitors.length > 0) {
+        const registeredNameSet = new Set(
+          existingCompetitors.map((c) => c.name.replace(/\s+/g, '').toLowerCase())
+        );
+
+        results = results.filter((r) => {
+          const normalized = r.name.replace(/\s+/g, '').toLowerCase();
+          return !registeredNameSet.has(normalized);
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to filter registered competitors:', e);
     }
 
     return NextResponse.json({ items: results });
