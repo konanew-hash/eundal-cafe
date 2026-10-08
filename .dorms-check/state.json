@@ -400,13 +400,61 @@
         },
         "blocking": []
       }
+    },
+    {
+      "n": 26,
+      "at": "2026-10-08T14:37:45.626Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 28,
+          "unverified": 7,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
+    },
+    {
+      "n": 27,
+      "at": "2026-10-08T15:14:39.127Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 28,
+          "unverified": 7,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
+    },
+    {
+      "n": 28,
+      "at": "2026-10-08T16:02:32.491Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 28,
+          "unverified": 7,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
     }
   ],
   "items": {
     "meta.public-surface": {
-      "status": "unknown",
+      "status": "pass",
       "firstFailRound": null,
-      "fixedRound": 21,
+      "fixedRound": 26,
       "regressed": false
     },
     "sec.header.csp": {
@@ -621,7 +669,7 @@
     }
   },
   "passed": {
-    "security": false,
+    "security": true,
     "edzip": false,
     "protection": false
   },
