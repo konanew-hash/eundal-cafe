@@ -142,19 +142,37 @@ export default function Footer({ cafe, onOpenPrivacyPolicy }: FooterProps) {
           </div>
         </div>
 
-        {/* 3. 고객센터 및 매장 운영 안내 */}
-        <div className="p-3 bg-stone-800/50 rounded-2xl border border-stone-800 space-y-1.5 text-[11px] text-stone-300">
-          <div className="flex items-center gap-1.5 font-bold text-amber-300">
-            <Phone className="w-3.5 h-3.5" />
+        {/* 3. 고객센터 및 매장 운영 안내 (1호점 & 2호점 구분) */}
+        <div className="p-3.5 bg-stone-800/50 rounded-2xl border border-stone-800 space-y-2.5 text-[11px] text-stone-300">
+          <div className="flex items-center gap-1.5 font-bold text-amber-300 pb-1 border-b border-stone-800">
+            <Phone className="w-3.5 h-3.5 text-amber-400" />
             <span>고객센터 및 단체 견적 문의: {phone}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-stone-400">
-            <Clock className="w-3.5 h-3.5 text-stone-500" />
-            <span>운영시간: {businessHours}</span>
+
+          {/* 1호점 */}
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1 font-bold text-stone-200">
+              <span className="w-3.5 h-3.5 rounded bg-amber-500/30 text-amber-300 text-[9px] flex items-center justify-center font-black">1</span>
+              <span>{cafe?.store1_name || '은달 1호점 (조원)'}</span>
+              <span className="text-[10px] text-stone-400 font-normal">({cafe?.store1_business_hours || businessHours})</span>
+            </div>
+            <div className="flex items-start gap-1 text-stone-400 pl-4.5 text-[10.5px]">
+              <MapPin className="w-3 h-3 text-stone-500 shrink-0 mt-0.5" />
+              <span className="break-all">{cafe?.store1_address || address}</span>
+            </div>
           </div>
-          <div className="flex items-start gap-1.5 text-stone-400">
-            <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0 mt-0.5" />
-            <span className="break-all">{address}</span>
+
+          {/* 2호점 */}
+          <div className="space-y-0.5 pt-1 border-t border-stone-800/60">
+            <div className="flex items-center gap-1 font-bold text-stone-200">
+              <span className="w-3.5 h-3.5 rounded bg-stone-700 text-stone-200 text-[9px] flex items-center justify-center font-black">2</span>
+              <span>{cafe?.store2_name || '은달 2호점 (파장)'}</span>
+              <span className="text-[10px] text-stone-400 font-normal">({cafe?.store2_business_hours || businessHours})</span>
+            </div>
+            <div className="flex items-start gap-1 text-stone-400 pl-4.5 text-[10.5px]">
+              <MapPin className="w-3 h-3 text-stone-500 shrink-0 mt-0.5" />
+              <span className="break-all">{cafe?.store2_address || '경기 수원시 장안구 경수대로1043번길 3 은달 파장2호점'}</span>
+            </div>
           </div>
         </div>
 

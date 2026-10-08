@@ -65,6 +65,15 @@ export async function PUT(req: NextRequest) {
       sms_sender_phone,
       sms_webhook_url,
       privacy_policy,
+      // 1호점 & 2호점 구분 필드
+      store1_name,
+      store1_address,
+      store1_business_hours,
+      store1_phone,
+      store2_name,
+      store2_address,
+      store2_business_hours,
+      store2_phone,
     } = body;
 
     const finalHeroImages = Array.isArray(hero_images) ? hero_images : (hero_image_url ? [hero_image_url] : []);
@@ -102,6 +111,14 @@ export async function PUT(req: NextRequest) {
         sms_user_id: sms_user_id !== undefined ? sms_user_id : null,
         sms_sender_phone: sms_sender_phone !== undefined ? sms_sender_phone : null,
         sms_webhook_url: sms_webhook_url !== undefined ? sms_webhook_url : null,
+        store1_name: store1_name !== undefined ? store1_name : '은달 1호점(조원)',
+        store1_address: store1_address !== undefined ? store1_address : address,
+        store1_business_hours: store1_business_hours !== undefined ? store1_business_hours : business_hours,
+        store1_phone: store1_phone !== undefined ? store1_phone : phone,
+        store2_name: store2_name !== undefined ? store2_name : '은달 2호점(파장)',
+        store2_address: store2_address !== undefined ? store2_address : '경기 수원시 장안구 경수대로1043번길 3 은달 파장2호점',
+        store2_business_hours: store2_business_hours !== undefined ? store2_business_hours : business_hours,
+        store2_phone: store2_phone !== undefined ? store2_phone : '031-255-0816',
         updated_at: new Date().toISOString(),
       })
       .neq('id', '00000000-0000-0000-0000-000000000000')

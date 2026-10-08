@@ -17,6 +17,7 @@ import {
   Smartphone,
   Sparkles,
   Award,
+  TrendingUp,
 } from 'lucide-react';
 import { Staff } from '@/lib/types';
 import InstallPromptModal from '@/components/InstallPromptModal';
@@ -76,6 +77,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { label: '주문·견적 관제', href: '/admin/orders', icon: ClipboardList },
+    { label: '주변 카페 비교', href: '/admin/competitors', icon: TrendingUp },
     { label: '납품 포트폴리오', href: '/admin/portfolio', icon: Award },
     { label: '매니저 전달사항', href: '/admin/notices', icon: MessageSquare },
     { label: '추천 세트(은픽)', href: '/admin/preset-sets', icon: Sparkles },

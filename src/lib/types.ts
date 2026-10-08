@@ -32,6 +32,59 @@ export interface CafeInfo {
   sms_sender_phone?: string;
   sms_webhook_url?: string;
   privacy_policy?: string; // 관리자가 직접 편집하는 개인정보처리방침 전문
+  // 1호점 및 2호점 구분 매장 정보
+  store1_name?: string;
+  store1_address?: string;
+  store1_business_hours?: string;
+  store1_phone?: string;
+  store2_name?: string;
+  store2_address?: string;
+  store2_business_hours?: string;
+  store2_phone?: string;
+}
+
+// 주변 상권 및 경쟁사 정보
+export interface CompetitorMenu {
+  id: string;
+  competitor_id: string;
+  name: string;
+  category: 'coffee' | 'beverage' | 'dessert' | 'bakery' | 'set' | string;
+  price: number;
+  description?: string;
+  image_url?: string;
+  is_signature: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Competitor {
+  id: string;
+  name: string;
+  brand_type: 'independent' | 'specialty' | 'local_bakery' | string; // 체인점 제외 로컬 구분
+  target_branch: 'store1' | 'store2' | 'both'; // 은달 1호점/2호점 인근 구분
+  distance_store1: number; // 은달 1호점(조원)과의 거리(km)
+  distance_store2: number; // 은달 2호점(파장)과의 거리(km)
+  address: string;
+  address_detail?: string;
+  phone?: string;
+  latitude: number;
+  longitude: number;
+  naver_place_id?: string;
+  naver_place_url?: string;
+  rating: number; // 네이버 평점
+  review_count: number; // 방문자 리뷰수
+  blog_review_count: number; // 블로그 리뷰수
+  popularity_score: number; // 인지도 점수 (0-100)
+  image_url?: string;
+  description?: string;
+  representative_menu?: string;
+  avg_coffee_price: number;
+  is_active: boolean;
+  sort_order: number;
+  last_updated_at?: string;
+  created_at?: string;
+  menus?: CompetitorMenu[];
 }
 
 // 관리자, 매니저간 전달사항 (인수인계 및 점포 변경사항)

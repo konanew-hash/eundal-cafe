@@ -87,6 +87,15 @@ export default function AdminCafeInfoPage() {
     phone: '',
     address: '',
     business_hours: '',
+    // 1호점 및 2호점 구분 필드
+    store1_name: '은달 1호점(조원)',
+    store1_address: '',
+    store1_business_hours: '',
+    store1_phone: '',
+    store2_name: '은달 2호점(파장)',
+    store2_address: '',
+    store2_business_hours: '',
+    store2_phone: '',
     quote_notice: '',
     instagram_url: '',
     youtube_url: '',
@@ -134,6 +143,14 @@ export default function AdminCafeInfoPage() {
           phone: data.cafe.phone || '',
           address: data.cafe.address || '',
           business_hours: data.cafe.business_hours || '',
+          store1_name: data.cafe.store1_name || '은달 1호점(조원)',
+          store1_address: data.cafe.store1_address || data.cafe.address || '',
+          store1_business_hours: data.cafe.store1_business_hours || data.cafe.business_hours || '',
+          store1_phone: data.cafe.store1_phone || data.cafe.phone || '',
+          store2_name: data.cafe.store2_name || '은달 2호점(파장)',
+          store2_address: data.cafe.store2_address || '경기 수원시 장안구 경수대로1043번길 3 은달 파장2호점',
+          store2_business_hours: data.cafe.store2_business_hours || data.cafe.business_hours || '',
+          store2_phone: data.cafe.store2_phone || '031-255-0816',
           quote_notice: data.cafe.quote_notice || '견적 내역을 카페에서 확인 후 문자 혹은 유선 연락드려, 견적에 대한 주문 확정을 확인합니다.',
           instagram_url: data.cafe.instagram_url || '',
           youtube_url: data.cafe.youtube_url || '',
@@ -678,53 +695,162 @@ export default function AdminCafeInfoPage() {
           </div>
         </div>
 
-        {/* 4. 영업 및 매장 정보 */}
+        {/* 4. 영업 및 매장 정보 (1호점 및 2호점 분리 확장) */}
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-stone-900 pb-2 border-b border-stone-100">
-            영업시간 및 매장 연락처
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex items-center justify-between pb-2 border-b border-stone-100">
             <div>
-              <label className="block text-stone-700 font-bold mb-1 flex items-center gap-1">
-                <Phone className="w-3.5 h-3.5 text-stone-500" />
-                대표 전화번호
-              </label>
-              <input
-                type="text"
-                required
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
-              />
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+                <Store className="w-4 h-4 text-amber-700" />
+                <span>은달 매장별 영업시간 및 주소 관리 (1호점 / 2호점 분리)</span>
+              </h3>
+              <p className="text-[11px] text-stone-500 mt-0.5">
+                1호점(조원)과 2호점(파장)의 매장 주소, 영업시간, 전화번호를 각각 독립적으로 설정하여 고객 안내 화면에 구분 노출합니다.
+              </p>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
+              2개 매장 분리 연동
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 은달 1호점 (조원) 정보 카드 */}
+            <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-3">
+              <div className="flex items-center justify-between pb-1.5 border-b border-amber-200/60">
+                <span className="font-bold text-xs text-amber-950 flex items-center gap-1">
+                  <span className="w-4 h-4 rounded-full bg-amber-600 text-white text-[10px] font-black flex items-center justify-center">1</span>
+                  <span>은달 1호점 (조원점)</span>
+                </span>
+                <span className="text-[10px] text-amber-800 font-bold bg-white px-2 py-0.5 rounded-full border border-amber-200">
+                  본점 / 조원시장 맞은편
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-bold mb-1 text-[11px]">1호점 명칭</label>
+                <input
+                  type="text"
+                  required
+                  value={form.store1_name}
+                  onChange={(e) => setForm({ ...form, store1_name: e.target.value })}
+                  placeholder="은달 1호점(조원)"
+                  className="w-full p-2 bg-white border border-stone-300 rounded-xl font-bold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-bold mb-1 text-[11px] flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-amber-700" />
+                  1호점 매장 주소
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.store1_address}
+                  onChange={(e) => setForm({ ...form, store1_address: e.target.value, address: e.target.value })}
+                  placeholder="경기 수원시 장안구 조원로 16 상가동 1층 108-1"
+                  className="w-full p-2 bg-white border border-stone-300 rounded-xl font-medium text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1 text-[11px] flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-amber-700" />
+                    1호점 영업시간
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.store1_business_hours}
+                    onChange={(e) => setForm({ ...form, store1_business_hours: e.target.value, business_hours: e.target.value })}
+                    placeholder="09:00 ~ 21:00"
+                    className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1 text-[11px] flex items-center gap-1">
+                    <Phone className="w-3 h-3 text-amber-700" />
+                    1호점 전화번호
+                  </label>
+                  <input
+                    type="text"
+                    value={form.store1_phone}
+                    onChange={(e) => setForm({ ...form, store1_phone: e.target.value, phone: e.target.value })}
+                    placeholder="031-000-0000"
+                    className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-stone-700 font-bold mb-1 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-stone-500" />
-                영업 및 배달 시간
-              </label>
-              <input
-                type="text"
-                required
-                value={form.business_hours}
-                onChange={(e) => setForm({ ...form, business_hours: e.target.value })}
-                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
-              />
-            </div>
+            {/* 은달 2호점 (파장) 정보 카드 */}
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+              <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
+                <span className="font-bold text-xs text-stone-900 flex items-center gap-1">
+                  <span className="w-4 h-4 rounded-full bg-stone-800 text-white text-[10px] font-black flex items-center justify-center">2</span>
+                  <span>은달 2호점 (파장점)</span>
+                </span>
+                <span className="text-[10px] text-stone-600 font-bold bg-white px-2 py-0.5 rounded-full border border-stone-200">
+                  파장초 인근 / 북수원
+                </span>
+              </div>
 
-            <div>
-              <label className="block text-stone-700 font-bold mb-1 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-stone-500" />
-                매장 주소
-              </label>
-              <input
-                type="text"
-                required
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
-              />
+              <div>
+                <label className="block text-stone-700 font-bold mb-1 text-[11px]">2호점 명칭</label>
+                <input
+                  type="text"
+                  required
+                  value={form.store2_name}
+                  onChange={(e) => setForm({ ...form, store2_name: e.target.value })}
+                  placeholder="은달 2호점(파장)"
+                  className="w-full p-2 bg-white border border-stone-300 rounded-xl font-bold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 font-bold mb-1 text-[11px] flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-stone-700" />
+                  2호점 매장 주소
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.store2_address}
+                  onChange={(e) => setForm({ ...form, store2_address: e.target.value })}
+                  placeholder="경기 수원시 장안구 경수대로1043번길 3 은달 파장2호점"
+                  className="w-full p-2 bg-white border border-stone-300 rounded-xl font-medium text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1 text-[11px] flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-stone-700" />
+                    2호점 영업시간
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.store2_business_hours}
+                    onChange={(e) => setForm({ ...form, store2_business_hours: e.target.value })}
+                    placeholder="09:00 ~ 21:00"
+                    className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1 text-[11px] flex items-center gap-1">
+                    <Phone className="w-3 h-3 text-stone-700" />
+                    2호점 전화번호
+                  </label>
+                  <input
+                    type="text"
+                    value={form.store2_phone}
+                    onChange={(e) => setForm({ ...form, store2_phone: e.target.value })}
+                    placeholder="031-255-0816"
+                    className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

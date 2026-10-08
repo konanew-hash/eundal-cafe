@@ -8,6 +8,20 @@ export interface GpsCoordinates {
   roadAddress?: string;
 }
 
+export const EUNDAL_STORE1_COORDS = { lat: 37.2966787, lng: 127.0215096, name: '은달 1호점(조원)' };
+export const EUNDAL_STORE2_COORDS = { lat: 37.3075666, lng: 126.9978752, name: '은달 2호점(파장)' };
+
+// Haversine 공식을 사용한 두 위경도 좌표 사이의 거리 계산 (킬로미터 단위, 소수점 1자리)
+export function calculateDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const meters = calculateDistanceInMeters(lat1, lon1, lat2, lon2);
+  return Math.round((meters / 1000) * 10) / 10;
+}
+
 // Haversine 공식을 사용한 두 위경도 좌표 사이의 거리 계산 (미터 단위)
 export function calculateDistanceInMeters(
   lat1: number,

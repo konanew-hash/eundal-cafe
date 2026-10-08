@@ -57,35 +57,68 @@ export default function CafeIntroModal({ isOpen, onClose, cafe }: CafeIntroModal
             </p>
           </div>
 
-          {/* 매장 운영 및 위치 정보 */}
+          {/* 매장 운영 및 위치 정보 (1호점 & 2호점 구분) */}
           <div className="space-y-3 pt-1">
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-stone-50 border border-stone-100">
-              <Clock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-stone-900">운영 및 배달 시간</p>
-                <p className="text-xs text-stone-600 mt-0.5 leading-snug">
-                  {cafe?.business_hours || '매일 09:00 ~ 21:30 (배달 주문 09:30 ~ 21:00)'}
-                </p>
+            <div className="flex items-center justify-between text-xs font-bold text-stone-900 px-1">
+              <span>은달 매장 안내 (1호점 & 2호점)</span>
+              <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">픽업 & 배달</span>
+            </div>
+
+            {/* 1호점 카드 */}
+            <div className="p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/70 space-y-2">
+              <div className="flex items-center justify-between pb-1 border-b border-amber-200/50">
+                <span className="font-bold text-xs text-amber-950 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-amber-600 text-white text-[10px] font-black flex items-center justify-center">1</span>
+                  <span>{cafe?.store1_name || '은달 1호점 (조원)'}</span>
+                </span>
+                <span className="text-[10px] text-amber-800 font-bold">본점</span>
+              </div>
+              <div className="space-y-1 text-xs text-stone-700">
+                <div className="flex items-start gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                  <p className="font-medium text-stone-800 leading-snug">
+                    {cafe?.store1_address || cafe?.address || '경기 수원시 장안구 조원로 16 상가동 1층 108-1'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-stone-600 text-[11px]">
+                  <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                  <span>운영시간: {cafe?.store1_business_hours || cafe?.business_hours || '09:00 ~ 21:00'}</span>
+                </div>
+                {cafe?.store1_phone && (
+                  <div className="flex items-center gap-1.5 text-stone-600 text-[11px]">
+                    <Phone className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                    <span>연락처: {cafe.store1_phone}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-stone-50 border border-stone-100">
-              <MapPin className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-stone-900">매장 위치</p>
-                <p className="text-xs text-stone-600 mt-0.5 leading-snug">
-                  {cafe?.address || '서울특별시 마포구 월드컵북로 120 (연남동) 은달빌딩 1층'}
-                </p>
+            {/* 2호점 카드 */}
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
+              <div className="flex items-center justify-between pb-1 border-b border-stone-200">
+                <span className="font-bold text-xs text-stone-900 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-stone-800 text-white text-[10px] font-black flex items-center justify-center">2</span>
+                  <span>{cafe?.store2_name || '은달 2호점 (파장)'}</span>
+                </span>
+                <span className="text-[10px] text-stone-600 font-bold">북수원점</span>
               </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-stone-50 border border-stone-100">
-              <Phone className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-stone-900">매장 연락처</p>
-                <p className="text-xs text-stone-600 mt-0.5">
-                  {cafe?.phone || '02-334-5821'}
-                </p>
+              <div className="space-y-1 text-xs text-stone-700">
+                <div className="flex items-start gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-stone-600 shrink-0 mt-0.5" />
+                  <p className="font-medium text-stone-800 leading-snug">
+                    {cafe?.store2_address || '경기 수원시 장안구 경수대로1043번길 3 은달 파장2호점'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-stone-600 text-[11px]">
+                  <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                  <span>운영시간: {cafe?.store2_business_hours || cafe?.business_hours || '09:00 ~ 21:00'}</span>
+                </div>
+                {cafe?.store2_phone && (
+                  <div className="flex items-center gap-1.5 text-stone-600 text-[11px]">
+                    <Phone className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                    <span>연락처: {cafe.store2_phone}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
