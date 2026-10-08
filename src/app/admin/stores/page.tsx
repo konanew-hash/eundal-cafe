@@ -39,6 +39,7 @@ export default function AdminStoresPage() {
     address: '',
     address_detail: '',
     postal_code: '',
+    naver_place_url: '',
     phone: '',
     operating_hours: '',
     description: '',
@@ -73,6 +74,7 @@ export default function AdminStoresPage() {
       address: '',
       address_detail: '',
       postal_code: '',
+      naver_place_url: '',
       phone: '',
       operating_hours: '09:00 ~ 21:00',
       description: '',
@@ -91,6 +93,7 @@ export default function AdminStoresPage() {
       address: store.address,
       address_detail: store.address_detail || '',
       postal_code: store.postal_code || '',
+      naver_place_url: store.naver_place_url || '',
       phone: store.phone || '',
       operating_hours: store.operating_hours || '',
       description: store.description || '',
@@ -261,9 +264,23 @@ export default function AdminStoresPage() {
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-amber-800 font-bold mt-0.5 inline-block">
-                      우편번호: [{store.postal_code || '16298'}]
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        네이버 플레이스 연동
+                      </span>
+                      {store.naver_place_url && (
+                        <a
+                          href={store.naver_place_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-emerald-700 hover:text-emerald-900 underline font-semibold flex items-center gap-0.5"
+                        >
+                          <span>플레이스 확인</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      )}
+                    </div>
                   </div>
 
                   <button
@@ -481,6 +498,24 @@ export default function AdminStoresPage() {
                 </div>
               </div>
 
+              {/* 네이버 플레이스 연동 링크 */}
+              <div>
+                <label className="block text-stone-700 font-medium mb-1 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded bg-[#03C75A] text-white text-[10px] font-black flex items-center justify-center">N</span>
+                  <span>네이버 플레이스 연동 URL (실위치 지도 링크)</span>
+                </label>
+                <input
+                  type="url"
+                  value={form.naver_place_url}
+                  onChange={(e) => setForm({ ...form, naver_place_url: e.target.value })}
+                  placeholder="예: https://map.naver.com/p/search/... 또는 https://naver.me/..."
+                  className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs"
+                />
+                <p className="text-[10px] text-stone-500 mt-1">
+                  * 우편번호 기반 오차를 없애고 고객에게 실제 점포의 정확한 네이버 플레이스 위치를 안내합니다.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-stone-700 font-medium mb-1">매장 전화번호</label>
@@ -586,9 +621,11 @@ export default function AdminStoresPage() {
         isOpen={Boolean(previewMapStore)}
         onClose={() => setPreviewMapStore(null)}
         title={previewMapStore ? `${previewMapStore.name} 위치 지도` : '매장 위치'}
+        storeName={previewMapStore?.name}
         address={previewMapStore?.address || ''}
         detailAddress={previewMapStore?.address_detail}
         postalCode={previewMapStore?.postal_code}
+        naverPlaceUrl={previewMapStore?.naver_place_url}
         phone={previewMapStore?.phone}
       />
     </div>

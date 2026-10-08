@@ -15,6 +15,7 @@ import {
   Loader2,
   MessageSquare,
   Smartphone,
+  Sparkles,
 } from 'lucide-react';
 import { Staff } from '@/lib/types';
 import InstallPromptModal from '@/components/InstallPromptModal';
@@ -75,6 +76,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { label: '주문·견적 관제', href: '/admin/orders', icon: ClipboardList },
     { label: '매니저 전달사항', href: '/admin/notices', icon: MessageSquare },
+    { label: '추천 세트(은픽)', href: '/admin/preset-sets', icon: Sparkles },
     { label: '픽업 매장 관리', href: '/admin/stores', icon: Store },
     { label: '메뉴 & 알러지', href: '/admin/menus', icon: Coffee },
     { label: '배달비 정책', href: '/admin/delivery', icon: Truck },

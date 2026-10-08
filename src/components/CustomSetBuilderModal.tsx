@@ -17,14 +17,17 @@ import {
   HelpCircle,
   Coffee,
   AlertCircle,
+  Zap,
+  CheckCircle2,
 } from 'lucide-react';
-import { MenuItem, Category, CartItem, CustomSetDetails, SetComponentItem } from '@/lib/types';
+import { MenuItem, Category, CartItem, CustomSetDetails, SetComponentItem, PresetSet } from '@/lib/types';
 
 interface CustomSetBuilderModalProps {
   isOpen: boolean;
   onClose: () => void;
   menus: MenuItem[];
   categories: Category[];
+  presetSets?: PresetSet[];
   onAddSetToCart: (cartItem: CartItem) => void;
 }
 
@@ -48,6 +51,7 @@ export default function CustomSetBuilderModal({
   onClose,
   menus,
   categories,
+  presetSets = [],
   onAddSetToCart,
 }: CustomSetBuilderModalProps) {
   const [setName, setSetName] = useState('은달 맞춤 선물세트');
@@ -303,6 +307,86 @@ export default function CustomSetBuilderModal({
     }
   };
 
+  // 은픽(추천 세트) 원클릭 견적서(장바구니) 담기 핸들러
+  const handleQuickAddPreset = (preset: PresetSet) => {
+    // 1/2 샌드위치 포함 여부 검사
+    const hasHalf = preset.components.some((c) => {
+      const item = menus.find((m) => m.id === c.menu_id);
+      return item && (item.is_set_only || item.is_even_only || item.name.includes('(1/2개)'));
+    });
+    const qty = hasHalf ? 2 : 1;
+
+    const setDetails: CustomSetDetails = {
+      set_name: preset.name,
+      components: preset.components,
+      package_box: {
+        name: preset.package_box_name || '은달 전용 선물포장',
+        price: preset.package_box_price || 0,
+      },
+      packaging_options: (preset.packaging_options || []).map((o) => ({
+        name: o.name,
+        price: o.price,
+      })),
+      unit_price: preset.price,
+    };
+
+    const setMenuDummy: MenuItem = {
+      id: `preset-set-${preset.id}-${Date.now()}`,
+      category_id: 'custom_set',
+      name: `[은픽] ${preset.name}`,
+      description:
+        preset.description ||
+        `구성: ${preset.components.map((c) => `${c.menu_name}(${c.quantity})`).join(', ')} / 포장: ${preset.package_box_name || '기본'}`,
+      price: preset.price,
+      image_url:
+        preset.image_url ||
+        'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80',
+      is_sold_out: false,
+      sort_order: 999,
+      is_active: true,
+    };
+
+    const cartItem: CartItem = {
+      id: `set-item-${Date.now()}`,
+      menu: setMenuDummy,
+      quantity: qty,
+      is_custom_set: true,
+      set_details: setDetails,
+    };
+
+    onAddSetToCart(cartItem);
+    setAddedEffect(true);
+    setTimeout(() => {
+      setAddedEffect(false);
+      onClose();
+    }, 450);
+  };
+
+  // 은픽(추천 세트) 커스텀 빌더로 불러와서 수정하기 핸들러
+  const handleLoadPreset = (preset: PresetSet) => {
+    setSetName(preset.name);
+    const compMap: Record<string, number> = {};
+    preset.components.forEach((c) => {
+      compMap[c.menu_id] = c.quantity;
+    });
+    setSelectedComponents(compMap);
+
+    if (preset.package_box_id) {
+      setSelectedBoxId(preset.package_box_id);
+    }
+    if (preset.packaging_options && preset.packaging_options.length > 0) {
+      setSelectedOptionIds(preset.packaging_options.map((o) => o.id));
+    } else {
+      setSelectedOptionIds([]);
+    }
+
+    const hasHalf = preset.components.some((c) => {
+      const item = menus.find((m) => m.id === c.menu_id);
+      return item && (item.is_set_only || item.is_even_only || item.name.includes('(1/2개)'));
+    });
+    setSetQuantity(hasHalf ? 2 : 1);
+  };
+
   if (!isOpen) return null;
 
   // 장바구니에 세트메뉴 담기
@@ -395,6 +479,119 @@ export default function CustomSetBuilderModal({
 
         {/* 본문 스크롤 영역 */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1 text-xs">
+          {/* 요구사항: 서브웨이 썹픽 스타일 추천 세트 조합 (은픽) 섹션 */}
+          {presetSets && presetSets.filter((p) => p.is_active).length > 0 && (
+            <div className="p-4 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent rounded-2xl border-2 border-amber-400/40 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-amber-500 text-stone-950 font-black">
+                    <Sparkles className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h4 className="font-extrabold text-sm sm:text-base text-stone-900 flex items-center gap-1.5">
+                      <span>은달 추천 꿀조합</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-bold">
+                        은픽 (썹픽)
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-stone-600">
+                      고민될 땐 검증된 꿀조합으로! 원클릭으로 견적서에 바로 담거나 불러와서 수정할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 추천 조합 카드 목록 (가로 스크롤 & 슬라이드 형태) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                {presetSets
+                  .filter((p) => p.is_active)
+                  .map((preset) => {
+                    const presetHasHalf = preset.components.some((c) => {
+                      const item = menus.find((m) => m.id === c.menu_id);
+                      return item && (item.is_set_only || item.is_even_only || item.name.includes('(1/2개)'));
+                    });
+
+                    return (
+                      <div
+                        key={preset.id}
+                        className="bg-white rounded-xl p-3 border border-amber-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden"
+                      >
+                        {preset.badge_text && (
+                          <div className="absolute top-2 right-2">
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                              {preset.badge_text}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5 pr-14">
+                          <h5 className="font-bold text-stone-900 text-xs sm:text-sm line-clamp-1 group-hover:text-amber-800 transition-colors">
+                            {preset.name}
+                          </h5>
+                          <p className="text-amber-700 font-extrabold text-xs">
+                            {preset.price.toLocaleString()}원
+                            <span className="text-[10px] text-stone-500 font-normal ml-1">/ 1세트</span>
+                          </p>
+                        </div>
+
+                        {preset.description && (
+                          <p className="text-[11px] text-stone-500 line-clamp-1 mt-1">
+                            {preset.description}
+                          </p>
+                        )}
+
+                        {/* 구성품 요약 태그 */}
+                        <div className="my-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200/70 space-y-1">
+                          <div className="flex flex-wrap gap-1">
+                            {preset.components.map((c, i) => (
+                              <span
+                                key={i}
+                                className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-stone-200 text-stone-700 font-medium"
+                              >
+                                {c.menu_name} ×{c.quantity}
+                              </span>
+                            ))}
+                          </div>
+                          {preset.package_box_name && (
+                            <div className="text-[10px] text-stone-500 flex items-center gap-1 pt-0.5 border-t border-stone-200/60">
+                              <Package className="w-2.5 h-2.5 text-amber-600" />
+                              <span>포장: {preset.package_box_name}</span>
+                            </div>
+                          )}
+                          {presetHasHalf && (
+                            <div className="text-[10px] text-amber-700 font-bold">
+                              🥪 1/2 샌드위치 포함 (주문 수량: 짝수 단위)
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 액션 버튼 2종 */}
+                        <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-stone-100">
+                          <button
+                            type="button"
+                            onClick={() => handleLoadPreset(preset)}
+                            className="w-full py-1.5 px-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg font-bold text-[11px] transition-colors flex items-center justify-center gap-1"
+                            title="이 조합의 구성을 아래 빌더로 불러와서 자유롭게 변경합니다"
+                          >
+                            <span>✏️ 불러와 수정</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickAddPreset(preset)}
+                            className="w-full py-1.5 px-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-105 text-stone-950 font-black rounded-lg text-[11px] transition-all flex items-center justify-center gap-1 shadow-2xs"
+                            title="이 구성 그대로 견적서에 즉시 담습니다"
+                          >
+                            <Zap className="w-3 h-3 fill-stone-950" />
+                            <span>견적서 담기</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           {/* 요구사항: 세트메뉴 이름 지정 개선 (수정이 가능하다는 안내 및 자율 입력 지원) */}
           <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-1.5">
             <div className="flex items-center justify-between">

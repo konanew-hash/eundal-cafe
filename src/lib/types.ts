@@ -31,6 +31,7 @@ export interface CafeInfo {
   sms_user_id?: string;
   sms_sender_phone?: string;
   sms_webhook_url?: string;
+  privacy_policy?: string; // 관리자가 직접 편집하는 개인정보처리방침 전문
 }
 
 // 관리자, 매니저간 전달사항 (인수인계 및 점포 변경사항)
@@ -91,6 +92,7 @@ export interface Store {
   address: string;
   address_detail?: string;
   postal_code?: string;
+  naver_place_url?: string; // 네이버 플레이스 연동 URL
   phone?: string;
   operating_hours?: string;
   description?: string;
@@ -152,6 +154,25 @@ export interface CustomSetDetails {
   package_box: { name: string; price: number }; // 포장용기 (예: 크라프트 박스)
   packaging_options: { name: string; price: number }[]; // 캔시머, 리본 등 추가 옵션
   unit_price: number; // 1세트당 단가
+}
+
+// 서브웨이 썹픽 스타일 추천 세트 조합 (은픽)
+export interface PresetSet {
+  id: string;
+  name: string;
+  description?: string;
+  badge_text?: string;
+  image_url?: string;
+  components: SetComponentItem[];
+  package_box_id?: string;
+  package_box_name?: string;
+  package_box_price?: number;
+  packaging_options?: { id: string; name: string; price: number }[];
+  price: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface OrderItem {

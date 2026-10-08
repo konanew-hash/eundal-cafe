@@ -991,6 +991,7 @@ export default function AdminOrdersPage() {
         isOpen={Boolean(mapModalData)}
         onClose={() => setMapModalData(null)}
         title={mapModalData?.label || '위치 지도 확인'}
+        storeName={mapModalData?.label}
         address={mapModalData?.address || ''}
       />
 

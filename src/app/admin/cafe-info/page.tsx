@@ -19,8 +19,41 @@ import {
   MessageCircle,
   AlertCircle,
   Loader2,
+  ShieldCheck,
 } from 'lucide-react';
 import { CafeInfo } from '@/lib/types';
+
+const DEFAULT_PRIVACY_POLICY = `은달 카페(이하 '카페' 또는 '회사')는 「개인정보 보호법」 제30조 및 관계 법령을 준수하며, 정보주체의 개인정보 및 권익을 보호하고 개인정보와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보처리방침을 수립·공개합니다.
+
+제1조 (개인정보의 처리 목적)
+카페는 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 「개인정보 보호법」 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.
+1. 주문 및 단체 견적 처리: 식음료 주문 접수, 단체 맞춤 세트 제조 및 포장, 배달 및 매장 픽업 서비스 제공, 견적서 발송
+2. 고객 안내 및 상담: 주문 상태 확인, 배달 거리/위치 안내, 지연·품절 안내 및 관련 SMS/MMS 발송, 고객 문의 대응
+3. 서비스 개선 및 안전 관리: 접속 빈도 파악, 이상 거래 방지 및 서비스 품질 향상
+
+제2조 (처리하는 개인정보의 항목)
+카페는 주문 및 견적 접수를 위해 다음의 최소한의 개인정보 항목을 수집·처리하고 있습니다.
+- 필수 항목: 고객 성명, 휴대전화번호, 희망 수령일시, 배달 주소(배달 주문 시 상세주소 포함), 픽업 매장(픽업 주문 시)
+- 자동 수집 항목: 서비스 이용 기록, 접속 IP 주소, 단말기 OS/브라우저 정보, GPS 위치 좌표(사용자가 기기 권한을 허용한 경우에 한함)
+
+제3조 (개인정보의 처리 및 보유 기간)
+① 카페는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에 동의받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.
+② 단체 주문 및 견적 접수 정보의 보유 기간은 배달 완료 또는 주문 완료일로부터 14일입니다. 사후 배달 오류 방지 및 CS 처리 완료 후 지체 없이 데이터베이스에서 안전하게 영구 파기합니다.
+
+제4조 (개인정보의 제3자 제공 및 처리 위탁)
+① 카페는 정보주체의 개인정보를 제1조에서 명시한 범위 내에서만 처리하며, 정보주체의 동의 또는 법률의 특별한 규정 등에 해당하는 경우에만 개인정보를 제3자에게 제공합니다.
+② 배달 대행 업체: 배달 기사 (주문 상품 배송 목적 / 성명, 연락처, 주소 / 배송 완료 시까지)
+③ 호스팅 및 클라우드 인프라: Supabase, Vercel (시스템 데이터 보관 및 안전 호스팅)
+
+제5조 (정보주체와 법정대리인의 권리·의무 및 행사방법)
+정보주체는 카페에 대해 언제든지 개인정보 열람·정정·삭제·처리정지 요구 등의 권리를 행사할 수 있으며, 고객센터 유선 연락을 통해 즉시 조치받으실 수 있습니다.
+
+제6조 (개인정보의 안전성 확보조치)
+카페는 개인정보의 안전성 확보를 위해 데이터 암호화 통신(SSL/TLS), 관리자 인증 접근 통제 등의 기술적·관리적 보호 조치를 강구하고 있습니다.
+
+제7조 (개인정보 보호책임자)
+- 개인정보 보호책임자: 은달 카페 대표
+- 문의 연락처: 02-1234-5678 (운영시간: 09:00 ~ 21:00)`;
 
 export default function AdminCafeInfoPage() {
   const [cafe, setCafe] = useState<CafeInfo | null>(null);
@@ -62,6 +95,7 @@ export default function AdminCafeInfoPage() {
     business_number: '',
     owner_name: '',
     privacy_officer: '',
+    privacy_policy: '',
     manager_kakao_id: '',
     manager_phone: '',
     // 실시간 주문 알림 연동
@@ -108,6 +142,7 @@ export default function AdminCafeInfoPage() {
           business_number: data.cafe.business_number || '',
           owner_name: data.cafe.owner_name || '',
           privacy_officer: data.cafe.privacy_officer || '',
+          privacy_policy: data.cafe.privacy_policy || '',
           manager_kakao_id: data.cafe.manager_kakao_id || '',
           manager_phone: data.cafe.manager_phone || '',
           telegram_bot_token: data.cafe.telegram_bot_token || '',
@@ -846,6 +881,58 @@ export default function AdminCafeInfoPage() {
                 onChange={(e) => setForm({ ...form, privacy_officer: e.target.value })}
                 className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* 6-1. 개인정보처리방침 전문 내용 설정 (홈페이지 푸터 연동) */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-amber-700" />
+                <span>개인정보처리방침 전문 내용 설정 (홈페이지 푸터 연동)</span>
+              </h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                홈페이지 하단 푸터의 [개인정보처리방침]을 클릭했을 때 고객에게 고지되는 전문 내용입니다. 관리자가 직접 수정 및 관리할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, privacy_policy: DEFAULT_PRIVACY_POLICY })}
+                className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold transition-colors"
+                title="대한민국 개인정보보호법 제30조 표준 약관 전문을 에디터에 채웁니다"
+              >
+                📄 표준 서식 채우기
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('개인정보처리방침을 비우고 기본 표준 약관으로 복원하시겠습니까?')) {
+                    setForm({ ...form, privacy_policy: '' });
+                  }
+                }}
+                className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 border border-stone-200 text-[11px] font-bold transition-colors"
+                title="내용을 비워 시스템 기본 서식이 적용되도록 리셋합니다"
+              >
+                🧹 비우기 (기본값)
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <textarea
+              rows={12}
+              value={form.privacy_policy}
+              onChange={(e) => setForm({ ...form, privacy_policy: e.target.value })}
+              placeholder="개인정보처리방침 전문을 입력하세요. (비워둘 경우 시스템 표준 기본 약관이 자동으로 노출됩니다)"
+              className="w-full p-3.5 bg-stone-50 border border-stone-300 rounded-xl font-sans text-xs leading-relaxed focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            />
+            <div className="flex items-center justify-between text-[11px] text-stone-500 mt-1">
+              <span>* 작성하신 줄바꿈 및 문단 구성이 홈페이지 모달에 그대로 반영됩니다.</span>
+              <span>글자수: {form.privacy_policy.length}자</span>
             </div>
           </div>
         </div>

@@ -15,7 +15,7 @@ import InstallPromptModal, { useHomeScreenInstall } from '@/components/InstallPr
 import GpsGuideModal from '@/components/GpsGuideModal';
 import CustomSetBuilderModal from '@/components/CustomSetBuilderModal';
 import Footer from '@/components/Footer';
-import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store } from '@/lib/types';
+import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store, PresetSet } from '@/lib/types';
 import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation, Gift, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function HomePage() {
@@ -23,6 +23,7 @@ export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
+  const [presetSets, setPresetSets] = useState<PresetSet[]>([]);
   const [deliveryPolicy, setDeliveryPolicy] = useState<DeliveryPolicy | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,8 +53,8 @@ export default function HomePage() {
   const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
 
-  // 선택된 카테고리
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  // 요구사항: 첫 접속 시 전체 메뉴 렌더링 부하 완화를 위해 '단체 & 선물 세트' 카테고리가 기본 탭으로 노출되도록 설정
+  const [selectedCategory, setSelectedCategory] = useState<string>('11111111-1111-1111-1111-111111111111');
 
   // 장바구니 상태
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -130,6 +131,9 @@ export default function HomePage() {
         if (data.stores && data.stores.length > 0) {
           setStores(data.stores);
           setSelectedStoreId(data.stores[0].id);
+        }
+        if (data.presetSets) {
+          setPresetSets(data.presetSets);
         }
         if (data.deliveryPolicy) {
           setDeliveryPolicy(data.deliveryPolicy);
@@ -623,6 +627,7 @@ export default function HomePage() {
         onClose={() => setIsSetBuilderOpen(false)}
         menus={menus}
         categories={categories}
+        presetSets={presetSets}
         onAddSetToCart={handleAddSetToCart}
       />
 
@@ -644,10 +649,11 @@ export default function HomePage() {
         onOpenGpsGuide={() => setIsGpsGuideOpen(true)}
       />
 
-      {/* 개인정보보호법 전문 모달 */}
+      {/* 개인정보보호법 전문 모달 (관리자가 등록/수정한 전문 실시간 반영) */}
       <PrivacyPolicyModal
         isOpen={isPrivacyOpen}
         onClose={() => setIsPrivacyOpen(false)}
+        privacyPolicyText={cafe?.privacy_policy}
       />
 
       {/* 견적 정상 접수 완료 모달 (안내 문구 및 총괄관리자 카톡 전송 포함) */}

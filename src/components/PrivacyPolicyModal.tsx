@@ -6,9 +6,10 @@ import { X, ShieldCheck, Scale, FileText } from 'lucide-react';
 interface PrivacyPolicyModalProps {
   isOpen: boolean;
   onClose: () => void;
+  privacyPolicyText?: string;
 }
 
-export default function PrivacyPolicyModal({ isOpen, onClose }: PrivacyPolicyModalProps) {
+export default function PrivacyPolicyModal({ isOpen, onClose, privacyPolicyText }: PrivacyPolicyModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -35,9 +36,15 @@ export default function PrivacyPolicyModal({ isOpen, onClose }: PrivacyPolicyMod
 
         {/* 본문 약관 내용 */}
         <div className="flex-1 overflow-y-auto py-3.5 space-y-4 text-xs text-stone-700 leading-relaxed pr-1">
-          <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200 text-amber-950 font-medium">
-            은달 카페(이하 &apos;카페&apos; 또는 &apos;회사&apos;)는 「개인정보 보호법」 제30조 및 관계 법령을 준수하며, 정보주체의 개인정보 및 권익을 보호하고 개인정보와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보처리방침을 수립·공개합니다.
-          </div>
+          {privacyPolicyText && privacyPolicyText.trim().length > 0 ? (
+            <div className="whitespace-pre-line text-stone-700 text-xs sm:text-[13px] leading-relaxed bg-stone-50 p-4 rounded-2xl border border-stone-200">
+              {privacyPolicyText}
+            </div>
+          ) : (
+            <>
+              <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200 text-amber-950 font-medium">
+                은달 카페(이하 &apos;카페&apos; 또는 &apos;회사&apos;)는 「개인정보 보호법」 제30조 및 관계 법령을 준수하며, 정보주체의 개인정보 및 권익을 보호하고 개인정보와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보처리방침을 수립·공개합니다.
+              </div>
 
           <div className="space-y-1.5">
             <h4 className="font-bold text-stone-900 text-xs sm:text-sm">제1조 (개인정보의 처리 목적)</h4>
@@ -114,6 +121,8 @@ export default function PrivacyPolicyModal({ isOpen, onClose }: PrivacyPolicyMod
               <p>• <strong>개인정보침해 신고센터:</strong> (국번없이) 118 (privacy.kisa.or.kr)</p>
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {/* 닫기 버튼 */}

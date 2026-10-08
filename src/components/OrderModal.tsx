@@ -608,9 +608,11 @@ export default function OrderModal({
                       </div>
 
                       <div className="mt-2 text-[11px] text-stone-600 space-y-0.5 pl-6">
-                        <p className="flex items-center gap-1 font-medium">
-                          <span className="text-amber-700 font-bold">[{store.postal_code || '16298'}]</span>
-                          <span>{store.address} {store.address_detail}</span>
+                        <p className="flex items-center gap-1 font-medium flex-wrap">
+                          <span className="text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded font-bold text-[10px]">
+                            🟢 네이버 플레이스
+                          </span>
+                          <span className="font-semibold text-stone-900">{store.address}</span> {store.address_detail}
                         </p>
                         {store.operating_hours && (
                           <p className="text-stone-400">운영시간: {store.operating_hours}</p>
@@ -628,22 +630,22 @@ export default function OrderModal({
                             e.stopPropagation();
                             setMapPopupStore(store);
                           }}
-                          className="px-2 py-1 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold flex items-center gap-1"
+                          className="px-2 py-1 rounded bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                         >
-                          <MapPin className="w-3 h-3 text-amber-700" />
-                          찾아올 곳 지도 보기
+                          <MapPin className="w-3 h-3 text-amber-400" />
+                          실위치 지도 보기
                         </button>
                         <a
-                          href={`https://map.naver.com/v5/search/${encodeURIComponent(store.address)}`}
+                          href={store.naver_place_url || `https://map.naver.com/p/search/${encodeURIComponent(`${store.name} ${store.address}`)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 border border-emerald-200"
+                          className="px-2 py-1 rounded bg-[#03C75A] hover:bg-[#02b150] text-white text-[10px] font-bold flex items-center gap-0.5 shadow-2xs transition-colors"
                         >
-                          네이버 지도 <ExternalLink className="w-2.5 h-2.5" />
+                          <span>네이버 플레이스</span> <ExternalLink className="w-2.5 h-2.5" />
                         </a>
                         <a
-                          href={`https://map.kakao.com/link/search/${encodeURIComponent(store.address)}`}
+                          href={`https://map.kakao.com/link/search/${encodeURIComponent(`${store.name} ${store.address}`)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -877,9 +879,11 @@ export default function OrderModal({
         isOpen={Boolean(mapPopupStore)}
         onClose={() => setMapPopupStore(null)}
         title={mapPopupStore ? `${mapPopupStore.name} 찾아오시는 길` : '매장 위치'}
+        storeName={mapPopupStore?.name}
         address={mapPopupStore?.address || ''}
         detailAddress={mapPopupStore?.address_detail}
         postalCode={mapPopupStore?.postal_code}
+        naverPlaceUrl={mapPopupStore?.naver_place_url}
         phone={mapPopupStore?.phone}
       />
 

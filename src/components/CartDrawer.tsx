@@ -516,7 +516,10 @@ export default function CartDrawer({
                           </div>
                           <div className="mt-1 pl-5 text-[11px] text-stone-600">
                             <p className="line-clamp-1">
-                              <strong className="text-amber-800">[{store.postal_code || '16298'}]</strong> {store.address} {store.address_detail}
+                              <span className="text-emerald-800 bg-emerald-100/80 px-1.5 py-0.5 rounded font-bold text-[10px] mr-1.5">
+                                🟢 네이버 플레이스
+                              </span>
+                              <span className="font-semibold text-stone-900">{store.address}</span> {store.address_detail}
                             </p>
                           </div>
                           {/* 지도 길찾기 링크 및 미니 지도 팝업 */}
@@ -527,28 +530,28 @@ export default function CartDrawer({
                                 e.stopPropagation();
                                 setSelectedMapStore(store);
                               }}
-                              className="px-2 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-800 text-[10px] font-bold flex items-center gap-1 transition-colors"
+                              className="px-2 py-0.5 rounded bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold flex items-center gap-1 transition-colors shadow-2xs"
                             >
-                              <MapPin className="w-2.5 h-2.5 text-amber-700" />
-                              <span>지도 보기</span>
+                              <MapPin className="w-2.5 h-2.5 text-amber-400" />
+                              <span>실위치 지도 보기</span>
                             </button>
                             <a
-                              href={`https://map.naver.com/v5/search/${encodeURIComponent(store.address)}`}
+                              href={store.naver_place_url || `https://map.naver.com/p/search/${encodeURIComponent(`${store.name} ${store.address}`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 border border-emerald-200"
+                              className="px-2 py-0.5 rounded bg-[#03C75A] hover:bg-[#02b150] text-white text-[10px] font-bold flex items-center gap-0.5 shadow-2xs transition-colors"
                             >
-                              네이버 지도 <ExternalLink className="w-2.5 h-2.5" />
+                              <span>네이버 플레이스</span> <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                             <a
-                              href={`https://map.kakao.com/link/search/${encodeURIComponent(store.address)}`}
+                              href={`https://map.kakao.com/link/search/${encodeURIComponent(`${store.name} ${store.address}`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               className="px-2 py-0.5 rounded bg-yellow-50 hover:bg-yellow-100 text-yellow-900 text-[10px] font-bold flex items-center gap-0.5 border border-yellow-300"
                             >
-                              카카오맵 <ExternalLink className="w-2.5 h-2.5" />
+                              <span>카카오</span> <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                           </div>
                         </div>
@@ -755,9 +758,11 @@ export default function CartDrawer({
         isOpen={Boolean(selectedMapStore)}
         onClose={() => setSelectedMapStore(null)}
         title={selectedMapStore ? `${selectedMapStore.name} 찾아오시는 길` : '매장 위치'}
+        storeName={selectedMapStore?.name}
         address={selectedMapStore?.address || ''}
         detailAddress={selectedMapStore?.address_detail}
         postalCode={selectedMapStore?.postal_code}
+        naverPlaceUrl={selectedMapStore?.naver_place_url}
         phone={selectedMapStore?.phone}
       />
     </div>

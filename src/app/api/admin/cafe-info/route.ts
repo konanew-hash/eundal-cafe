@@ -64,6 +64,7 @@ export async function PUT(req: NextRequest) {
       sms_user_id,
       sms_sender_phone,
       sms_webhook_url,
+      privacy_policy,
     } = body;
 
     const finalHeroImages = Array.isArray(hero_images) ? hero_images : (hero_image_url ? [hero_image_url] : []);
@@ -84,6 +85,7 @@ export async function PUT(req: NextRequest) {
         address,
         business_hours,
         quote_notice: quote_notice || '견적 내역을 카페에서 확인 후 문자 혹은 유선 연락드려, 견적에 대한 주문 확정을 확인합니다.',
+        privacy_policy: privacy_policy !== undefined ? privacy_policy : null,
         instagram_url: instagram_url !== undefined ? instagram_url : null,
         youtube_url: youtube_url !== undefined ? youtube_url : null,
         naver_url: naver_url !== undefined ? naver_url : null,
