@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
       address_detail,
       postal_code,
       naver_place_url,
+      naver_place_id,
+      latitude,
+      longitude,
       phone,
       operating_hours,
       description,
@@ -52,6 +55,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '매장 도로명 주소를 입력해주세요.' }, { status: 400 });
     }
 
+    // 네이버 플레이스 ID 기반 자동 위경도/URL 보정
+    const cleanPlaceId = naver_place_id ? String(naver_place_id).trim() : null;
+    let finalLat = latitude ? parseFloat(String(latitude)) : null;
+    let finalLng = longitude ? parseFloat(String(longitude)) : null;
+    let finalPlaceUrl = naver_place_url ? naver_place_url.trim() : null;
+
+    if (cleanPlaceId === '1245444726') {
+      if (!finalLat) finalLat = 37.2966787;
+      if (!finalLng) finalLng = 127.0215096;
+      if (!finalPlaceUrl) finalPlaceUrl = 'https://m.place.naver.com/restaurant/1245444726/home';
+    } else if (cleanPlaceId === '1869537461') {
+      if (!finalLat) finalLat = 37.3075666;
+      if (!finalLng) finalLng = 126.9978752;
+      if (!finalPlaceUrl) finalPlaceUrl = 'https://m.place.naver.com/restaurant/1869537461/home';
+    }
+
     const supabase = getSupabaseServer();
     const { data: created, error } = await supabase
       .from('eundal_stores')
@@ -61,7 +80,10 @@ export async function POST(req: NextRequest) {
         address: address.trim(),
         address_detail: address_detail ? address_detail.trim() : null,
         postal_code: postal_code ? postal_code.trim() : null,
-        naver_place_url: naver_place_url ? naver_place_url.trim() : null,
+        naver_place_url: finalPlaceUrl,
+        naver_place_id: cleanPlaceId,
+        latitude: finalLat,
+        longitude: finalLng,
         phone: phone ? phone.trim() : null,
         operating_hours: operating_hours ? operating_hours.trim() : '09:00 ~ 21:00',
         description: description ? description.trim() : null,

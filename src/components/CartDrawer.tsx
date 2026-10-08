@@ -763,6 +763,9 @@ export default function CartDrawer({
         detailAddress={selectedMapStore?.address_detail}
         postalCode={selectedMapStore?.postal_code}
         naverPlaceUrl={selectedMapStore?.naver_place_url}
+        naverPlaceId={selectedMapStore?.naver_place_id}
+        latitude={selectedMapStore?.latitude}
+        longitude={selectedMapStore?.longitude}
         phone={selectedMapStore?.phone}
       />
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Plus,
   Edit2,
@@ -14,6 +14,15 @@ import {
   Upload,
   Video,
   Film,
+  Search,
+  Filter,
+  Layers,
+  LayoutGrid,
+  AlertTriangle,
+  Sparkles,
+  Package,
+  CheckCircle2,
+  HelpCircle,
 } from 'lucide-react';
 import { Category, MenuItem } from '@/lib/types';
 
@@ -26,6 +35,15 @@ export default function AdminMenusPage() {
   const [uploadingAddImage, setUploadingAddImage] = useState(false);
   const menuFileInputRef = useRef<HTMLInputElement>(null);
   const addImageFileInputRef = useRef<HTMLInputElement>(null);
+
+  // 세부 구분자 및 스마트 필터링 상태
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<
+    'all' | 'sandwich_whole' | 'sandwich_half' | 'set_only' | 'has_allergen' | 'no_allergen' | 'sold_out' | 'packaging'
+  >('all');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'sort_order' | 'name' | 'price_asc' | 'price_desc' | 'newest'>('sort_order');
+  const [viewMode, setViewMode] = useState<'grouped' | 'grid'>('grouped');
 
   // 메뉴 모달
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
@@ -90,6 +108,94 @@ export default function AdminMenusPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // 통계 집계
+  const stats = useMemo(() => {
+    const total = menus.length;
+    const soldOut = menus.filter((m) => m.is_sold_out).length;
+    const available = total - soldOut;
+    const wholeSandwiches = menus.filter((m) => m.name.includes('샌드위치') && !m.name.includes('1/2') && !m.is_set_only).length;
+    const halfSandwiches = menus.filter((m) => m.name.includes('1/2') || m.is_set_only).length;
+    const withAllergens = menus.filter((m) => m.allergens && m.allergens.trim().length > 0).length;
+    const withoutAllergens = total - withAllergens;
+    const packagingCount = menus.filter((m) => m.packaging_type === 'box' || m.packaging_type === 'special').length;
+    return {
+      total,
+      soldOut,
+      available,
+      wholeSandwiches,
+      halfSandwiches,
+      withAllergens,
+      withoutAllergens,
+      packagingCount,
+    };
+  }, [menus]);
+
+  // 세부 구분자 필터링 및 정렬된 메뉴 목록
+  const filteredAndSortedMenus = useMemo(() => {
+    return menus
+      .filter((m) => {
+        // 1. 카테고리 필터
+        if (selectedCategoryFilter !== 'all' && m.category_id !== selectedCategoryFilter) {
+          return false;
+        }
+
+        // 2. 세부 구분자(유형) 필터
+        if (selectedTypeFilter === 'sandwich_whole') {
+          if (!m.name.includes('샌드위치') || m.name.includes('1/2') || m.is_set_only) return false;
+        } else if (selectedTypeFilter === 'sandwich_half') {
+          if (!m.name.includes('1/2') && !m.is_set_only) return false;
+        } else if (selectedTypeFilter === 'set_only') {
+          if (!m.is_set_only && !m.is_available_for_set) return false;
+        } else if (selectedTypeFilter === 'has_allergen') {
+          if (!m.allergens || !m.allergens.trim()) return false;
+        } else if (selectedTypeFilter === 'no_allergen') {
+          if (m.allergens && m.allergens.trim()) return false;
+        } else if (selectedTypeFilter === 'sold_out') {
+          if (!m.is_sold_out) return false;
+        } else if (selectedTypeFilter === 'packaging') {
+          if (m.packaging_type !== 'box' && m.packaging_type !== 'special') return false;
+        }
+
+        // 3. 검색어 필터
+        if (searchKeyword.trim()) {
+          const kw = searchKeyword.trim().toLowerCase();
+          const matchName = m.name.toLowerCase().includes(kw);
+          const matchDesc = m.description?.toLowerCase().includes(kw);
+          const matchAllergen = m.allergens?.toLowerCase().includes(kw);
+          if (!matchName && !matchDesc && !matchAllergen) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko');
+        if (sortBy === 'price_asc') return a.price - b.price;
+        if (sortBy === 'price_desc') return b.price - a.price;
+        if (sortBy === 'newest') return (b.created_at || '').localeCompare(a.created_at || '');
+        return a.sort_order - b.sort_order;
+      });
+  }, [menus, selectedCategoryFilter, selectedTypeFilter, searchKeyword, sortBy]);
+
+  // 카테고리별 그룹화
+  const groupedMenus = useMemo(() => {
+    const groups: { category: Category; items: MenuItem[] }[] = [];
+    categories.forEach((cat) => {
+      const items = filteredAndSortedMenus.filter((m) => m.category_id === cat.id);
+      if (items.length > 0) {
+        groups.push({ category: cat, items });
+      }
+    });
+    // 카테고리 미지정 메뉴
+    const unassigned = filteredAndSortedMenus.filter((m) => !categories.some((c) => c.id === m.category_id));
+    if (unassigned.length > 0) {
+      groups.push({
+        category: { id: 'unassigned', name: '기타 (카테고리 미지정)', sort_order: 999, is_active: true },
+        items: unassigned,
+      });
+    }
+    return groups;
+  }, [categories, filteredAndSortedMenus]);
 
   // 품절 토글
   const handleToggleSoldOut = async (menu: MenuItem) => {
@@ -463,156 +569,668 @@ export default function AdminMenusPage() {
 
       {/* 컨텐츠 영역 */}
       {activeTab === 'menus' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {menus.map((menu) => {
-            const catName = categories.find((c) => c.id === menu.category_id)?.name || '미지정';
-            return (
-              <div
-                key={menu.id}
-                className={`bg-white rounded-2xl p-4 border transition-all flex flex-col justify-between ${
-                  menu.is_sold_out ? 'border-red-200 bg-red-50/20' : 'border-stone-200'
+        <div className="space-y-4">
+          {/* 1. 상단 통계 요약 칩 바 */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategoryFilter('all');
+                setSelectedTypeFilter('all');
+                setSearchKeyword('');
+              }}
+              className="p-2.5 rounded-xl bg-white border border-stone-200 text-left hover:border-amber-400 transition-colors shadow-2xs"
+            >
+              <p className="text-[10px] text-stone-500 font-medium">전체 등록</p>
+              <p className="text-sm font-extrabold text-stone-900">{stats.total}개</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter('all')}
+              className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200 text-left hover:bg-emerald-50 transition-colors shadow-2xs"
+            >
+              <p className="text-[10px] text-emerald-700 font-medium">판매 중</p>
+              <p className="text-sm font-extrabold text-emerald-900">{stats.available}개</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter('sold_out')}
+              className={`p-2.5 rounded-xl border text-left transition-colors shadow-2xs ${
+                selectedTypeFilter === 'sold_out'
+                  ? 'bg-red-100 border-red-400 ring-2 ring-red-400'
+                  : 'bg-red-50/60 border-red-200 hover:bg-red-50'
+              }`}
+            >
+              <p className="text-[10px] text-red-700 font-medium">🔴 품절 품목</p>
+              <p className="text-sm font-extrabold text-red-900">{stats.soldOut}개</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter('sandwich_half')}
+              className={`p-2.5 rounded-xl border text-left transition-colors shadow-2xs ${
+                selectedTypeFilter === 'sandwich_half'
+                  ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-400'
+                  : 'bg-amber-50/60 border-amber-200 hover:bg-amber-50'
+              }`}
+            >
+              <p className="text-[10px] text-amber-800 font-medium">🥪 1/2 샌드위치</p>
+              <p className="text-sm font-extrabold text-amber-950">{stats.halfSandwiches}개</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter('has_allergen')}
+              className={`p-2.5 rounded-xl border text-left transition-colors shadow-2xs ${
+                selectedTypeFilter === 'has_allergen'
+                  ? 'bg-orange-100 border-orange-400 ring-2 ring-orange-400'
+                  : 'bg-orange-50/60 border-orange-200 hover:bg-orange-50'
+              }`}
+            >
+              <p className="text-[10px] text-orange-700 font-medium">⚠️ 알러지 등록</p>
+              <p className="text-sm font-extrabold text-orange-950">{stats.withAllergens}개</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter('no_allergen')}
+              className={`p-2.5 rounded-xl border text-left transition-colors shadow-2xs ${
+                selectedTypeFilter === 'no_allergen'
+                  ? 'bg-stone-200 border-stone-400 ring-2 ring-stone-400'
+                  : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+              }`}
+            >
+              <p className="text-[10px] text-stone-500 font-medium">❔ 알러지 미등록</p>
+              <p className="text-sm font-extrabold text-stone-700">{stats.withoutAllergens}개</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTypeFilter('packaging')}
+              className={`p-2.5 rounded-xl border text-left transition-colors shadow-2xs ${
+                selectedTypeFilter === 'packaging'
+                  ? 'bg-purple-100 border-purple-400 ring-2 ring-purple-400'
+                  : 'bg-purple-50/60 border-purple-200 hover:bg-purple-50'
+              }`}
+            >
+              <p className="text-[10px] text-purple-700 font-medium">📦 포장재·옵션</p>
+              <p className="text-sm font-extrabold text-purple-950">{stats.packagingCount}개</p>
+            </button>
+          </div>
+
+          {/* 2. 대구분 (카테고리 필터 탭 바) */}
+          <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-stone-800 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-amber-700" />
+                <span>1차 대구분 (카테고리 선택)</span>
+              </span>
+              <span className="text-[11px] text-stone-500">
+                카테고리별 클릭 시 해당 그룹만 즉시 필터링
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  selectedCategoryFilter === 'all'
+                    ? 'bg-stone-900 text-white shadow-xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                 }`}
               >
-                <div>
-                  <div className="flex items-start gap-3">
-                    <img
-                      src={menu.image_url || 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80'}
-                      alt={menu.name}
-                      className="w-16 h-16 rounded-xl object-cover bg-stone-100 shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1 flex-wrap mb-1">
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block">
-                          {catName}
-                        </span>
-                        {menu.packaging_type === 'box' && (
-                          <>
-                            <span className="text-[10px] font-bold text-white bg-amber-800 px-2 py-0.5 rounded-full inline-block">
-                              📦 포장용기
-                            </span>
-                            <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full inline-block">
-                              최대 {menu.max_items_count || 4}가지
-                            </span>
-                          </>
-                        )}
-                        {menu.packaging_type === 'special' && (
-                          <span className="text-[10px] font-bold text-white bg-purple-800 px-2 py-0.5 rounded-full inline-block">
-                            ✨ 특수포장
-                          </span>
-                        )}
-                        {!menu.packaging_type && (
-                          <>
-                            {menu.is_set_only && (
-                              <span className="text-[10px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full inline-block">
-                                🥪 맞춤세트 전용
-                              </span>
-                            )}
-                            {menu.is_available_for_set !== false ? (
-                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-block">
-                                🎁 세트포함
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-bold text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full inline-block">
-                                ⛔ 세트제외
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
-                      <h4 className="font-bold text-stone-900 text-sm line-clamp-1">{menu.name}</h4>
-                      <p className="text-xs font-bold text-stone-700 mt-0.5">
-                        {menu.price.toLocaleString()}원
-                      </p>
-                    </div>
-                  </div>
-                  {menu.description && (
-                    <p className="text-xs text-stone-500 mt-2 line-clamp-2">{menu.description}</p>
-                  )}
-                  {menu.allergens && (
-                    <div className="mt-1.5 flex items-center gap-1">
-                      <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded font-medium line-clamp-1">
-                        알레르기: {menu.allergens}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* 추가 사진 & 영상 등록 개수 뱃지 */}
-                  {((menu.additional_images && menu.additional_images.length > 0) || (menu.video_urls && menu.video_urls.length > 0)) && (
-                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                      {menu.additional_images && menu.additional_images.length > 0 && (
-                        <span className="text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded font-medium">
-                          추가사진 {menu.additional_images.length}장
-                        </span>
-                      )}
-                      {menu.video_urls && menu.video_urls.length > 0 && (
-                        <span className="text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
-                          <Video className="w-2.5 h-2.5" />
-                          영상 {menu.video_urls.length}개
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* 하단 컨트롤: 품절 토글 & 수정/삭제 */}
-                <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-                  {/* 품절 토글 버튼 */}
+                전체 카테고리 ({menus.length})
+              </button>
+              {categories.map((cat) => {
+                const count = menus.filter((m) => m.category_id === cat.id).length;
+                const isSelected = selectedCategoryFilter === cat.id;
+                return (
                   <button
-                    onClick={() => handleToggleSoldOut(menu)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-colors ${
-                      menu.is_sold_out
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategoryFilter(cat.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-amber-600 text-stone-950 font-black shadow-xs'
+                        : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                     }`}
                   >
-                    {menu.is_sold_out ? (
-                      <>
-                        <ToggleLeft className="w-4 h-4 text-red-600" />
-                        <span>품절 상태</span>
-                      </>
-                    ) : (
-                      <>
-                        <ToggleRight className="w-4 h-4 text-emerald-700" />
-                        <span>판매 중</span>
-                      </>
-                    )}
+                    <span>{cat.name}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                        isSelected ? 'bg-amber-800 text-white' : 'bg-stone-200 text-stone-600'
+                      }`}
+                    >
+                      {count}
+                    </span>
                   </button>
+                );
+              })}
+            </div>
+          </div>
 
-                  <div className="flex items-center gap-1.5">
-                    {!menu.packaging_type && (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleSetAvailable(menu)}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 ${
-                          menu.is_available_for_set !== false
-                            ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
-                            : 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
-                        }`}
-                        title="클릭하여 맞춤 세트메뉴 1단계(품목) 포함/제외를 전환합니다"
-                      >
-                        <span>{menu.is_available_for_set !== false ? '🎁 세트포함' : '⛔ 세트제외'}</span>
-                      </button>
+          {/* 3. 요구사항: 2차 세부 구분자 (유형 & 알러지 세부 필터 바) */}
+          <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-stone-800 flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-amber-700" />
+                <span>2차 세부 구분자 (품목 유형 / 샌드위치 / 알러지 구분)</span>
+              </span>
+              <span className="text-[11px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                선택된 메뉴: {filteredAndSortedMenus.length}건
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { key: 'all', label: '전체 보기', count: menus.length },
+                { key: 'sandwich_half', label: '🥪 1/2개 샌드위치 (세트전용)', count: stats.halfSandwiches },
+                { key: 'sandwich_whole', label: '🥪 일반 샌드위치 (단품)', count: stats.wholeSandwiches },
+                { key: 'has_allergen', label: '⚠️ 알러지 유발물질 등록', count: stats.withAllergens },
+                { key: 'no_allergen', label: '❔ 알러지 미등록 (점검)', count: stats.withoutAllergens },
+                { key: 'set_only', label: '🎁 세트구성 가능 품목', count: menus.filter((m) => m.is_available_for_set !== false).length },
+                { key: 'packaging', label: '📦 포장용기 & 특수옵션', count: stats.packagingCount },
+                { key: 'sold_out', label: '🔴 품절 메뉴만', count: stats.soldOut },
+              ].map((item) => {
+                const isSelected = selectedTypeFilter === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setSelectedTypeFilter(item.key as any)}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                      isSelected
+                        ? 'bg-amber-100 text-amber-950 border-amber-400 shadow-xs'
+                        : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-600'
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. 검색창, 정렬, 뷰 모드 전환 컨트롤러 */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs">
+            {/* 검색창 */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                placeholder="메뉴명, 설명, 알레르기 유발물질(예: 난류, 우유, 대두 등) 실시간 검색..."
+                className="w-full pl-9 pr-8 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+              {searchKeyword && (
+                <button
+                  type="button"
+                  onClick={() => setSearchKeyword('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* 정렬 드롭다운 */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="p-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold text-stone-800 focus:outline-none"
+              >
+                <option value="sort_order">정렬순서 (기본)</option>
+                <option value="name">이름 가나다순</option>
+                <option value="price_asc">가격 낮은순</option>
+                <option value="price_desc">가격 높은순</option>
+                <option value="newest">최신 등록순</option>
+              </select>
+
+              {/* 뷰 모드 토글 (카테고리별 묶어보기 vs 전체 그리드) */}
+              <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grouped')}
+                  className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                    viewMode === 'grouped'
+                      ? 'bg-white text-stone-900 shadow-xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="카테고리별로 묶어서 보기"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">그룹별</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                    viewMode === 'grid'
+                      ? 'bg-white text-stone-900 shadow-xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="전체 카드 그리드로 보기"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">그리드</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. 메뉴 목록 렌더링 (결과가 없을 때 vs 있을 때) */}
+          {filteredAndSortedMenus.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-stone-200 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto">
+                <Filter className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-bold text-stone-800 text-sm">해당 조건에 맞는 메뉴가 없습니다.</p>
+                <p className="text-xs text-stone-500 mt-1">
+                  선택하신 카테고리나 세부 구분자, 검색어를 변경해 보세요.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategoryFilter('all');
+                  setSelectedTypeFilter('all');
+                  setSearchKeyword('');
+                }}
+                className="px-4 py-2 bg-stone-900 text-white rounded-xl font-bold text-xs hover:bg-stone-800 transition-colors"
+              >
+                필터 전체 초기화
+              </button>
+            </div>
+          ) : viewMode === 'grouped' ? (
+            /* 그룹별 묶어보기 모드 */
+            <div className="space-y-6">
+              {groupedMenus.map((group) => (
+                <div key={group.category.id} className="space-y-3">
+                  {/* 카테고리 헤더 바 */}
+                  <div className="flex items-center justify-between bg-stone-100/80 px-3.5 py-2.5 rounded-xl border border-stone-200">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-600" />
+                      <h3 className="font-bold text-stone-900 text-xs sm:text-sm">
+                        {group.category.name}
+                      </h3>
+                      <span className="text-[11px] text-stone-500 font-medium">
+                        ({group.items.length}개 메뉴)
+                      </span>
+                    </div>
+                    {group.category.description && (
+                      <span className="text-[11px] text-stone-500 hidden md:inline">
+                        {group.category.description}
+                      </span>
                     )}
+                  </div>
 
-                    <button
-                      onClick={() => openMenuModal(menu)}
-                      className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700"
-                      title="수정"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteMenu(menu.id)}
-                      className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600"
-                      title="삭제"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  {/* 카테고리 내 메뉴 그리드 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {group.items.map((menu) => {
+                      const catName = categories.find((c) => c.id === menu.category_id)?.name || '미지정';
+                      const isHalfSandwich = menu.name.includes('1/2') || (menu.name.includes('샌드위치') && menu.is_set_only);
+
+                      return (
+                        <div
+                          key={menu.id}
+                          className={`bg-white rounded-2xl p-4 border transition-all flex flex-col justify-between hover:shadow-sm ${
+                            menu.is_sold_out ? 'border-red-200 bg-red-50/20' : 'border-stone-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-start gap-3">
+                              <img
+                                src={
+                                  menu.image_url ||
+                                  'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80'
+                                }
+                                alt={menu.name}
+                                className="w-16 h-16 rounded-xl object-cover bg-stone-100 shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1 flex-wrap mb-1">
+                                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block">
+                                    {catName}
+                                  </span>
+
+                                  {/* 샌드위치 1/2개 세부 구분 뱃지 */}
+                                  {isHalfSandwich && (
+                                    <span className="text-[10px] font-black text-amber-950 bg-amber-300 border border-amber-400 px-2 py-0.5 rounded-full inline-block shadow-2xs">
+                                      🥪 1/2개 (맞춤세트)
+                                    </span>
+                                  )}
+
+                                  {menu.packaging_type === 'box' && (
+                                    <>
+                                      <span className="text-[10px] font-bold text-white bg-amber-800 px-2 py-0.5 rounded-full inline-block">
+                                        📦 포장용기
+                                      </span>
+                                      <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full inline-block">
+                                        최대 {menu.max_items_count || 4}가지
+                                      </span>
+                                    </>
+                                  )}
+                                  {menu.packaging_type === 'special' && (
+                                    <span className="text-[10px] font-bold text-white bg-purple-800 px-2 py-0.5 rounded-full inline-block">
+                                      ✨ 특수포장
+                                    </span>
+                                  )}
+                                  {!menu.packaging_type && !isHalfSandwich && (
+                                    <>
+                                      {menu.is_set_only && (
+                                        <span className="text-[10px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full inline-block">
+                                          세트전용
+                                        </span>
+                                      )}
+                                      {menu.is_available_for_set !== false ? (
+                                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-block">
+                                          🎁 세트포함
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-bold text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full inline-block">
+                                          ⛔ 세트제외
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                                <h4 className="font-bold text-stone-900 text-sm line-clamp-1">{menu.name}</h4>
+                                <p className="text-xs font-bold text-stone-700 mt-0.5">
+                                  {menu.price.toLocaleString()}원
+                                </p>
+                              </div>
+                            </div>
+
+                            {menu.description && (
+                              <p className="text-xs text-stone-500 mt-2 line-clamp-2">{menu.description}</p>
+                            )}
+
+                            {/* 알러지 유발물질 시각적 강조 뱃지 */}
+                            <div className="mt-2">
+                              {menu.allergens && menu.allergens.trim() ? (
+                                <div className="p-1.5 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-1.5 text-[10.5px] text-orange-900">
+                                  <AlertTriangle className="w-3 h-3 text-orange-600 shrink-0" />
+                                  <span className="font-bold shrink-0">알레르기:</span>
+                                  <span className="font-medium truncate">{menu.allergens}</span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                                  <span>알레르기 미등록</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* 추가 사진 & 영상 등록 개수 뱃지 */}
+                            {((menu.additional_images && menu.additional_images.length > 0) ||
+                              (menu.video_urls && menu.video_urls.length > 0)) && (
+                              <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                                {menu.additional_images && menu.additional_images.length > 0 && (
+                                  <span className="text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded font-medium">
+                                    추가사진 {menu.additional_images.length}장
+                                  </span>
+                                )}
+                                {menu.video_urls && menu.video_urls.length > 0 && (
+                                  <span className="text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
+                                    <Video className="w-2.5 h-2.5" />
+                                    영상 {menu.video_urls.length}개
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 하단 컨트롤: 품절 토글 & 세트 가감 & 수정/삭제 */}
+                          <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-xs">
+                            {/* 품절 토글 버튼 */}
+                            <button
+                              onClick={() => handleToggleSoldOut(menu)}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-colors ${
+                                menu.is_sold_out
+                                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                  : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                              }`}
+                            >
+                              {menu.is_sold_out ? (
+                                <>
+                                  <ToggleLeft className="w-4 h-4 text-red-600" />
+                                  <span>품절 상태</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ToggleRight className="w-4 h-4 text-emerald-700" />
+                                  <span>판매 중</span>
+                                </>
+                              )}
+                            </button>
+
+                            <div className="flex items-center gap-1.5">
+                              {!menu.packaging_type && !isHalfSandwich && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSetAvailable(menu)}
+                                  className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 ${
+                                    menu.is_available_for_set !== false
+                                      ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                                      : 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
+                                  }`}
+                                  title="클릭하여 맞춤 세트메뉴 1단계(품목) 포함/제외를 전환합니다"
+                                >
+                                  <span>{menu.is_available_for_set !== false ? '🎁 세트포함' : '⛔ 세트제외'}</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => openMenuModal(menu)}
+                                className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700"
+                                title="수정"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMenu(menu.id)}
+                                className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600"
+                                title="삭제"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          ) : (
+            /* 전체 카드 그리드 뷰 모드 */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {filteredAndSortedMenus.map((menu) => {
+                const catName = categories.find((c) => c.id === menu.category_id)?.name || '미지정';
+                const isHalfSandwich = menu.name.includes('1/2') || (menu.name.includes('샌드위치') && menu.is_set_only);
+
+                return (
+                  <div
+                    key={menu.id}
+                    className={`bg-white rounded-2xl p-4 border transition-all flex flex-col justify-between hover:shadow-sm ${
+                      menu.is_sold_out ? 'border-red-200 bg-red-50/20' : 'border-stone-200'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={
+                            menu.image_url ||
+                            'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80'
+                          }
+                          alt={menu.name}
+                          className="w-16 h-16 rounded-xl object-cover bg-stone-100 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 flex-wrap mb-1">
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block">
+                              {catName}
+                            </span>
+
+                            {isHalfSandwich && (
+                              <span className="text-[10px] font-black text-amber-950 bg-amber-300 border border-amber-400 px-2 py-0.5 rounded-full inline-block shadow-2xs">
+                                🥪 1/2개 (맞춤세트)
+                              </span>
+                            )}
+
+                            {menu.packaging_type === 'box' && (
+                              <>
+                                <span className="text-[10px] font-bold text-white bg-amber-800 px-2 py-0.5 rounded-full inline-block">
+                                  📦 포장용기
+                                </span>
+                                <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full inline-block">
+                                  최대 {menu.max_items_count || 4}가지
+                                </span>
+                              </>
+                            )}
+                            {menu.packaging_type === 'special' && (
+                              <span className="text-[10px] font-bold text-white bg-purple-800 px-2 py-0.5 rounded-full inline-block">
+                                ✨ 특수포장
+                              </span>
+                            )}
+                            {!menu.packaging_type && !isHalfSandwich && (
+                              <>
+                                {menu.is_set_only && (
+                                  <span className="text-[10px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full inline-block">
+                                    세트전용
+                                  </span>
+                                )}
+                                {menu.is_available_for_set !== false ? (
+                                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-block">
+                                    🎁 세트포함
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-stone-500 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full inline-block">
+                                    ⛔ 세트제외
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          <h4 className="font-bold text-stone-900 text-sm line-clamp-1">{menu.name}</h4>
+                          <p className="text-xs font-bold text-stone-700 mt-0.5">
+                            {menu.price.toLocaleString()}원
+                          </p>
+                        </div>
+                      </div>
+
+                      {menu.description && (
+                        <p className="text-xs text-stone-500 mt-2 line-clamp-2">{menu.description}</p>
+                      )}
+
+                      {/* 알러지 유발물질 시각적 강조 뱃지 */}
+                      <div className="mt-2">
+                        {menu.allergens && menu.allergens.trim() ? (
+                          <div className="p-1.5 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-1.5 text-[10.5px] text-orange-900">
+                            <AlertTriangle className="w-3 h-3 text-orange-600 shrink-0" />
+                            <span className="font-bold shrink-0">알레르기:</span>
+                            <span className="font-medium truncate">{menu.allergens}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                            <span>알레르기 미등록</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 추가 사진 & 영상 등록 개수 뱃지 */}
+                      {((menu.additional_images && menu.additional_images.length > 0) ||
+                        (menu.video_urls && menu.video_urls.length > 0)) && (
+                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                          {menu.additional_images && menu.additional_images.length > 0 && (
+                            <span className="text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded font-medium">
+                              추가사진 {menu.additional_images.length}장
+                            </span>
+                          )}
+                          {menu.video_urls && menu.video_urls.length > 0 && (
+                            <span className="text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
+                              <Video className="w-2.5 h-2.5" />
+                              영상 {menu.video_urls.length}개
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 하단 컨트롤: 품절 토글 & 세트 가감 & 수정/삭제 */}
+                    <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-xs">
+                      {/* 품절 토글 버튼 */}
+                      <button
+                        onClick={() => handleToggleSoldOut(menu)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-colors ${
+                          menu.is_sold_out
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                            : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                        }`}
+                      >
+                        {menu.is_sold_out ? (
+                          <>
+                            <ToggleLeft className="w-4 h-4 text-red-600" />
+                            <span>품절 상태</span>
+                          </>
+                        ) : (
+                          <>
+                            <ToggleRight className="w-4 h-4 text-emerald-700" />
+                            <span>판매 중</span>
+                          </>
+                        )}
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        {!menu.packaging_type && !isHalfSandwich && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSetAvailable(menu)}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 ${
+                              menu.is_available_for_set !== false
+                                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                                : 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
+                            }`}
+                            title="클릭하여 맞춤 세트메뉴 1단계(품목) 포함/제외를 전환합니다"
+                          >
+                            <span>{menu.is_available_for_set !== false ? '🎁 세트포함' : '⛔ 세트제외'}</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => openMenuModal(menu)}
+                          className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700"
+                          title="수정"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMenu(menu.id)}
+                          className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : (
         /* 카테고리 관리 테이블 */

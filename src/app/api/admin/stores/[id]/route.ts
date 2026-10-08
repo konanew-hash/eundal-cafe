@@ -21,12 +21,31 @@ export async function PUT(
       address_detail,
       postal_code,
       naver_place_url,
+      naver_place_id,
+      latitude,
+      longitude,
       phone,
       operating_hours,
       description,
       is_active,
       sort_order,
     } = body;
+
+    // 네이버 플레이스 ID 기반 자동 위경도/URL 보정
+    const cleanPlaceId = naver_place_id !== undefined ? (naver_place_id ? String(naver_place_id).trim() : null) : undefined;
+    let finalLat = latitude !== undefined ? (latitude ? parseFloat(String(latitude)) : null) : undefined;
+    let finalLng = longitude !== undefined ? (longitude ? parseFloat(String(longitude)) : null) : undefined;
+    let finalPlaceUrl = naver_place_url !== undefined ? (naver_place_url ? naver_place_url.trim() : null) : undefined;
+
+    if (cleanPlaceId === '1245444726') {
+      if (finalLat === undefined || finalLat === null) finalLat = 37.2966787;
+      if (finalLng === undefined || finalLng === null) finalLng = 127.0215096;
+      if (finalPlaceUrl === undefined || !finalPlaceUrl) finalPlaceUrl = 'https://m.place.naver.com/restaurant/1245444726/home';
+    } else if (cleanPlaceId === '1869537461') {
+      if (finalLat === undefined || finalLat === null) finalLat = 37.3075666;
+      if (finalLng === undefined || finalLng === null) finalLng = 126.9978752;
+      if (finalPlaceUrl === undefined || !finalPlaceUrl) finalPlaceUrl = 'https://m.place.naver.com/restaurant/1869537461/home';
+    }
 
     const supabase = getSupabaseServer();
     const { data: updated, error } = await supabase
@@ -37,7 +56,10 @@ export async function PUT(
         address: address ? address.trim() : undefined,
         address_detail: address_detail !== undefined ? (address_detail ? address_detail.trim() : null) : undefined,
         postal_code: postal_code !== undefined ? (postal_code ? postal_code.trim() : null) : undefined,
-        naver_place_url: naver_place_url !== undefined ? (naver_place_url ? naver_place_url.trim() : null) : undefined,
+        naver_place_url: finalPlaceUrl !== undefined ? finalPlaceUrl : undefined,
+        naver_place_id: cleanPlaceId !== undefined ? cleanPlaceId : undefined,
+        latitude: finalLat !== undefined ? finalLat : undefined,
+        longitude: finalLng !== undefined ? finalLng : undefined,
         phone: phone !== undefined ? (phone ? phone.trim() : null) : undefined,
         operating_hours: operating_hours !== undefined ? operating_hours.trim() : undefined,
         description: description !== undefined ? (description ? description.trim() : null) : undefined,

@@ -40,6 +40,9 @@ export default function AdminStoresPage() {
     address_detail: '',
     postal_code: '',
     naver_place_url: '',
+    naver_place_id: '',
+    latitude: '' as string | number,
+    longitude: '' as string | number,
     phone: '',
     operating_hours: '',
     description: '',
@@ -75,6 +78,9 @@ export default function AdminStoresPage() {
       address_detail: '',
       postal_code: '',
       naver_place_url: '',
+      naver_place_id: '',
+      latitude: '',
+      longitude: '',
       phone: '',
       operating_hours: '09:00 ~ 21:00',
       description: '',
@@ -94,6 +100,9 @@ export default function AdminStoresPage() {
       address_detail: store.address_detail || '',
       postal_code: store.postal_code || '',
       naver_place_url: store.naver_place_url || '',
+      naver_place_id: store.naver_place_id || '',
+      latitude: store.latitude !== undefined && store.latitude !== null ? store.latitude : '',
+      longitude: store.longitude !== undefined && store.longitude !== null ? store.longitude : '',
       phone: store.phone || '',
       operating_hours: store.operating_hours || '',
       description: store.description || '',
@@ -498,22 +507,95 @@ export default function AdminStoresPage() {
                 </div>
               </div>
 
-              {/* 네이버 플레이스 연동 링크 */}
-              <div>
-                <label className="block text-stone-700 font-medium mb-1 flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded bg-[#03C75A] text-white text-[10px] font-black flex items-center justify-center">N</span>
-                  <span>네이버 플레이스 연동 URL (실위치 지도 링크)</span>
-                </label>
-                <input
-                  type="url"
-                  value={form.naver_place_url}
-                  onChange={(e) => setForm({ ...form, naver_place_url: e.target.value })}
-                  placeholder="예: https://map.naver.com/p/search/... 또는 https://naver.me/..."
-                  className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs"
-                />
-                <p className="text-[10px] text-stone-500 mt-1">
-                  * 우편번호 기반 오차를 없애고 고객에게 실제 점포의 정확한 네이버 플레이스 위치를 안내합니다.
-                </p>
+              {/* 네이버 플레이스 연동 ID 및 URL */}
+              <div className="p-3 bg-emerald-50/70 rounded-2xl border border-emerald-200/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-stone-800 font-bold text-xs flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded bg-[#03C75A] text-white text-[10px] font-black flex items-center justify-center">N</span>
+                    <span>네이버 플레이스 연동 설정</span>
+                  </label>
+                  <span className="text-[10px] text-emerald-800 font-semibold">
+                    위경도 미니맵 자동 연동
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[11px] text-stone-700 font-medium mb-1">
+                      플레이스 고유번호(ID)
+                    </label>
+                    <input
+                      type="text"
+                      value={form.naver_place_id}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        let nextLat = form.latitude;
+                        let nextLng = form.longitude;
+                        let nextUrl = form.naver_place_url;
+                        if (val === '1245444726') {
+                          nextLat = 37.2966787;
+                          nextLng = 127.0215096;
+                          if (!nextUrl) nextUrl = 'https://m.place.naver.com/restaurant/1245444726/home';
+                        } else if (val === '1869537461') {
+                          nextLat = 37.3075666;
+                          nextLng = 126.9978752;
+                          if (!nextUrl) nextUrl = 'https://m.place.naver.com/restaurant/1869537461/home';
+                        }
+                        setForm({
+                          ...form,
+                          naver_place_id: val,
+                          latitude: nextLat,
+                          longitude: nextLng,
+                          naver_place_url: nextUrl,
+                        });
+                      }}
+                      placeholder="예: 1245444726"
+                      className="w-full p-2 bg-white border border-stone-300 rounded-xl font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-stone-700 font-medium mb-1">
+                      위도 (Latitude)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={form.latitude}
+                      onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                      placeholder="37.2966787"
+                      className="w-full p-2 bg-white border border-stone-300 rounded-xl font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-stone-700 font-medium mb-1">
+                      경도 (Longitude)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={form.longitude}
+                      onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                      placeholder="127.0215096"
+                      className="w-full p-2 bg-white border border-stone-300 rounded-xl font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-stone-700 font-medium mb-1">
+                    네이버 플레이스 웹 링크 URL (선택)
+                  </label>
+                  <input
+                    type="url"
+                    value={form.naver_place_url}
+                    onChange={(e) => setForm({ ...form, naver_place_url: e.target.value })}
+                    placeholder="https://m.place.naver.com/restaurant/..."
+                    className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs"
+                  />
+                  <p className="text-[10px] text-stone-500 mt-1">
+                    * 조원1호점(1245444726) / 파장2호점(1869537461) 번호 입력 시 실위치 좌표와 길찾기 링크가 자동 완성됩니다.
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -626,6 +708,9 @@ export default function AdminStoresPage() {
         detailAddress={previewMapStore?.address_detail}
         postalCode={previewMapStore?.postal_code}
         naverPlaceUrl={previewMapStore?.naver_place_url}
+        naverPlaceId={previewMapStore?.naver_place_id}
+        latitude={previewMapStore?.latitude}
+        longitude={previewMapStore?.longitude}
         phone={previewMapStore?.phone}
       />
     </div>

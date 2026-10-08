@@ -304,6 +304,22 @@
         },
         "blocking": []
       }
+    },
+    {
+      "n": 20,
+      "at": "2026-10-08T04:56:51.350Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": false,
+        "outcome": "unavailable",
+        "coverage": {
+          "checked": 4,
+          "unverified": 2,
+          "notApplicable": 0
+        },
+        "blocking": []
+      }
     }
   ],
   "items": {

@@ -884,6 +884,9 @@ export default function OrderModal({
         detailAddress={mapPopupStore?.address_detail}
         postalCode={mapPopupStore?.postal_code}
         naverPlaceUrl={mapPopupStore?.naver_place_url}
+        naverPlaceId={mapPopupStore?.naver_place_id}
+        latitude={mapPopupStore?.latitude}
+        longitude={mapPopupStore?.longitude}
         phone={mapPopupStore?.phone}
       />
 

@@ -80,6 +80,8 @@ export interface MenuItem {
   is_set_only?: boolean; // 일반 메뉴 비노출, 맞춤세트 전용 노출 (1/2 샌드위치 등)
   is_even_only?: boolean; // 짝수개(2, 4, 6...)만 선택 가능 (1/2 샌드위치 등)
   max_items_count?: number | null; // 포장용기(box)에 담을 수 있는 최대 품목 가지수
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type Menu = MenuItem;
@@ -93,6 +95,9 @@ export interface Store {
   address_detail?: string;
   postal_code?: string;
   naver_place_url?: string; // 네이버 플레이스 연동 URL
+  naver_place_id?: string; // 네이버 플레이스 고유 번호 (예: 1245444726, 1869537461)
+  latitude?: number; // 위도 (y)
+  longitude?: number; // 경도 (x)
   phone?: string;
   operating_hours?: string;
   description?: string;
