@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-08T10:06:37.788Z",
+  "at": "2026-10-08T10:57:13.146Z",
   "url": "https://eundal.vercel.app",
   "reachable": true,
   "results": [
@@ -24,7 +24,7 @@
         "header": "content-security-policy",
         "value": null,
         "validation": "누락",
-        "observedAt": "2026-10-08T10:06:36.158Z"
+        "observedAt": "2026-10-08T10:57:11.487Z"
       }
     },
     {
@@ -35,7 +35,7 @@
         "header": "strict-transport-security",
         "value": "max-age=63072000; includeSubDomains; preload",
         "validation": "valid",
-        "observedAt": "2026-10-08T10:06:36.158Z"
+        "observedAt": "2026-10-08T10:57:11.487Z"
       }
     },
     {
@@ -46,7 +46,7 @@
         "header": "x-frame-options",
         "value": "DENY",
         "validation": "x-frame-options: DENY",
-        "observedAt": "2026-10-08T10:06:36.158Z"
+        "observedAt": "2026-10-08T10:57:11.487Z"
       }
     },
     {
@@ -57,7 +57,7 @@
         "header": "x-content-type-options",
         "value": "nosniff",
         "validation": "valid",
-        "observedAt": "2026-10-08T10:06:36.158Z"
+        "observedAt": "2026-10-08T10:57:11.487Z"
       }
     },
     {
@@ -68,7 +68,7 @@
         "header": "referrer-policy",
         "value": "strict-origin-when-cross-origin",
         "validation": "valid",
-        "observedAt": "2026-10-08T10:06:36.158Z"
+        "observedAt": "2026-10-08T10:57:11.487Z"
       }
     },
     {
@@ -79,7 +79,7 @@
         "header": "permissions-policy",
         "value": "camera=(), microphone=(), geolocation=()",
         "validation": "valid",
-        "observedAt": "2026-10-08T10:06:36.158Z"
+        "observedAt": "2026-10-08T10:57:11.487Z"
       }
     },
     {
@@ -197,19 +197,19 @@
             "checked": true
           },
           {
-            "path": "/_next/static/chunks/8045-203ba635395a7542.js",
+            "path": "/_next/static/chunks/5928-17a18d8c50f58a92.js",
+            "httpStatus": 200,
+            "exposed": false,
+            "checked": true
+          },
+          {
+            "path": "/_next/static/chunks/7029-aecdc1f34e980cad.js",
             "httpStatus": 403,
             "exposed": false,
             "checked": false
           },
           {
-            "path": "/_next/static/chunks/5023-d9db1056de452e92.js",
-            "httpStatus": 403,
-            "exposed": false,
-            "checked": false
-          },
-          {
-            "path": "/_next/static/chunks/app/page-ecd942ba1da3d558.js",
+            "path": "/_next/static/chunks/3521-356cd334b9e8d364.js",
             "httpStatus": 403,
             "exposed": false,
             "checked": false
@@ -320,9 +320,9 @@
     {
       "id": "perf.ttfb",
       "status": "pass",
-      "observed": "응답 시간 134ms",
+      "observed": "응답 시간 115ms",
       "evidence": {
-        "ms": 134
+        "ms": 115
       }
     },
     {
@@ -330,7 +330,7 @@
       "status": "pass",
       "observed": "문서 크기 9KB",
       "evidence": {
-        "bytes": 8996
+        "bytes": 9256
       }
     },
     {
@@ -370,7 +370,7 @@
       "observed": "하드코딩 시크릿 미검출",
       "evidence": {
         "hits": [],
-        "inspectedFiles": 67,
+        "inspectedFiles": 72,
         "readFailures": 0
       }
     },
@@ -380,7 +380,7 @@
       "observed": "클라 시크릿 노출 미검출",
       "evidence": {
         "hits": [],
-        "inspectedFiles": 61,
+        "inspectedFiles": 66,
         "readFailures": 0
       }
     },
@@ -430,8 +430,8 @@
       "unsafeTransport": false,
       "bodyTruncated": false
     },
-    "scannedAt": "2026-10-08T10:06:36.154Z",
-    "ttfbMs": 134,
+    "scannedAt": "2026-10-08T10:57:11.483Z",
+    "ttfbMs": 115,
     "observedHeaders": [
       "access-control-allow-origin",
       "age",
@@ -482,7 +482,7 @@
             "header": "content-security-policy",
             "value": null,
             "validation": "누락",
-            "observedAt": "2026-10-08T10:06:36.158Z"
+            "observedAt": "2026-10-08T10:57:11.487Z"
           }
         },
         {
@@ -493,7 +493,7 @@
             "header": "strict-transport-security",
             "value": "max-age=63072000; includeSubDomains; preload",
             "validation": "valid",
-            "observedAt": "2026-10-08T10:06:36.158Z"
+            "observedAt": "2026-10-08T10:57:11.487Z"
           }
         },
         {
@@ -504,7 +504,7 @@
             "header": "x-frame-options",
             "value": "DENY",
             "validation": "x-frame-options: DENY",
-            "observedAt": "2026-10-08T10:06:36.158Z"
+            "observedAt": "2026-10-08T10:57:11.487Z"
           }
         },
         {
@@ -515,7 +515,7 @@
             "header": "x-content-type-options",
             "value": "nosniff",
             "validation": "valid",
-            "observedAt": "2026-10-08T10:06:36.158Z"
+            "observedAt": "2026-10-08T10:57:11.487Z"
           }
         },
         {
@@ -526,7 +526,7 @@
             "header": "referrer-policy",
             "value": "strict-origin-when-cross-origin",
             "validation": "valid",
-            "observedAt": "2026-10-08T10:06:36.158Z"
+            "observedAt": "2026-10-08T10:57:11.487Z"
           }
         },
         {
@@ -537,7 +537,7 @@
             "header": "permissions-policy",
             "value": "camera=(), microphone=(), geolocation=()",
             "validation": "valid",
-            "observedAt": "2026-10-08T10:06:36.158Z"
+            "observedAt": "2026-10-08T10:57:11.487Z"
           }
         },
         {
@@ -655,19 +655,19 @@
                 "checked": true
               },
               {
-                "path": "/_next/static/chunks/8045-203ba635395a7542.js",
+                "path": "/_next/static/chunks/5928-17a18d8c50f58a92.js",
+                "httpStatus": 200,
+                "exposed": false,
+                "checked": true
+              },
+              {
+                "path": "/_next/static/chunks/7029-aecdc1f34e980cad.js",
                 "httpStatus": 403,
                 "exposed": false,
                 "checked": false
               },
               {
-                "path": "/_next/static/chunks/5023-d9db1056de452e92.js",
-                "httpStatus": 403,
-                "exposed": false,
-                "checked": false
-              },
-              {
-                "path": "/_next/static/chunks/app/page-ecd942ba1da3d558.js",
+                "path": "/_next/static/chunks/3521-356cd334b9e8d364.js",
                 "httpStatus": 403,
                 "exposed": false,
                 "checked": false
@@ -778,9 +778,9 @@
         {
           "id": "perf.ttfb",
           "status": "pass",
-          "observed": "응답 시간 134ms",
+          "observed": "응답 시간 115ms",
           "evidence": {
-            "ms": 134
+            "ms": 115
           }
         },
         {
@@ -788,7 +788,7 @@
           "status": "pass",
           "observed": "문서 크기 9KB",
           "evidence": {
-            "bytes": 8996
+            "bytes": 9256
           }
         },
         {
@@ -828,7 +828,7 @@
           "observed": "하드코딩 시크릿 미검출",
           "evidence": {
             "hits": [],
-            "inspectedFiles": 67,
+            "inspectedFiles": 72,
             "readFailures": 0
           }
         },
@@ -838,7 +838,7 @@
           "observed": "클라 시크릿 노출 미검출",
           "evidence": {
             "hits": [],
-            "inspectedFiles": 61,
+            "inspectedFiles": 66,
             "readFailures": 0
           }
         },
