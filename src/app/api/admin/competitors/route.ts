@@ -176,6 +176,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!naver_place_id || !naver_place_id.trim()) {
+      return NextResponse.json(
+        { error: '픽업 매장 관리(은달 1호점, 2호점)와 동일하게 네이버 플레이스 ID 연동 정보가 필수입니다. 검증되지 않은 매장은 등록할 수 없습니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 이미 등록된 네이버 플레이스 ID 중복 검사
+    const { data: existingComp } = await supabase
+      .from('eundal_competitors')
+      .select('id, name')
+      .eq('naver_place_id', naver_place_id.trim())
+      .maybeSingle();
+
+    if (existingComp) {
+      return NextResponse.json(
+        { error: `이미 등록된 네이버 플레이스 매장입니다. ('${existingComp.name}', ID: ${naver_place_id})` },
+        { status: 400 }
+      );
+    }
+
     // 은달 1호점 및 2호점 거리 자동 계산
     const latNum = parseFloat(latitude);
     const lngNum = parseFloat(longitude);

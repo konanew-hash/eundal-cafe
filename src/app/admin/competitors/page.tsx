@@ -215,6 +215,8 @@ export default function AdminCompetitorsPage() {
       name: string;
       price: number;
       category: string;
+      naverPlaceId: string;
+      naverPlaceUrl: string;
     }> = [];
 
     competitors.forEach((c) => {
@@ -229,6 +231,8 @@ export default function AdminCompetitorsPage() {
             name: m.name,
             price: m.price,
             category: m.category || 'drink',
+            naverPlaceId: c.naver_place_id || '',
+            naverPlaceUrl: c.naver_place_url || '',
           });
         }
       });
@@ -254,6 +258,8 @@ export default function AdminCompetitorsPage() {
             similarity: sim,
             priceDiff,
             priceDiffPercent,
+            naverPlaceId: cMenu.naverPlaceId,
+            naverPlaceUrl: cMenu.naverPlaceUrl,
           };
 
           const existing = compBestMap.get(cMenu.competitorId);
@@ -571,22 +577,23 @@ export default function AdminCompetitorsPage() {
     setIsModalOpen(true);
   };
 
-  // 7. 네이버 플레이스 검색 실행
+  // 7. 네이버 플레이스 검색 실행 (네이버 플레이스 ID 또는 URL 기반 실시간 정품 검증)
   const handleSearchPlace = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchPlaceQuery.trim()) return;
 
     try {
       setSearchingPlace(true);
+      setFormError('');
       const res = await fetch(`/api/admin/competitors/search-place?query=${encodeURIComponent(searchPlaceQuery.trim())}`);
       const data = await res.json();
-      if (data.items && data.items.length > 0) {
-        setPlaceSearchResults(data.items);
+      if (data.places && data.places.length > 0) {
+        setPlaceSearchResults(data.places);
       } else {
-        alert('검색 결과가 없습니다. 아래 직접 입력 폼에서 상호명과 주소를 입력해주세요.');
+        alert(data.message || data.error || '네이버 플레이스 연동 결과가 없습니다. 정확한 네이버 플레이스 ID(숫자) 또는 플레이스 주소 URL을 입력해주세요.');
       }
     } catch {
-      alert('검색 중 오류가 발생했습니다. 직접 입력 폼을 이용해주세요.');
+      alert('네이버 플레이스 정보 조회 중 네트워크 오류가 발생했습니다.');
     } finally {
       setSearchingPlace(false);
     }
@@ -594,10 +601,9 @@ export default function AdminCompetitorsPage() {
 
   // 8. 검색 결과에서 매장 선택 시 폼에 자동 채우기
   const handleSelectSearchResult = (item: any) => {
-    if (item.isChain) {
-      if (!confirm(`'${item.name}'은 체인점(프랜차이즈)으로 감지되었습니다.\n체인점은 비교 대상에서 제외하는 것이 권장됩니다. 그래도 등록하시겠습니까?`)) {
-        return;
-      }
+    if (item.is_already_registered) {
+      alert(`이미 등록된 네이버 플레이스 매장입니다.\n상호: ${item.already_registered_name || item.name} (플레이스 ID: ${item.naver_place_id})`);
+      return;
     }
 
     setForm((prev) => ({
@@ -605,20 +611,22 @@ export default function AdminCompetitorsPage() {
       name: item.name,
       brand_type: item.brand_type || prev.brand_type,
       address: item.roadAddress || item.address,
-      phone: item.phone || prev.phone,
+      address_detail: '',
+      phone: item.phone || '',
       latitude: item.latitude,
       longitude: item.longitude,
       naver_place_id: item.naver_place_id || '',
       naver_place_url: item.naver_place_url || '',
-      rating: item.rating || 4.6,
-      review_count: item.review_count || 320,
-      blog_review_count: item.blog_review_count || 80,
-      representative_menu: item.representative_menu || prev.representative_menu,
+      rating: item.rating || 4.5,
+      review_count: item.review_count || 0,
+      blog_review_count: item.blog_review_count || 0,
+      representative_menu: item.representative_menu || '',
       avg_coffee_price: item.avg_coffee_price || 3500,
       avg_drink_price: item.avg_drink_price || 4000,
-      avg_dessert_price: item.avg_dessert_price || 3800,
-      avg_set_price: item.avg_set_price || 7800,
+      avg_dessert_price: item.avg_dessert_price || 4500,
+      avg_set_price: item.avg_set_price || 8000,
       target_branch: item.distance_store1 <= item.distance_store2 ? 'store1' : 'store2',
+      menus: item.menus && item.menus.length > 0 ? item.menus : prev.menus,
     }));
 
     setPlaceSearchResults([]);
@@ -658,6 +666,10 @@ export default function AdminCompetitorsPage() {
       setFormError('도로명 주소를 입력해주세요.');
       return;
     }
+    if (!form.naver_place_id || !form.naver_place_id.trim()) {
+      setFormError('픽업 매장 관리(은달 1호점, 2호점)와 동일하게 네이버 플레이스 ID 연동 정보가 필수입니다. 네이버 플레이스 ID를 먼저 검증하여 등록해주세요.');
+      return;
+    }
 
     setSaving(true);
     setFormError('');
@@ -669,14 +681,20 @@ export default function AdminCompetitorsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         });
-        if (!res.ok) throw new Error('수정 실패');
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || '수정 실패');
+        }
       } else {
         const res = await fetch('/api/admin/competitors', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         });
-        if (!res.ok) throw new Error('등록 실패');
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || '등록 실패');
+        }
       }
 
       setIsModalOpen(false);
@@ -1481,6 +1499,23 @@ export default function AdminCompetitorsPage() {
                                                 <span className="font-extrabold text-stone-900 text-xs truncate">
                                                   {m.competitorName}
                                                 </span>
+                                                {m.naverPlaceId && (
+                                                  <span className="text-[9.5px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-mono font-bold">
+                                                    ID: {m.naverPlaceId}
+                                                  </span>
+                                                )}
+                                                {m.naverPlaceUrl && (
+                                                  <a
+                                                    href={m.naverPlaceUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[9.5px] text-emerald-700 hover:text-emerald-900 underline font-bold flex items-center gap-0.5"
+                                                    title="네이버 플레이스 바로가기"
+                                                  >
+                                                    <span>플레이스</span>
+                                                    <ExternalLink className="w-2.5 h-2.5" />
+                                                  </a>
+                                                )}
                                                 <span className="text-[9px] px-1 py-0.2 rounded bg-stone-200/70 text-stone-600 shrink-0 font-medium">
                                                   유사도 {Math.round(m.similarity * 100)}%
                                                 </span>
@@ -1658,10 +1693,27 @@ export default function AdminCompetitorsPage() {
                               }`}
                             >
                               <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-extrabold text-stone-900 truncate text-[11.5px]">
                                     {m.competitorName}
                                   </span>
+                                  {m.naverPlaceId && (
+                                    <span className="text-[9.5px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-mono font-bold">
+                                      ID: {m.naverPlaceId}
+                                    </span>
+                                  )}
+                                  {m.naverPlaceUrl && (
+                                    <a
+                                      href={m.naverPlaceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[9.5px] text-emerald-700 hover:text-emerald-900 underline font-bold flex items-center gap-0.5"
+                                      title="네이버 플레이스 바로가기"
+                                    >
+                                      <span>플레이스</span>
+                                      <ExternalLink className="w-2.5 h-2.5" />
+                                    </a>
+                                  )}
                                   <span className="text-[9px] px-1 py-0.2 rounded bg-stone-200/70 text-stone-600 shrink-0 font-medium">
                                     유사도 {Math.round(m.similarity * 100)}%
                                   </span>
@@ -1997,17 +2049,29 @@ export default function AdminCompetitorsPage() {
                               <span>리뷰 {comp.review_count.toLocaleString()}</span>
                             </span>
 
-                            {comp.naver_place_url && (
-                              <a
-                                href={comp.naver_place_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-0.5 underline ml-auto"
-                              >
-                                <span>네이버 플레이스</span>
-                                <ExternalLink className="w-2.5 h-2.5" />
-                              </a>
-                            )}
+                            {/* 네이버 플레이스 연동 확인 배지 & ID (픽업 매장 관리와 동일) */}
+                            <div className="flex items-center gap-1.5 flex-wrap ml-auto">
+                              <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                                <span>네이버 플레이스 연동</span>
+                                {comp.naver_place_id && (
+                                  <code className="text-emerald-900 bg-emerald-100/90 px-1 py-0.2 rounded text-[9.5px] font-mono">
+                                    ID: {comp.naver_place_id}
+                                  </code>
+                                )}
+                              </span>
+                              {comp.naver_place_url && (
+                                <a
+                                  href={comp.naver_place_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10.5px] text-emerald-700 hover:text-emerald-900 underline font-bold flex items-center gap-0.5"
+                                >
+                                  <span>플레이스 확인</span>
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                </a>
+                              )}
+                            </div>
                           </div>
 
                           {/* 은달 1호점 / 2호점 거리 뱃지 */}
@@ -2174,28 +2238,57 @@ export default function AdminCompetitorsPage() {
                       </div>
                     </div>
 
-                    {/* 하단 액션 버튼 바 */}
-                    <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => setMapTarget(comp)}
-                        className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold flex items-center gap-1 shadow-2xs transition-colors"
-                      >
-                        <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                        <span>위치 지도 확인</span>
-                      </button>
+                    {/* 하단 액션 버튼 바 (픽업 매장 관리와 동일한 4대 지도 확인 버튼 탑재) */}
+                    <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                      {/* 지도 연동 링크 버튼 */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] text-stone-400 font-medium">지도 미리보기:</span>
+                        <button
+                          type="button"
+                          onClick={() => setMapTarget(comp)}
+                          className="px-2 py-1 rounded-md bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold flex items-center gap-1 shadow-2xs transition-colors"
+                        >
+                          <MapPin className="w-2.5 h-2.5 text-amber-400" />
+                          <span>미니 지도 팝업</span>
+                        </button>
+                        <a
+                          href={`https://map.naver.com/v5/search/${encodeURIComponent(comp.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 border border-emerald-200"
+                        >
+                          네이버 지도 <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                        <a
+                          href={`https://map.kakao.com/link/search/${encodeURIComponent(comp.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 rounded-md bg-yellow-50 hover:bg-yellow-100 text-yellow-900 text-[10px] font-bold flex items-center gap-0.5 border border-yellow-300"
+                        >
+                          카카오맵 <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(comp.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold flex items-center gap-0.5 border border-stone-200"
+                        >
+                          구글 지도 <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
 
-                      <div className="flex items-center gap-1.5">
+                      {/* 수정 및 삭제 버튼 */}
+                      <div className="flex items-center gap-1.5 justify-end shrink-0">
                         <button
                           onClick={() => openEditModal(comp)}
-                          className="px-3 py-1.5 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-50 font-bold flex items-center gap-1 transition-colors"
+                          className="px-2.5 py-1.5 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 font-bold flex items-center gap-1 text-[11px] transition-colors"
                         >
                           <Edit2 className="w-3 h-3" />
                           <span>수정</span>
                         </button>
                         <button
                           onClick={() => handleDelete(comp)}
-                          className="px-3 py-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold flex items-center gap-1 transition-colors"
+                          className="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold flex items-center gap-1 text-[11px] transition-colors"
                         >
                           <Trash2 className="w-3 h-3" />
                           <span>삭제</span>
@@ -2234,64 +2327,74 @@ export default function AdminCompetitorsPage() {
                 </div>
               )}
 
-              {/* [네이버 플레이스 상호명 자동 검색 섹션 - 다중 폴백 적용] */}
+              {/* [네이버 플레이스 ID / URL 기반 실시간 정품 검증 섹션] */}
               {!editingComp && (
                 <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
                       <span className="w-4 h-4 rounded bg-[#03C75A] text-white text-[10px] font-black flex items-center justify-center">N</span>
-                      <span>네이버 플레이스 상호명 자동 검색</span>
+                      <span>네이버 플레이스 ID 기준 실시간 정품 검증</span>
                     </span>
-                    <span className="text-[10.5px] text-emerald-800 font-semibold">
-                      검색 시 정보 자동 완성
+                    <span className="text-[10.5px] text-emerald-800 font-bold bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                      가짜/임의 데이터 원천 차단
                     </span>
                   </div>
+
+                  <p className="text-[11px] text-stone-600 leading-relaxed">
+                    은달 1·2호점 픽업 매장 관리와 동일하게 <strong>네이버 플레이스 고유 ID(숫자)</strong> 또는 <strong>플레이스 주소 URL</strong>을 입력하면, 네이버 공식 서버에서 실시간으로 정품 매장 정보와 실제 메뉴·가격을 직접 검증하여 자동 채워 넣습니다.
+                  </p>
 
                   <form onSubmit={handleSearchPlace} className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="상호명을 입력하세요 (예: 조원동 커피, 골목커피, 디저트, 킵댓...)"
+                      placeholder="네이버 플레이스 ID (숫자, 예: 1987515082) 또는 플레이스 URL 입력..."
                       value={searchPlaceQuery}
                       onChange={(e) => setSearchPlaceQuery(e.target.value)}
-                      className="flex-1 p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-bold"
+                      className="flex-1 p-2.5 bg-white border border-stone-300 rounded-xl text-xs font-bold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
                     <button
                       type="submit"
                       disabled={searchingPlace}
-                      className="px-4 py-2.5 bg-[#03C75A] hover:bg-[#02b150] text-white font-bold rounded-xl flex items-center gap-1 shrink-0 shadow-xs"
+                      className="px-4 py-2.5 bg-[#03C75A] hover:bg-[#02b150] text-white font-bold rounded-xl flex items-center gap-1 shrink-0 shadow-xs transition-colors"
                     >
                       <Search className="w-3.5 h-3.5" />
-                      <span>{searchingPlace ? '검색 중...' : '플레이스 검색'}</span>
+                      <span>{searchingPlace ? '실시간 검증 중...' : '정품 플레이스 검증'}</span>
                     </button>
                   </form>
 
-                  {/* 검색 결과 목록 */}
+                  {/* 검색/검증 결과 목록 */}
                   {placeSearchResults.length > 0 && (
                     <div className="p-2 bg-white rounded-xl border border-emerald-200 space-y-1.5 max-h-48 overflow-y-auto">
-                      <p className="text-[10px] text-stone-500 font-medium px-1">
-                        검색된 매장을 클릭하면 아래 폼에 정보가 자동 채워집니다:
+                      <p className="text-[10px] text-emerald-800 font-bold px-1">
+                        ✓ 검증된 정품 매장 목록 (클릭 시 아래 폼에 실제 메뉴 및 정보가 자동 적용됩니다):
                       </p>
                       {placeSearchResults.map((item, idx) => (
                         <div
                           key={idx}
                           onClick={() => handleSelectSearchResult(item)}
-                          className="p-2 rounded-lg hover:bg-emerald-50 cursor-pointer border border-transparent hover:border-emerald-200 flex items-center justify-between gap-2 transition-colors"
+                          className="p-2.5 rounded-lg hover:bg-emerald-50 cursor-pointer border border-emerald-100 flex items-center justify-between gap-2 transition-colors"
                         >
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-stone-900 text-xs truncate">{item.name}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-stone-900 text-xs truncate">{item.name}</span>
+                              <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9.5px] font-mono font-bold">
+                                ID: {item.naver_place_id}
+                              </span>
                               <span className="px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 text-[9.5px] font-bold">
                                 {item.category || '로컬 카페'}
                               </span>
                             </div>
                             <p className="text-[11px] text-stone-500 truncate mt-0.5">{item.address}</p>
+                            <p className="text-[10px] text-emerald-700 font-medium mt-0.5">
+                              ✓ 실제 메뉴 {item.menus?.length || 0}종 확인 완료
+                            </p>
                           </div>
 
                           <div className="text-right shrink-0">
-                            <span className="text-[10.5px] font-bold text-amber-800">
+                            <span className="text-[10.5px] font-bold text-amber-800 block">
                               1호점 {item.distance_store1}km · 2호점 {item.distance_store2}km
                             </span>
-                            <div className="text-[10px] text-stone-400">
+                            <div className="text-[10px] text-stone-500 mt-0.5">
                               ★ {item.rating} (리뷰 {item.review_count}개)
                             </div>
                           </div>
@@ -2304,6 +2407,34 @@ export default function AdminCompetitorsPage() {
 
               {/* 기본 폼 필드 */}
               <form onSubmit={handleSave} className="space-y-4">
+                {/* 네이버 플레이스 연동 확인 상태 바 */}
+                <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-stone-700 text-xs">네이버 플레이스 연동 ID:</span>
+                    {form.naver_place_id ? (
+                      <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300 flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{form.naver_place_id} (공식 연동 확인)</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 font-bold">
+                        미검증 (상단에서 정품 검증 필수)
+                      </span>
+                    )}
+                  </div>
+                  {form.naver_place_url && (
+                    <a
+                      href={form.naver_place_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-emerald-700 hover:text-emerald-900 underline font-bold flex items-center gap-1"
+                    >
+                      <span>실제 플레이스 페이지 열기</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
                     <label className="block text-stone-700 font-bold mb-1">상호명 (필수)</label>
@@ -2312,7 +2443,7 @@ export default function AdminCompetitorsPage() {
                       required
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      placeholder="예: 조원동 커피창고"
+                      placeholder="예: 카페디아즈"
                       className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-bold"
                     />
                   </div>

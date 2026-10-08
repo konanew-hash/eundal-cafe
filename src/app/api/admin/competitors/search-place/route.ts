@@ -12,387 +12,242 @@ const CHAIN_KEYWORDS = [
   '파리바게뜨', '뚜레쥬르', '던킨', '배스킨라빈스'
 ];
 
-// 수원 북부(장안구/팔달구) 은달 5km 반경 실제 로컬 카페 & 소규모 커피점 & 디저트 카페 사전 인덱스
-// 외부 검색 차단 시에도 100% 무중단 안정적 동작을 보장하는 스마트 로컬 데이터베이스
-const LOCAL_KNOWLEDGE_BASE = [
-  {
-    name: '조원동 커피창고',
-    brand_type: 'small_coffee',
-    category: '소규모 커피전문점',
-    address: '경기 수원시 장안구 조원로 28',
-    phone: '031-241-3920',
-    lat: 37.297410,
-    lng: 127.022140,
-    rating: 4.62,
-    review_count: 580,
-    blog_review_count: 140,
-    representative_menu: '아메리카노(2,500원), 돌체라떼, 수제쿠키',
-    avg_coffee_price: 2800,
-    avg_drink_price: 3600,
-    avg_dessert_price: 3200,
-    avg_set_price: 6800,
-  },
-  {
-    name: '파장동 골목커피',
-    brand_type: 'small_coffee',
-    category: '소규모 커피전문점',
-    address: '경기 수원시 장안구 파장천로 54',
-    phone: '031-252-7712',
-    lat: 37.308120,
-    lng: 126.996840,
-    rating: 4.58,
-    review_count: 420,
-    blog_review_count: 95,
-    representative_menu: '골목 아메리카노, 바닐라빈라떼, 소금빵',
-    avg_coffee_price: 3000,
-    avg_drink_price: 3800,
-    avg_dessert_price: 3300,
-    avg_set_price: 6900,
-  },
-  {
-    name: '스위트 파장 (Sweet Pajang)',
-    brand_type: 'dessert_cafe',
-    category: '디저트 카페',
-    address: '경기 수원시 장안구 경수대로1073번길 22',
-    phone: '031-255-9832',
-    lat: 37.309850,
-    lng: 126.995120,
-    rating: 4.75,
-    review_count: 820,
-    blog_review_count: 310,
-    representative_menu: '바스크 치즈케이크, 솔티카라멜 휘낭시에, 크림라떼',
-    avg_coffee_price: 4500,
-    avg_drink_price: 5200,
-    avg_dessert_price: 5500,
-    avg_set_price: 11000,
-  },
-  {
-    name: '조원 디저트 랩',
-    brand_type: 'dessert_cafe',
-    category: '디저트 카페',
-    address: '경기 수원시 장안구 조원로 45',
-    phone: '031-244-1290',
-    lat: 37.298210,
-    lng: 127.019840,
-    rating: 4.72,
-    review_count: 940,
-    blog_review_count: 380,
-    representative_menu: '수제 뚱카롱, 르뱅쿠키 세트, 생딸기라떼',
-    avg_coffee_price: 4200,
-    avg_drink_price: 4900,
-    avg_dessert_price: 4800,
-    avg_set_price: 10500,
-  },
-  {
-    name: '카페 모퉁이',
-    brand_type: 'small_coffee',
-    category: '소규모 커피전문점',
-    address: '경기 수원시 장안구 수일로 233번길 18',
-    phone: '031-243-0981',
-    lat: 37.301120,
-    lng: 127.016540,
-    rating: 4.65,
-    review_count: 360,
-    blog_review_count: 110,
-    representative_menu: '모퉁이 라떼, 콜드브루, 수제 마들렌',
-    avg_coffee_price: 3500,
-    avg_drink_price: 4000,
-    avg_dessert_price: 3100,
-    avg_set_price: 7200,
-  },
-  {
-    name: '정지영커피로스터즈 화홍문점',
-    brand_type: 'specialty',
-    category: '스페셜티 카페',
-    address: '경기 수원시 팔달구 수원천로 375',
-    phone: '031-247-0096',
-    lat: 37.288214,
-    lng: 127.018952,
-    rating: 4.68,
-    review_count: 3420,
-    blog_review_count: 1850,
-    representative_menu: '코코넛라떼, 아메리카노, 바닐라빈라떼',
-    avg_coffee_price: 5500,
-    avg_drink_price: 6000,
-    avg_dessert_price: 6500,
-    avg_set_price: 12500,
-  },
-  {
-    name: '카페 만석',
-    brand_type: 'specialty',
-    category: '스페셜티 카페',
-    address: '경기 수원시 장안구 만석로19번길 12',
-    phone: '031-248-1102',
-    lat: 37.301540,
-    lng: 127.009410,
-    rating: 4.62,
-    review_count: 1890,
-    blog_review_count: 620,
-    representative_menu: '만석 크림라떼, 아메리카노, 수제 소금빵',
-    avg_coffee_price: 4500,
-    avg_drink_price: 5200,
-    avg_dessert_price: 4800,
-    avg_set_price: 10500,
-  },
-  {
-    name: '헤르츠 (Hertz Coffee)',
-    brand_type: 'specialty',
-    category: '스페셜티 카페',
-    address: '경기 수원시 장안구 송원로 83',
-    phone: '031-252-8823',
-    lat: 37.299150,
-    lng: 127.012580,
-    rating: 4.74,
-    review_count: 980,
-    blog_review_count: 410,
-    representative_menu: '싱글오리진 핸드드립, 피스타치오 아인슈페너, 바스크 치즈케이크',
-    avg_coffee_price: 4000,
-    avg_drink_price: 5200,
-    avg_dessert_price: 6000,
-    avg_set_price: 11000,
-  },
-  {
-    name: '구움과자점 송죽',
-    brand_type: 'dessert_cafe',
-    category: '디저트 카페',
-    address: '경기 수원시 장안구 송정로 68',
-    phone: '031-248-5520',
-    lat: 37.302540,
-    lng: 127.011240,
-    rating: 4.78,
-    review_count: 1150,
-    blog_review_count: 420,
-    representative_menu: '무화과 크림치즈 휘낭시에, 레몬 글라세 마들렌',
-    avg_coffee_price: 4500,
-    avg_drink_price: 5000,
-    avg_dessert_price: 3200,
-    avg_set_price: 8500,
-  },
-  {
-    name: '달콤테이블 행궁',
-    brand_type: 'dessert_cafe',
-    category: '디저트 카페',
-    address: '경기 수원시 팔달구 화서문로 31번길 14',
-    phone: '031-241-7780',
-    lat: 37.285840,
-    lng: 127.015240,
-    rating: 4.82,
-    review_count: 1850,
-    blog_review_count: 790,
-    representative_menu: '시즌 과일 타르트, 브라운치즈 크로플',
-    avg_coffee_price: 5000,
-    avg_drink_price: 5800,
-    avg_dessert_price: 7200,
-    avg_set_price: 13500,
-  },
-  {
-    name: '정자동 커피볶는집',
-    brand_type: 'small_coffee',
-    category: '소규모 커피전문점',
-    address: '경기 수원시 장안구 정자로 42번길 11',
-    phone: '031-268-3310',
-    lat: 37.301540,
-    lng: 126.992450,
-    rating: 4.60,
-    review_count: 510,
-    blog_review_count: 130,
-    representative_menu: '핸드드립, 수제 연유라떼, 스콘',
-    avg_coffee_price: 3300,
-    avg_drink_price: 3900,
-    avg_dessert_price: 3500,
-    avg_set_price: 7200,
-  },
-  {
-    name: '영화동 커피하우스',
-    brand_type: 'small_coffee',
-    category: '소규모 커피전문점',
-    address: '경기 수원시 장안구 정조로 934',
-    phone: '031-242-6640',
-    lat: 37.291840,
-    lng: 127.011240,
-    rating: 4.55,
-    review_count: 390,
-    blog_review_count: 80,
-    representative_menu: '대용량 아메리카노, 캔포장 라떼, 브라우니',
-    avg_coffee_price: 2800,
-    avg_drink_price: 3500,
-    avg_dessert_price: 3200,
-    avg_set_price: 6500,
-  },
-];
+function categorizeMenu(name: string, desc?: string): 'drink' | 'dessert' | 'set' {
+  const text = (name + ' ' + (desc || '')).toLowerCase();
+  
+  if (text.includes('세트') || text.includes('set') || text.includes('플래터') || text.includes('패키지')) {
+    return 'set';
+  }
+  
+  const dessertKeywords = [
+    '케이크', '케익', '베이글', '쿠키', '휘낭시에', '마들렌', '스콘', '타르트', '소금빵',
+    '빵', '샌드위치', '크루아상', '크로와상', '크로플', '파니니', '와플', '판나코타', '브라우니',
+    '티라미수', '초콜릿', '마카롱', '롤케이크', '다쿠아즈', '오란다', '까눌레', '파이', '디저트',
+    '산도', '토스트', '도넛', '약과', '푸딩', '빙수'
+  ];
+  if (dessertKeywords.some(k => text.includes(k))) {
+    return 'dessert';
+  }
+  
+  return 'drink';
+}
+
+// 100% 네이버 플레이스 정품 데이터 추출기
+async function fetchVerifiedNaverPlace(placeId: string) {
+  const url = `https://m.place.naver.com/restaurant/${placeId}/home`;
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+    },
+    signal: AbortSignal.timeout(7000),
+  });
+
+  if (!res.ok) return null;
+  const html = await res.text();
+  const match = html.match(/window\.__APOLLO_STATE__\s*=\s*(\{.*?\});/s);
+  if (!match) return null;
+
+  const apollo = JSON.parse(match[1]);
+  const base = apollo[`PlaceDetailBase:${placeId}`];
+  if (!base || !base.name) return null;
+
+  const rawMenus = Object.keys(apollo)
+    .filter(k => k.startsWith('PlaceMenuItem:'))
+    .map(k => apollo[k]);
+
+  const parsedMenus = rawMenus
+    .map((m: any) => {
+      const priceText = m.price?.displayText || '';
+      const basePart = priceText.split('~')[0].split('-')[0];
+      let priceNum = parseInt(basePart.replace(/[^0-9]/g, ''), 10) || 0;
+      if (priceNum > 2000000) priceNum = Math.min(priceNum, 200000);
+      const category = categorizeMenu(m.name, m.description);
+      return {
+        name: m.name.trim(),
+        price: priceNum,
+        category,
+        description: m.description || '',
+        imageUrl: m.thumbnailUrl || m.images?.[0]?.url || '',
+        is_signature: m.badges?.includes('repr') || false,
+      };
+    })
+    .filter((m: any) => m.name && m.price > 0);
+
+  const lat = parseFloat(base.coordinate?.y) || 0;
+  const lng = parseFloat(base.coordinate?.x) || 0;
+
+  return {
+    placeId,
+    name: base.name.trim(),
+    category: base.category || '카페,디저트',
+    roadAddress: base.roadAddress || base.address || '',
+    address: base.address || '',
+    phone: base.phone || '',
+    rating: parseFloat(base.visitorReviewsScore) || 4.5,
+    reviewCount: parseInt(base.visitorReviewsTotal, 10) || 0,
+    blogReviewCount: parseInt(base.cafeBlogReviewsTotal, 10) || 0,
+    latitude: lat,
+    longitude: lng,
+    menus: parsedMenus,
+  };
+}
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.get('query')?.trim() || '';
-
   try {
-    let results: any[] = [];
-    const queryLower = query.toLowerCase();
+    const { searchParams } = new URL(request.url);
+    const rawInput = (searchParams.get('placeId') || searchParams.get('query') || '').trim();
 
-    // 1단계: 네이버 지도 오픈 검색 시도
-    let naverWorked = false;
-    if (query) {
+    if (!rawInput) {
+      return NextResponse.json(
+        { error: '네이버 플레이스 ID 또는 플레이스 주소 URL을 입력해주세요.' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getSupabaseServer();
+
+    // 1. 입력값에서 네이버 플레이스 ID 추출 (URL이거나 직접 ID 입력된 경우)
+    let extractedPlaceId = '';
+    const urlMatch = rawInput.match(/(?:restaurant|place)\/(\d+)/);
+    if (urlMatch) {
+      extractedPlaceId = urlMatch[1];
+    } else if (/^\d{6,12}$/.test(rawInput)) {
+      extractedPlaceId = rawInput;
+    }
+
+    const candidateIds: string[] = [];
+
+    if (extractedPlaceId) {
+      candidateIds.push(extractedPlaceId);
+    } else {
+      // 상호명 검색 시 네이버 모바일 검색을 통해 실제 네이버 플레이스 ID 검색
+      const searchUrl = `https://m.search.naver.com/search.naver?query=${encodeURIComponent(rawInput + ' 수원')}`;
       try {
-        const naverUrl = `https://map.naver.com/p/api/search/allSearch?query=${encodeURIComponent(query)}&type=all&searchCoord=${EUNDAL_STORE1_COORDS.lng}%3B${EUNDAL_STORE1_COORDS.lat}&boundary=`;
-        const res = await fetch(naverUrl, {
+        const searchRes = await fetch(searchUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
-            'Referer': 'https://map.naver.com/',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
           },
-          signal: AbortSignal.timeout(3000),
+          signal: AbortSignal.timeout(6000),
         });
-
-        if (res.ok) {
-          const data = await res.json();
-          const placeList = data?.result?.place?.list || data?.result?.site?.list || [];
-          if (Array.isArray(placeList) && placeList.length > 0) {
-            naverWorked = true;
-            for (const item of placeList.slice(0, 10)) {
-              const rawTitle = (item.name || item.title || '').replace(/<[^>]+>/g, '').trim();
-              const id = item.id || item.placeId || '';
-              const lat = parseFloat(item.y || item.lat || '0');
-              const lng = parseFloat(item.x || item.lng || '0');
-              const roadAddr = item.roadAddress || item.address || '';
-              const phone = item.tel || item.phone || '';
-              const isChain = CHAIN_KEYWORDS.some(k => rawTitle.includes(k));
-
-              const dist1 = lat > 0 && lng > 0 ? calculateDistanceKm(lat, lng, EUNDAL_STORE1_COORDS.lat, EUNDAL_STORE1_COORDS.lng) : 0;
-              const dist2 = lat > 0 && lng > 0 ? calculateDistanceKm(lat, lng, EUNDAL_STORE2_COORDS.lat, EUNDAL_STORE2_COORDS.lng) : 0;
-
-              results.push({
-                name: rawTitle,
-                category: item.category || '카페,디저트',
-                brand_type: rawTitle.includes('디저트') || rawTitle.includes('케이크') ? 'dessert_cafe' : (rawTitle.includes('로스터') ? 'specialty' : 'small_coffee'),
-                address: roadAddr,
-                roadAddress: roadAddr,
-                phone,
-                latitude: lat,
-                longitude: lng,
-                naver_place_id: id,
-                naver_place_url: id ? `https://m.place.naver.com/restaurant/${id}/home` : `https://map.naver.com/p/search/${encodeURIComponent(rawTitle)}`,
-                distance_store1: dist1,
-                distance_store2: dist2,
-                isWithin5km: dist1 <= 5.0 || dist2 <= 5.0,
-                isChain,
-                rating: parseFloat(item.visitorReviewScore || item.rating || '4.55'),
-                review_count: parseInt(item.visitorReviewCount || item.reviewCount || '320', 10),
-                blog_review_count: parseInt(item.blogReviewCount || '80', 10),
-                representative_menu: item.menuInfo || '아메리카노, 카페라떼, 디저트',
-                avg_coffee_price: 4500,
-                avg_drink_price: 4800,
-                avg_dessert_price: 4500,
-                avg_set_price: 9000,
-              });
-            }
-          }
+        if (searchRes.ok) {
+          const searchHtml = await searchRes.text();
+          const matches = [...searchHtml.matchAll(/\/restaurant\/(\d+)/g)].map(m => m[1]);
+          const unique = [...new Set(matches)];
+          candidateIds.push(...unique.slice(0, 5));
         }
       } catch (err) {
-        console.warn('Naver search fetch skipped/failed, using internal index:', err);
+        console.warn('Naver search failed:', err);
       }
     }
 
-    // 2단계: 로컬 스마트 지식 베이스 검색 매칭 (외부 차단 시에도 100% 보장)
-    const localMatches = LOCAL_KNOWLEDGE_BASE.filter((k) => {
-      if (!query) return true;
-      return (
-        k.name.toLowerCase().includes(queryLower) ||
-        k.address.toLowerCase().includes(queryLower) ||
-        k.category.toLowerCase().includes(queryLower) ||
-        k.representative_menu.toLowerCase().includes(queryLower) ||
-        queryLower.includes('조원') ||
-        queryLower.includes('파장') ||
-        queryLower.includes('수원') ||
-        queryLower.includes('카페') ||
-        queryLower.includes('커피') ||
-        queryLower.includes('디저트') ||
-        queryLower.includes('소규모')
-      );
-    });
-
-    for (const item of localMatches) {
-      if (!results.some((r) => r.name === item.name)) {
-        const dist1 = calculateDistanceKm(item.lat, item.lng, EUNDAL_STORE1_COORDS.lat, EUNDAL_STORE1_COORDS.lng);
-        const dist2 = calculateDistanceKm(item.lat, item.lng, EUNDAL_STORE2_COORDS.lat, EUNDAL_STORE2_COORDS.lng);
-
-        results.push({
-          name: item.name,
-          category: item.category,
-          brand_type: item.brand_type,
-          address: item.address,
-          roadAddress: item.address,
-          phone: item.phone,
-          latitude: item.lat,
-          longitude: item.lng,
-          naver_place_id: '',
-          naver_place_url: `https://map.naver.com/p/search/${encodeURIComponent(item.name)}`,
-          distance_store1: dist1,
-          distance_store2: dist2,
-          isWithin5km: dist1 <= 5.0 || dist2 <= 5.0,
-          isChain: false,
-          rating: item.rating,
-          review_count: item.review_count,
-          blog_review_count: item.blog_review_count,
-          representative_menu: item.representative_menu,
-          avg_coffee_price: item.avg_coffee_price,
-          avg_drink_price: item.avg_drink_price,
-          avg_dessert_price: item.avg_dessert_price,
-          avg_set_price: item.avg_set_price,
-        });
-      }
-    }
-
-    // 3단계: 검색어가 있으나 매칭이 없는 경우, 입력한 상호명으로 즉시 등록할 수 있는 추천 템플릿 생성
-    if (query && results.length === 0) {
-      results.push({
-        name: query,
-        category: '소규모 커피전문점/디저트카페',
-        brand_type: query.includes('디저트') || query.includes('케이크') ? 'dessert_cafe' : 'small_coffee',
-        address: '경기 수원시 장안구 조원로 (직접 주소 입력)',
-        roadAddress: '경기 수원시 장안구 조원로 (직접 주소 입력)',
-        phone: '',
-        latitude: EUNDAL_STORE1_COORDS.lat + 0.003,
-        longitude: EUNDAL_STORE1_COORDS.lng + 0.002,
-        naver_place_id: '',
-        naver_place_url: `https://map.naver.com/p/search/${encodeURIComponent(query)}`,
-        distance_store1: 0.5,
-        distance_store2: 2.1,
-        isWithin5km: true,
-        isChain: CHAIN_KEYWORDS.some(k => query.includes(k)),
-        rating: 4.6,
-        review_count: 350,
-        blog_review_count: 80,
-        representative_menu: '아메리카노, 카페라떼, 수제 디저트',
-        avg_coffee_price: 3500,
-        avg_drink_price: 4000,
-        avg_dessert_price: 3800,
-        avg_set_price: 7500,
+    if (candidateIds.length === 0) {
+      return NextResponse.json({
+        places: [],
+        message: '해당 입력값으로 확인된 네이버 플레이스 ID가 없습니다. 정확한 네이버 플레이스 ID 또는 주소 URL을 입력해주세요.'
       });
     }
 
-    // 4단계: 이미 등록된 경쟁사는 검색 결과에서 제외 (사용자 요구사항 반영)
-    try {
-      const supabase = getSupabaseServer();
-      const { data: existingCompetitors } = await supabase
-        .from('eundal_competitors')
-        .select('name');
+    // 이미 등록된 경쟁사 플레이스 ID 목록 조회
+    const { data: existingCompetitors } = await supabase
+      .from('eundal_competitors')
+      .select('naver_place_id, name')
+      .not('naver_place_id', 'is', null);
 
-      if (existingCompetitors && existingCompetitors.length > 0) {
-        const registeredNameSet = new Set(
-          existingCompetitors.map((c) => c.name.replace(/\s+/g, '').toLowerCase())
-        );
+    const existingIdMap = new Map<string, string>();
+    (existingCompetitors || []).forEach(c => {
+      if (c.naver_place_id) existingIdMap.set(c.naver_place_id, c.name);
+    });
 
-        results = results.filter((r) => {
-          const normalized = r.name.replace(/\s+/g, '').toLowerCase();
-          return !registeredNameSet.has(normalized);
-        });
+    const verifiedPlaces = [];
+
+    for (const placeId of candidateIds) {
+      const placeData = await fetchVerifiedNaverPlace(placeId);
+      if (!placeData) continue;
+
+      // 은달 매장 제외
+      if (placeId === '1245444726' || placeId === '1869537461' || placeData.name.includes('은달')) {
+        continue;
       }
-    } catch (e) {
-      console.warn('Failed to filter registered competitors:', e);
+
+      // 프랜차이즈 체인점 제외
+      if (CHAIN_KEYWORDS.some(k => placeData.name.includes(k))) {
+        continue;
+      }
+
+      const dist1 = calculateDistanceKm(placeData.latitude, placeData.longitude, EUNDAL_STORE1_COORDS.lat, EUNDAL_STORE1_COORDS.lng);
+      const dist2 = calculateDistanceKm(placeData.latitude, placeData.longitude, EUNDAL_STORE2_COORDS.lat, EUNDAL_STORE2_COORDS.lng);
+
+      // 반경 5km 초과 제외
+      if (Math.min(dist1, dist2) > 5.0) {
+        continue;
+      }
+
+      const drinkMenus = placeData.menus.filter((m: any) => m.category === 'drink').slice(0, 20);
+      const dessertMenus = placeData.menus.filter((m: any) => m.category === 'dessert').slice(0, 20);
+      const setMenus = placeData.menus.filter((m: any) => m.category === 'set').slice(0, 20);
+
+      const avgDrink = drinkMenus.length > 0
+        ? Math.round(drinkMenus.reduce((s: number, m: any) => s + m.price, 0) / drinkMenus.length)
+        : 4000;
+      const avgDessert = dessertMenus.length > 0
+        ? Math.round(dessertMenus.reduce((s: number, m: any) => s + m.price, 0) / dessertMenus.length)
+        : 4500;
+      const avgSet = setMenus.length > 0
+        ? Math.round(setMenus.reduce((s: number, m: any) => s + m.price, 0) / setMenus.length)
+        : 8000;
+
+      const americanoItem = drinkMenus.find((m: any) => m.name.includes('아메리카노'));
+      const avgCoffee = americanoItem ? americanoItem.price : avgDrink;
+
+      let brandType = 'small_coffee';
+      if (placeData.category.includes('케이크') || placeData.category.includes('디저트') || placeData.category.includes('베이커리') || dessertMenus.length > drinkMenus.length) {
+        brandType = 'dessert_cafe';
+      } else if (placeData.name.includes('로스터리') || placeData.name.includes('스탠드') || avgCoffee >= 4500) {
+        brandType = 'specialty';
+      }
+
+      const isRegistered = existingIdMap.has(placeId);
+
+      verifiedPlaces.push({
+        id: placeId,
+        naver_place_id: placeId,
+        naver_place_url: `https://m.place.naver.com/restaurant/${placeId}/home`,
+        name: placeData.name,
+        category: placeData.category,
+        brand_type: brandType,
+        roadAddress: placeData.roadAddress,
+        address: placeData.address || placeData.roadAddress,
+        phone: placeData.phone,
+        rating: placeData.rating,
+        review_count: placeData.reviewCount,
+        blog_review_count: placeData.blogReviewCount,
+        latitude: placeData.latitude,
+        longitude: placeData.longitude,
+        distance_store1: dist1,
+        distance_store2: dist2,
+        target_branch: dist1 < dist2 ? 'store1' : 'store2',
+        avg_coffee_price: avgCoffee,
+        avg_drink_price: avgDrink,
+        avg_dessert_price: avgDessert,
+        avg_set_price: avgSet,
+        representative_menu: placeData.menus.find((m: any) => m.is_signature)?.name || placeData.menus[0]?.name || '',
+        image_url: placeData.menus[0]?.imageUrl || '',
+        menus: [...drinkMenus, ...dessertMenus, ...setMenus],
+        is_already_registered: isRegistered,
+        already_registered_name: isRegistered ? existingIdMap.get(placeId) : null,
+      });
     }
 
-    return NextResponse.json({ items: results });
+    return NextResponse.json({
+      places: verifiedPlaces,
+      totalFound: verifiedPlaces.length,
+      searchedId: extractedPlaceId || null,
+    });
   } catch (error: any) {
-    console.error('Competitor place search failed:', error);
-    return NextResponse.json({ items: [] });
+    console.error('Search place error:', error);
+    return NextResponse.json(
+      { error: error.message || '네이버 플레이스 정보 조회 중 오류가 발생했습니다.' },
+      { status: 500 }
+    );
   }
 }
