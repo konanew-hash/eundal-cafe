@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-08T10:57:13.146Z",
+  "at": "2026-10-08T12:50:09.447Z",
   "url": "https://eundal.vercel.app",
   "reachable": true,
   "results": [
@@ -24,7 +24,7 @@
         "header": "content-security-policy",
         "value": null,
         "validation": "누락",
-        "observedAt": "2026-10-08T10:57:11.487Z"
+        "observedAt": "2026-10-08T12:50:07.824Z"
       }
     },
     {
@@ -35,7 +35,7 @@
         "header": "strict-transport-security",
         "value": "max-age=63072000; includeSubDomains; preload",
         "validation": "valid",
-        "observedAt": "2026-10-08T10:57:11.487Z"
+        "observedAt": "2026-10-08T12:50:07.824Z"
       }
     },
     {
@@ -46,7 +46,7 @@
         "header": "x-frame-options",
         "value": "DENY",
         "validation": "x-frame-options: DENY",
-        "observedAt": "2026-10-08T10:57:11.487Z"
+        "observedAt": "2026-10-08T12:50:07.824Z"
       }
     },
     {
@@ -57,7 +57,7 @@
         "header": "x-content-type-options",
         "value": "nosniff",
         "validation": "valid",
-        "observedAt": "2026-10-08T10:57:11.487Z"
+        "observedAt": "2026-10-08T12:50:07.824Z"
       }
     },
     {
@@ -68,7 +68,7 @@
         "header": "referrer-policy",
         "value": "strict-origin-when-cross-origin",
         "validation": "valid",
-        "observedAt": "2026-10-08T10:57:11.487Z"
+        "observedAt": "2026-10-08T12:50:07.824Z"
       }
     },
     {
@@ -79,7 +79,7 @@
         "header": "permissions-policy",
         "value": "camera=(), microphone=(), geolocation=()",
         "validation": "valid",
-        "observedAt": "2026-10-08T10:57:11.487Z"
+        "observedAt": "2026-10-08T12:50:07.824Z"
       }
     },
     {
@@ -198,9 +198,9 @@
           },
           {
             "path": "/_next/static/chunks/5928-17a18d8c50f58a92.js",
-            "httpStatus": 200,
+            "httpStatus": 403,
             "exposed": false,
-            "checked": true
+            "checked": false
           },
           {
             "path": "/_next/static/chunks/7029-aecdc1f34e980cad.js",
@@ -320,9 +320,9 @@
     {
       "id": "perf.ttfb",
       "status": "pass",
-      "observed": "응답 시간 115ms",
+      "observed": "응답 시간 132ms",
       "evidence": {
-        "ms": 115
+        "ms": 132
       }
     },
     {
@@ -330,7 +330,7 @@
       "status": "pass",
       "observed": "문서 크기 9KB",
       "evidence": {
-        "bytes": 9256
+        "bytes": 9257
       }
     },
     {
@@ -370,7 +370,7 @@
       "observed": "하드코딩 시크릿 미검출",
       "evidence": {
         "hits": [],
-        "inspectedFiles": 72,
+        "inspectedFiles": 81,
         "readFailures": 0
       }
     },
@@ -380,7 +380,7 @@
       "observed": "클라 시크릿 노출 미검출",
       "evidence": {
         "hits": [],
-        "inspectedFiles": 66,
+        "inspectedFiles": 74,
         "readFailures": 0
       }
     },
@@ -404,7 +404,8 @@
           ]
         },
         "filesScanned": [
-          "next.config.ts"
+          "next.config.ts",
+          "vercel.json"
         ]
       }
     },
@@ -430,8 +431,8 @@
       "unsafeTransport": false,
       "bodyTruncated": false
     },
-    "scannedAt": "2026-10-08T10:57:11.483Z",
-    "ttfbMs": 115,
+    "scannedAt": "2026-10-08T12:50:07.820Z",
+    "ttfbMs": 132,
     "observedHeaders": [
       "access-control-allow-origin",
       "age",
@@ -482,7 +483,7 @@
             "header": "content-security-policy",
             "value": null,
             "validation": "누락",
-            "observedAt": "2026-10-08T10:57:11.487Z"
+            "observedAt": "2026-10-08T12:50:07.824Z"
           }
         },
         {
@@ -493,7 +494,7 @@
             "header": "strict-transport-security",
             "value": "max-age=63072000; includeSubDomains; preload",
             "validation": "valid",
-            "observedAt": "2026-10-08T10:57:11.487Z"
+            "observedAt": "2026-10-08T12:50:07.824Z"
           }
         },
         {
@@ -504,7 +505,7 @@
             "header": "x-frame-options",
             "value": "DENY",
             "validation": "x-frame-options: DENY",
-            "observedAt": "2026-10-08T10:57:11.487Z"
+            "observedAt": "2026-10-08T12:50:07.824Z"
           }
         },
         {
@@ -515,7 +516,7 @@
             "header": "x-content-type-options",
             "value": "nosniff",
             "validation": "valid",
-            "observedAt": "2026-10-08T10:57:11.487Z"
+            "observedAt": "2026-10-08T12:50:07.824Z"
           }
         },
         {
@@ -526,7 +527,7 @@
             "header": "referrer-policy",
             "value": "strict-origin-when-cross-origin",
             "validation": "valid",
-            "observedAt": "2026-10-08T10:57:11.487Z"
+            "observedAt": "2026-10-08T12:50:07.824Z"
           }
         },
         {
@@ -537,7 +538,7 @@
             "header": "permissions-policy",
             "value": "camera=(), microphone=(), geolocation=()",
             "validation": "valid",
-            "observedAt": "2026-10-08T10:57:11.487Z"
+            "observedAt": "2026-10-08T12:50:07.824Z"
           }
         },
         {
@@ -656,9 +657,9 @@
               },
               {
                 "path": "/_next/static/chunks/5928-17a18d8c50f58a92.js",
-                "httpStatus": 200,
+                "httpStatus": 403,
                 "exposed": false,
-                "checked": true
+                "checked": false
               },
               {
                 "path": "/_next/static/chunks/7029-aecdc1f34e980cad.js",
@@ -778,9 +779,9 @@
         {
           "id": "perf.ttfb",
           "status": "pass",
-          "observed": "응답 시간 115ms",
+          "observed": "응답 시간 132ms",
           "evidence": {
-            "ms": 115
+            "ms": 132
           }
         },
         {
@@ -788,7 +789,7 @@
           "status": "pass",
           "observed": "문서 크기 9KB",
           "evidence": {
-            "bytes": 9256
+            "bytes": 9257
           }
         },
         {
@@ -828,7 +829,7 @@
           "observed": "하드코딩 시크릿 미검출",
           "evidence": {
             "hits": [],
-            "inspectedFiles": 72,
+            "inspectedFiles": 81,
             "readFailures": 0
           }
         },
@@ -838,7 +839,7 @@
           "observed": "클라 시크릿 노출 미검출",
           "evidence": {
             "hits": [],
-            "inspectedFiles": 66,
+            "inspectedFiles": 74,
             "readFailures": 0
           }
         },
@@ -862,7 +863,8 @@
               ]
             },
             "filesScanned": [
-              "next.config.ts"
+              "next.config.ts",
+              "vercel.json"
             ]
           }
         },

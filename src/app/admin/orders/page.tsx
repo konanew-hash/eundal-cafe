@@ -809,14 +809,29 @@ export default function AdminOrdersPage() {
                       <div className="flex-1 py-2 bg-stone-100 text-emerald-800 font-bold rounded-xl text-xs text-center border border-emerald-200">
                         거래 완료됨
                       </div>
-                      <Link
-                        href={`/admin/portfolio?order_id=${order.id}&client_name=${encodeURIComponent(order.customer_name)}&date=${order.delivery_date}&time=${encodeURIComponent(order.delivery_time)}&items=${encodeURIComponent(order.items?.map(i => `${i.menu_name} x${i.quantity}`).join(', ') || '')}`}
-                        className="py-2 px-2.5 bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition-colors shadow-xs shrink-0"
-                        title="완료된 납품 건을 홈페이지 홍보 포트폴리오로 등록"
-                      >
-                        <Award className="w-3.5 h-3.5 text-stone-950" />
-                        <span>포트폴리오 등록</span>
-                      </Link>
+                      {(() => {
+                        // 개인정보 보호 안심 필터: 개인 실명 대신 기관/단체명 또는 지역 기반 행사처로 안전 변환
+                        const rawName = (order.customer_name || '').trim();
+                        const isOrg = /(회사|기업|센터|협회|학교|대학|병원|연구소|구청|시청|재단|복지관|학원|교회|성당|동호회|팀|본부|지점|학회|위원회|스튜디오|랩|lab)/i.test(rawName);
+                        let safeClientName = isOrg ? rawName : '';
+                        if (!safeClientName) {
+                          // 주소지에서 '동' 추출하여 '수원 조원동 단체 행사' 등으로 치환
+                          const dongMatch = (order.delivery_address || '').match(/([가-힣]+[동|읍|면])/);
+                          const dong = dongMatch ? dongMatch[1] : '수원 장안구';
+                          safeClientName = `${dong} 단체 고객사`;
+                        }
+
+                        return (
+                          <Link
+                            href={`/admin/portfolio?order_id=${order.id}&client_name=${encodeURIComponent(safeClientName)}&date=${order.delivery_date}&time=${encodeURIComponent(order.delivery_time)}&items=${encodeURIComponent(order.items?.map(i => `${i.menu_name} x${i.quantity}`).join(', ') || '')}`}
+                            className="py-2 px-2.5 bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition-colors shadow-xs shrink-0"
+                            title="완료된 납품 건을 홈페이지 홍보 포트폴리오로 등록 (개인정보 보호 필터 적용)"
+                          >
+                            <Award className="w-3.5 h-3.5 text-stone-950" />
+                            <span>포트폴리오 등록</span>
+                          </Link>
+                        );
+                      })()}
                     </div>
                   )}
                   {order.status === 'cancelled' && (

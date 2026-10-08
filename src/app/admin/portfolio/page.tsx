@@ -27,6 +27,20 @@ import {
 import Link from 'next/link';
 import { Portfolio } from '@/lib/types';
 
+// 개인 실명 감지 및 안전 기관명/단체명 치환 함수 (개인정보보호 안심 필터)
+function sanitizeClientName(name: string): string {
+  if (!name) return '수원 단체 고객사';
+  const trimmed = name.trim();
+  // 1. 이미 기관/단체/회사/학교/모임 관련 키워드가 포함된 경우 안전
+  const isOrg = /(회사|기업|센터|협회|학교|대학|병원|연구소|구청|시청|재단|복지관|학원|교회|성당|동호회|팀|본부|지점|학회|위원회|스튜디오|랩|lab|동아리|모임|과|부|청|회)/i.test(trimmed);
+  if (isOrg) return trimmed;
+  // 2. 한글 2~4글자 개인 이름 형태(예: 홍길동, 김은달 등)이거나 '님'이 붙은 경우
+  if (/^[가-힣]{2,4}(님)?$/.test(trimmed)) {
+    return '수원 세미나/모임 단체';
+  }
+  return trimmed;
+}
+
 function PortfolioAdminContent() {
   const searchParams = useSearchParams();
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -81,7 +95,7 @@ function PortfolioAdminContent() {
     fetchPortfolios();
   }, []);
 
-  // 쿼리 파라미터로 주문 연동된 경우 자동 모달 오픈
+  // 쿼리 파라미터로 주문 연동된 경우 자동 모달 오픈 (개인정보 보호 필터 적용)
   useEffect(() => {
     const fromOrderId = searchParams.get('order_id');
     const fromClientName = searchParams.get('client_name');
@@ -91,16 +105,17 @@ function PortfolioAdminContent() {
 
     if (fromOrderId || fromClientName) {
       resetForm();
+      const safeClient = sanitizeClientName(fromClientName || '');
+
       if (fromOrderId) setOrderId(fromOrderId);
-      if (fromClientName) {
-        setClientName(fromClientName);
-        setTitle(`${fromClientName} 단체 케이터링 납품`);
-      }
+      setClientName(safeClient);
+      setTitle(`${safeClient} 단체 케이터링 납품`);
+
       if (fromDate) setEventDate(fromDate);
       if (fromTime) setEventTime(fromTime);
       if (fromItems) {
         setItemSummary(fromItems);
-        setContent(`${fromClientName} 행사에 ${fromItems} 구성을 신선하게 정시 배달 납품 완료했습니다.`);
+        setContent(`${safeClient} 행사에 ${fromItems} 구성을 신선하게 정시 배달 납품 완료했습니다.`);
       }
       setEventScale('단체 50인분');
       setIsFeatured(true);
@@ -240,11 +255,14 @@ function PortfolioAdminContent() {
       .map((t) => t.trim())
       .filter(Boolean);
 
+    // 개인정보 보호 안심 필터 적용
+    const safeClient = sanitizeClientName(clientName.trim());
+
     setSubmitting(true);
     try {
       const payload = {
         title: title.trim(),
-        client_name: clientName.trim(),
+        client_name: safeClient,
         event_date: eventDate,
         event_time: eventTime.trim(),
         event_scale: eventScale.trim(),
@@ -673,6 +691,15 @@ function PortfolioAdminContent() {
 
             {/* 모달 폼 바디 */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              {/* 개인정보 보호 안심 필터 안내 */}
+              <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950">
+                <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-bold block text-amber-900">개인정보보호 안심 필터 적용 중</span>
+                  <span>고객님의 소중한 개인정보(성명) 노출을 방지하기 위해, 제목 및 주문처는 단체·기관·행사명(예: 수원 세미나 단체, OO기업 워크숍)으로 등록됩니다.</span>
+                </div>
+              </div>
+
               {/* 1. 기본 정보 */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider">

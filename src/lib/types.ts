@@ -41,6 +41,9 @@ export interface CafeInfo {
   store2_address?: string;
   store2_business_hours?: string;
   store2_phone?: string;
+  // 납품 사례 홍보 문구 (관리자 편집용)
+  portfolio_title?: string;
+  portfolio_subtitle?: string;
 }
 
 // 주변 상권 및 경쟁사 정보
@@ -80,6 +83,9 @@ export interface Competitor {
   description?: string;
   representative_menu?: string;
   avg_coffee_price: number;
+  avg_drink_price?: number;
+  avg_dessert_price?: number;
+  avg_set_price?: number;
   is_active: boolean;
   sort_order: number;
   last_updated_at?: string;

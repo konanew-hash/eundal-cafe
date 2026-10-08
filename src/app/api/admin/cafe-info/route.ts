@@ -119,6 +119,9 @@ export async function PUT(req: NextRequest) {
         store2_address: store2_address !== undefined ? store2_address : '경기 수원시 장안구 경수대로1043번길 3 은달 파장2호점',
         store2_business_hours: store2_business_hours !== undefined ? store2_business_hours : business_hours,
         store2_phone: store2_phone !== undefined ? store2_phone : '031-255-0816',
+        // 납품 포트폴리오 홍보 문구
+        portfolio_title: body.portfolio_title !== undefined ? body.portfolio_title : null,
+        portfolio_subtitle: body.portfolio_subtitle !== undefined ? body.portfolio_subtitle : null,
         updated_at: new Date().toISOString(),
       })
       .neq('id', '00000000-0000-0000-0000-000000000000')

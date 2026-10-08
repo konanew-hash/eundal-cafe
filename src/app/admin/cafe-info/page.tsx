@@ -97,6 +97,9 @@ export default function AdminCafeInfoPage() {
     store2_business_hours: '',
     store2_phone: '',
     quote_notice: '',
+    // 납품사례(포트폴리오) 홍보 문구
+    portfolio_title: '',
+    portfolio_subtitle: '',
     instagram_url: '',
     youtube_url: '',
     naver_url: '',
@@ -152,6 +155,8 @@ export default function AdminCafeInfoPage() {
           store2_business_hours: data.cafe.store2_business_hours || data.cafe.business_hours || '',
           store2_phone: data.cafe.store2_phone || '031-255-0816',
           quote_notice: data.cafe.quote_notice || '견적 내역을 카페에서 확인 후 문자 혹은 유선 연락드려, 견적에 대한 주문 확정을 확인합니다.',
+          portfolio_title: data.cafe.portfolio_title || '',
+          portfolio_subtitle: data.cafe.portfolio_subtitle || '',
           instagram_url: data.cafe.instagram_url || '',
           youtube_url: data.cafe.youtube_url || '',
           naver_url: data.cafe.naver_url || '',
@@ -893,6 +898,51 @@ export default function AdminCafeInfoPage() {
                 value={form.manager_phone}
                 onChange={(e) => setForm({ ...form, manager_phone: e.target.value })}
                 className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 4.8. 단체 납품사례(포트폴리오) 홍보 문구 설정 */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>단체 납품사례(포트폴리오) 홍보 문구 설정</span>
+              <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                홈페이지 배너 실시간 반영
+              </span>
+            </h3>
+            <p className="text-xs text-stone-500 mt-0.5">
+              홈페이지 납품사례(/portfolio) 페이지 상단 히어로 배너에 노출될 헤드라인(제목)과 소개 문구(부제목)를 설정합니다. 미입력 시 은달 기본 문구가 표시됩니다.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-stone-700 font-bold mb-1 text-xs">
+                포트폴리오 메인 헤드라인 (제목)
+              </label>
+              <textarea
+                rows={2}
+                placeholder={`믿고 맡기는 정시 배달과 신선함,\n은달의 실제 단체 납품 사례를 확인하세요`}
+                value={form.portfolio_title}
+                onChange={(e) => setForm({ ...form, portfolio_title: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium text-xs resize-none"
+              />
+              <span className="text-[11px] text-stone-400">※ 줄바꿈을 입력하면 실제 홈페이지 배너에서도 그대로 줄바꿈되어 강조됩니다.</span>
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1 text-xs">
+                포트폴리오 상세 설명 문구 (부제목)
+              </label>
+              <textarea
+                rows={2}
+                placeholder="관공서, 대학교 학술제, 기업 세미나, 병원 연구실까지. 약속된 시간에 맞춰 따뜻한 커피와 갓 만든 디저트를 안전하게 배송해 드린 생생한 현장 기록입니다."
+                value={form.portfolio_subtitle}
+                onChange={(e) => setForm({ ...form, portfolio_subtitle: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium text-xs resize-none"
               />
             </div>
           </div>

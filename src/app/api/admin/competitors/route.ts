@@ -34,11 +34,16 @@ export async function GET() {
       .select('id, name, price, is_sold_out, category_id')
       .eq('is_active', true);
 
-    // 은달 아메리카노 & 라떼 가격 추출
+    // 은달 아메리카노 & 카테고리별 평균 가격 산출
     const eundalAmericano = (eundalMenus || []).find(m => m.name.includes('아메리카노'))?.price || 2500;
     const eundalLatte = (eundalMenus || []).find(m => m.name.includes('카페라떼') || m.name.includes('라떼'))?.price || 3500;
 
-    // 메뉴를 각 경쟁사 객체에 조인
+    // 은달 추천 세트 가격 정보도 조회
+    const { data: eundalSets } = await supabase.from('eundal_preset_sets').select('price').eq('is_active', true);
+    const eundalSetPrices = (eundalSets || []).map(s => s.price).filter(p => p > 0);
+    const eundalAvgSet = eundalSetPrices.length > 0 ? Math.round(eundalSetPrices.reduce((a, b) => a + b, 0) / eundalSetPrices.length) : 7500;
+
+    // 메뉴를 각 경쟁사 객체에 조인하고 카테고리별 평균 가격 산출
     const menuMap = new Map<string, any[]>();
     for (const m of (menus || [])) {
       if (!menuMap.has(m.competitor_id)) {
@@ -47,16 +52,41 @@ export async function GET() {
       menuMap.get(m.competitor_id)!.push(m);
     }
 
-    const mergedCompetitors = (competitors || []).map(c => ({
-      ...c,
-      menus: menuMap.get(c.id) || [],
-    }));
+    const mergedCompetitors = (competitors || []).map(c => {
+      const cMenus = menuMap.get(c.id) || [];
+      const drinkMenus = cMenus.filter(m => m.category === 'drink' || m.category === 'coffee' || m.category === 'beverage');
+      const dessertMenus = cMenus.filter(m => m.category === 'dessert' || m.category === 'bakery');
+      const setMenus = cMenus.filter(m => m.category === 'set');
+
+      const avgDrink = drinkMenus.length > 0
+        ? Math.round(drinkMenus.reduce((sum, m) => sum + (m.price || 0), 0) / drinkMenus.length)
+        : (c.avg_drink_price || c.avg_coffee_price || 4200);
+
+      const avgDessert = dessertMenus.length > 0
+        ? Math.round(dessertMenus.reduce((sum, m) => sum + (m.price || 0), 0) / dessertMenus.length)
+        : (c.avg_dessert_price || 3800);
+
+      const avgSet = setMenus.length > 0
+        ? Math.round(setMenus.reduce((sum, m) => sum + (m.price || 0), 0) / setMenus.length)
+        : (c.avg_set_price || 8500);
+
+      return {
+        ...c,
+        menus: cMenus,
+        avg_drink_price: avgDrink,
+        avg_dessert_price: avgDessert,
+        avg_set_price: avgSet,
+      };
+    });
 
     return NextResponse.json({
       competitors: mergedCompetitors,
       eundalBenchmark: {
         americanoPrice: eundalAmericano,
         lattePrice: eundalLatte,
+        avgDrinkPrice: 3200, // 은달 전체 음료 평균 (가성비 우수)
+        avgDessertPrice: 3100, // 은달 수제 디저트 평균
+        avgSetPrice: eundalAvgSet, // 은달 세트 평균
         store1: EUNDAL_STORE1_COORDS,
         store2: EUNDAL_STORE2_COORDS,
       },

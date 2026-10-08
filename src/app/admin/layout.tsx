@@ -75,17 +75,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const navItems = [
-    { label: '주문·견적 관제', href: '/admin/orders', icon: ClipboardList },
-    { label: '주변 카페 비교', href: '/admin/competitors', icon: TrendingUp },
-    { label: '납품 포트폴리오', href: '/admin/portfolio', icon: Award },
-    { label: '매니저 전달사항', href: '/admin/notices', icon: MessageSquare },
-    { label: '추천 세트(은픽)', href: '/admin/preset-sets', icon: Sparkles },
-    { label: '픽업 매장 관리', href: '/admin/stores', icon: Store },
-    { label: '메뉴 & 알러지', href: '/admin/menus', icon: Coffee },
-    { label: '배달비 정책', href: '/admin/delivery', icon: Truck },
-    { label: '카페 브랜딩/아이콘', href: '/admin/cafe-info', icon: Store },
-    { label: '직원 계정 관리', href: '/admin/staff', icon: Users },
+  // 효율적인 운영 동선별 관리자 메뉴 체계화 (4대 카테고리)
+  const navGroups = [
+    {
+      group: '영업·관제',
+      items: [
+        { label: '주문·견적 관제', href: '/admin/orders', icon: ClipboardList },
+        { label: '주변 카페 비교', href: '/admin/competitors', icon: TrendingUp },
+      ],
+    },
+    {
+      group: '상품·콘텐츠',
+      items: [
+        { label: '메뉴 & 알러지', href: '/admin/menus', icon: Coffee },
+        { label: '추천 세트(은픽)', href: '/admin/preset-sets', icon: Sparkles },
+        { label: '납품 포트폴리오', href: '/admin/portfolio', icon: Award },
+      ],
+    },
+    {
+      group: '매장·배달',
+      items: [
+        { label: '픽업 매장 관리', href: '/admin/stores', icon: Store },
+        { label: '배달비 정책', href: '/admin/delivery', icon: Truck },
+      ],
+    },
+    {
+      group: '운영·설정',
+      items: [
+        { label: '카페 브랜딩/안내', href: '/admin/cafe-info', icon: Store },
+        { label: '공지/전달사항', href: '/admin/notices', icon: MessageSquare },
+        { label: '직원 계정 관리', href: '/admin/staff', icon: Users },
+      ],
+    },
   ];
 
   return (
@@ -149,35 +170,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        {/* 탭 네비게이션 바 */}
-        <div className="bg-stone-950/80 border-t border-stone-800/80 px-4 overflow-x-auto no-scrollbar">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-1">
-            <div className="flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${
-                      isActive
-                        ? 'border-amber-500 text-amber-400 bg-stone-900/50'
-                        : 'border-transparent text-stone-400 hover:text-stone-200'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
+        {/* 탭 네비게이션 바 (그룹별 구분 구조) */}
+        <div className="bg-stone-950/90 border-t border-stone-800/80 px-4 overflow-x-auto no-scrollbar">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center divide-x divide-stone-800 py-1">
+              {navGroups.map((group, gIdx) => (
+                <div key={gIdx} className={`flex items-center gap-0.5 ${gIdx > 0 ? 'pl-2 ml-1' : ''}`}>
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold whitespace-nowrap rounded-xl transition-all ${
+                          isActive
+                            ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
+                            : 'text-stone-400 hover:text-stone-100 hover:bg-stone-900/60'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
 
             {/* 모바일 탭 바 우측 바로가기 유도 버튼 */}
             <button
               type="button"
               onClick={() => setIsInstallModalOpen(true)}
-              className="sm:hidden flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 shrink-0"
+              className="sm:hidden flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 shrink-0"
               title="바탕화면 바로가기 추가"
             >
               <Smartphone className="w-3 h-3" />

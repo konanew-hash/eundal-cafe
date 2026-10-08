@@ -81,6 +81,7 @@ export default function HomePage() {
   // 현재 브라우저 GPS 위치 및 권한 상태
   const [userLocationAddress, setUserLocationAddress] = useState<string>('');
   const [isLocationGranted, setIsLocationGranted] = useState<boolean>(false);
+  const [initialOrderMemo, setInitialOrderMemo] = useState<string>('');
 
   // 휴대폰 바탕화면 추가(PWA) 훅
   const { triggerInstall } = useHomeScreenInstall();
@@ -124,8 +125,55 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const memo = params.get('custom_memo');
+      const pTitle = params.get('portfolio_title');
+      const pItems = params.get('portfolio_items');
+
       if (memo) {
-        setIsSetBuilderOpen(true);
+        setInitialOrderMemo(memo);
+
+        // 해당 납품사례 세트를 카트에 자동 추가하여 최소 주문조건 충족 및 시각적 피드백 제공
+        const portfolioCustomMenu: MenuItem = {
+          id: 'custom-portfolio-item',
+          category_id: 'custom-set',
+          name: pTitle ? `[납품구성] ${pTitle}` : '납품 사례 맞춤 단체 세트',
+          description: pItems || memo,
+          price: 5000,
+          image_url: '/images/default-coffee.png',
+          is_sold_out: false,
+          sort_order: 9999,
+          is_active: true,
+        };
+
+        setCart((prev) => {
+          if (prev.length === 0) {
+            return [
+              {
+                id: 'portfolio-inquiry-' + Date.now(),
+                menu: portfolioCustomMenu,
+                quantity: 20, // 단체 케이터링 기본 20인분
+                is_custom_set: true,
+                set_details: {
+                  set_name: pTitle || '납품 사례 맞춤 구성',
+                  components: [
+                    {
+                      menu_id: 'custom-portfolio-item',
+                      menu_name: pItems || '납품 사례 동일 구성 세트',
+                      price: 5000,
+                      quantity: 1,
+                    },
+                  ],
+                  package_box: { name: '케이터링 전용 박스', price: 0 },
+                  packaging_options: [],
+                  unit_price: 5000,
+                },
+              },
+            ];
+          }
+          return prev;
+        });
+
+        // 실시간 견적서 작성 모달 바로 열기
+        setIsOrderOpen(true);
       }
     }
   }, []);
@@ -686,6 +734,7 @@ export default function HomePage() {
         stores={stores}
         initialOrderType={orderType}
         initialStoreId={selectedStoreId}
+        initialOrderMemo={initialOrderMemo}
         packagingFee={calculatedPackagingFee}
         packagingBox={selectedBoxName}
         packagingOptions={selectedPackagingOptionNames}

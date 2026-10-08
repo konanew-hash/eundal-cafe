@@ -191,27 +191,26 @@ export default function AdminStaffPage() {
         </div>
       )}
 
-      {/* 계정 목록 테이블 */}
-      <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
-        <table className="w-full text-left text-xs text-stone-700">
-          <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold">
-            <tr>
-              <th className="p-3.5">아이디</th>
-              <th className="p-3.5">이름</th>
-              <th className="p-3.5">권한 역할</th>
-              <th className="p-3.5">등록 연락처 (알림 수신)</th>
-              <th className="p-3.5">알림 설정</th>
-              <th className="p-3.5 text-right">관리</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100">
-            {staffList.map((staff) => (
-              <tr key={staff.id} className="hover:bg-stone-50/50">
-                <td className="p-3.5 font-bold font-mono text-stone-900">{staff.username}</td>
-                <td className="p-3.5 font-medium">{staff.name}</td>
-                <td className="p-3.5">
+      {/* 1. 모바일 전용 카드 스택 레이아웃 (sm:hidden) */}
+      <div className="sm:hidden space-y-3">
+        {staffList.length === 0 ? (
+          <div className="bg-white p-8 rounded-2xl border border-stone-200 text-center text-stone-400">
+            등록된 직원/매니저 계정이 없습니다.
+          </div>
+        ) : (
+          staffList.map((staff) => (
+            <div
+              key={staff.id}
+              className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs space-y-3"
+            >
+              <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-stone-100">
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-stone-900 text-sm font-mono">{staff.username}</span>
+                    <span className="text-xs text-stone-500 font-medium">({staff.name})</span>
+                  </div>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
                       staff.role === 'super_admin'
                         ? 'bg-amber-100 text-amber-900 border border-amber-300'
                         : 'bg-stone-100 text-stone-700 border border-stone-300'
@@ -219,15 +218,42 @@ export default function AdminStaffPage() {
                   >
                     {staff.role === 'super_admin' ? '최고 총괄관리자' : '매니저'}
                   </span>
-                </td>
-                <td className="p-3.5">
-                  <div className="flex items-center gap-1 font-medium text-stone-800">
-                    <Phone className="w-3.5 h-3.5 text-stone-400" />
-                    <span>{staff.phone}</span>
-                  </div>
-                </td>
-                <td className="p-3.5">
-                  <div className="flex items-center gap-2">
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => openEditModal(staff)}
+                    className="p-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold transition-colors"
+                    title="계정 정보 수정"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(staff.id, staff.name)}
+                    className="p-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold transition-colors"
+                    title="계정 삭제"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 연락처 및 알림 설정 */}
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between text-stone-600">
+                  <span className="text-stone-400 text-[11px]">알림 수신 번호</span>
+                  <a
+                    href={`tel:${staff.phone}`}
+                    className="font-bold text-stone-800 flex items-center gap-1 hover:text-amber-600"
+                  >
+                    <Phone className="w-3 h-3 text-stone-400" />
+                    <span>{staff.phone || '미등록'}</span>
+                  </a>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-stone-400 text-[11px]">주문 알림 수신</span>
+                  <div className="flex items-center gap-1.5">
                     <span
                       className={`inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-md font-bold ${
                         staff.notify_sms
@@ -235,7 +261,7 @@ export default function AdminStaffPage() {
                           : 'bg-stone-100 text-stone-400'
                       }`}
                     >
-                      <MessageSquare className="w-3 h-3" />
+                      <MessageSquare className="w-2.5 h-2.5" />
                       SMS {staff.notify_sms ? 'ON' : 'OFF'}
                     </span>
                     <span
@@ -245,31 +271,106 @@ export default function AdminStaffPage() {
                           : 'bg-stone-100 text-stone-400'
                       }`}
                     >
-                      <Bell className="w-3 h-3" />
+                      <Bell className="w-2.5 h-2.5" />
                       PUSH {staff.notify_push ? 'ON' : 'OFF'}
                     </span>
                   </div>
-                </td>
-                <td className="p-3.5 text-right space-x-1">
-                  <button
-                    onClick={() => openEditModal(staff)}
-                    className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold"
-                    title="수정"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(staff.id, staff.name)}
-                    className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold"
-                    title="삭제"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </td>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* 2. 데스크탑/태블릿 전용 가로 스크롤 테이블 레이아웃 (hidden sm:block) */}
+      <div className="hidden sm:block bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-stone-700 whitespace-nowrap">
+            <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold">
+              <tr>
+                <th className="p-3.5">아이디</th>
+                <th className="p-3.5">이름</th>
+                <th className="p-3.5">권한 역할</th>
+                <th className="p-3.5">등록 연락처 (알림 수신)</th>
+                <th className="p-3.5">알림 설정</th>
+                <th className="p-3.5 text-right">관리</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {staffList.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-stone-400">
+                    등록된 직원/매니저 계정이 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                staffList.map((staff) => (
+                  <tr key={staff.id} className="hover:bg-stone-50/50">
+                    <td className="p-3.5 font-bold font-mono text-stone-900">{staff.username}</td>
+                    <td className="p-3.5 font-medium">{staff.name}</td>
+                    <td className="p-3.5">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          staff.role === 'super_admin'
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-stone-100 text-stone-700 border border-stone-300'
+                        }`}
+                      >
+                        {staff.role === 'super_admin' ? '최고 총괄관리자' : '매니저'}
+                      </span>
+                    </td>
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-1 font-medium text-stone-800">
+                        <Phone className="w-3.5 h-3.5 text-stone-400" />
+                        <span>{staff.phone}</span>
+                      </div>
+                    </td>
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                            staff.notify_sms
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : 'bg-stone-100 text-stone-400'
+                          }`}
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          SMS {staff.notify_sms ? 'ON' : 'OFF'}
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                            staff.notify_push
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                              : 'bg-stone-100 text-stone-400'
+                          }`}
+                        >
+                          <Bell className="w-3 h-3" />
+                          PUSH {staff.notify_push ? 'ON' : 'OFF'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-3.5 text-right space-x-1">
+                      <button
+                        onClick={() => openEditModal(staff)}
+                        className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold transition-colors"
+                        title="수정"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(staff.id, staff.name)}
+                        className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold transition-colors"
+                        title="삭제"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* 등록 / 수정 모달 */}

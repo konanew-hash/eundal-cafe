@@ -125,15 +125,27 @@ export default function PortfolioPublicPage() {
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
-            믿고 맡기는 정시 배달과 신선함,
-            <br />
-            <span className="text-amber-400">은달의 실제 단체 납품 사례</span>를 확인하세요
+            {cafeInfo?.portfolio_title ? (
+              <span className="whitespace-pre-line">{cafeInfo.portfolio_title}</span>
+            ) : (
+              <>
+                믿고 맡기는 정시 배달과 신선함,
+                <br />
+                <span className="text-amber-400">은달의 실제 단체 납품 사례</span>를 확인하세요
+              </>
+            )}
           </h1>
 
           <p className="text-xs sm:text-sm text-stone-300 max-w-2xl mx-auto leading-relaxed">
-            수원시청, 대학교, 대기업 워크숍, 병원, 학술 심포지엄까지!
-            <br className="hidden sm:inline" />
-            당일 새벽 제조한 신선한 수제 샌드위치와 캔시머 보냉 음료로 소중한 행사를 완벽하게 채워드립니다.
+            {cafeInfo?.portfolio_subtitle ? (
+              <span className="whitespace-pre-line">{cafeInfo.portfolio_subtitle}</span>
+            ) : (
+              <>
+                수원시청, 대학교, 대기업 워크숍, 병원, 학술 심포지엄까지!
+                <br className="hidden sm:inline" />
+                당일 새벽 제조한 신선한 수제 샌드위치와 캔시머 보냉 음료로 소중한 행사를 완벽하게 채워드립니다.
+              </>
+            )}
           </p>
 
           {/* 신뢰 지표 3대 배지 */}
@@ -335,8 +347,8 @@ export default function PortfolioPublicPage() {
                   {/* 하단 자연스러운 전환 CTA 버튼 */}
                   <div className="p-4 pt-0">
                     <Link
-                      href={`/?custom_memo=${encodeURIComponent(`${item.client_name} 납품 구성 (${item.item_summary || item.title}) 참고 문의`)}`}
-                      className="w-full py-2.5 px-3 rounded-2xl bg-stone-900 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs group-hover:bg-amber-600"
+                      href={`/?portfolio_id=${item.id}&portfolio_title=${encodeURIComponent(item.title)}&portfolio_items=${encodeURIComponent(item.item_summary || '')}&custom_memo=${encodeURIComponent(`${item.client_name} 납품 구성 (${item.item_summary || item.title}) 참고 견적 요청`)}`}
+                      className="w-full py-2.5 px-3 rounded-2xl bg-stone-900 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs group-hover:bg-amber-600 active:scale-98"
                     >
                       <span>이 구성 그대로 견적 문의하기</span>
                       <ArrowRight className="w-3 h-3" />

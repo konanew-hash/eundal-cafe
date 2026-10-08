@@ -37,6 +37,7 @@ interface OrderModalProps {
   stores?: Store[];
   initialOrderType?: 'delivery' | 'pickup';
   initialStoreId?: string;
+  initialOrderMemo?: string;
   packagingFee?: number;
   packagingBox?: string;
   packagingOptions?: string[];
@@ -89,6 +90,7 @@ export default function OrderModal({
   stores = [],
   initialOrderType = 'delivery',
   initialStoreId,
+  initialOrderMemo = '',
   packagingFee = 0,
   packagingBox,
   packagingOptions = [],
@@ -124,8 +126,14 @@ export default function OrderModal({
   const [deliveryMinute, setDeliveryMinute] = useState('00');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryAddressDetail, setDeliveryAddressDetail] = useState('');
-  const [orderMemo, setOrderMemo] = useState('');
+  const [orderMemo, setOrderMemo] = useState(initialOrderMemo);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+
+  useEffect(() => {
+    if (initialOrderMemo) {
+      setOrderMemo(initialOrderMemo);
+    }
+  }, [initialOrderMemo]);
 
   // 주소 검색 팝업 상태
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
