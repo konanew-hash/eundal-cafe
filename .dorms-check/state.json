@@ -320,13 +320,29 @@
         },
         "blocking": []
       }
+    },
+    {
+      "n": 21,
+      "at": "2026-10-08T10:06:37.786Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 28,
+          "unverified": 7,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
     }
   ],
   "items": {
     "meta.public-surface": {
-      "status": "unknown",
+      "status": "pass",
       "firstFailRound": null,
-      "fixedRound": 3,
+      "fixedRound": 21,
       "regressed": false
     },
     "sec.header.csp": {
@@ -541,7 +557,7 @@
     }
   },
   "passed": {
-    "security": false,
+    "security": true,
     "edzip": false,
     "protection": false
   },

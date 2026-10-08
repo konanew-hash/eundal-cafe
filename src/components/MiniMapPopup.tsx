@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { X, ExternalLink, MapPin, Copy, Check, Navigation } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ExternalLink, MapPin, Copy, Check, Navigation, Truck, Loader2 } from 'lucide-react';
 
 interface MiniMapPopupProps {
   isOpen: boolean;
@@ -16,6 +16,9 @@ interface MiniMapPopupProps {
   latitude?: number;
   longitude?: number;
   phone?: string;
+  isDelivery?: boolean; // 배달 목적지 여부
+  customerName?: string;
+  distanceLabel?: string;
 }
 
 export default function MiniMapPopup({
@@ -30,64 +33,112 @@ export default function MiniMapPopup({
   latitude,
   longitude,
   phone,
+  isDelivery = false,
+  customerName,
+  distanceLabel,
 }: MiniMapPopupProps) {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const cleanAddress = address ? address.replace(/\(우:[^)]+\)/g, '').trim() : '';
+  const displayName = storeName || title;
+
+  // 1. 매장 픽업인지 배달 목적지인지 판별
+  const isPickupStore =
+    !isDelivery &&
+    (Boolean(naverPlaceId) ||
+      cleanAddress.includes('조원') ||
+      cleanAddress.includes('파장') ||
+      displayName.includes('은달'));
+
+  // 2. 알려진 매장인 경우 네이버 플레이스 번호 기반 위경도 매핑
+  let knownLat = latitude;
+  let knownLng = longitude;
+  let finalPlaceId = naverPlaceId;
+
+  if (isPickupStore) {
+    if (
+      finalPlaceId === '1245444726' ||
+      cleanAddress.includes('조원') ||
+      displayName.includes('조원') ||
+      displayName.includes('1호점')
+    ) {
+      finalPlaceId = '1245444726';
+      if (!knownLat) knownLat = 37.2966787;
+      if (!knownLng) knownLng = 127.0215096;
+    } else if (
+      finalPlaceId === '1869537461' ||
+      cleanAddress.includes('파장') ||
+      cleanAddress.includes('경수대로1043번길') ||
+      displayName.includes('파장') ||
+      displayName.includes('2호점')
+    ) {
+      finalPlaceId = '1869537461';
+      if (!knownLat) knownLat = 37.3075666;
+      if (!knownLng) knownLng = 126.9978752;
+    }
+  }
+
+  // 3. 배달 목적지 주소의 경우: 위경도가 없으면 자동 주소 지오코딩 분석 실행
+  useEffect(() => {
+    if (!isOpen || !cleanAddress) return;
+
+    if (isPickupStore && knownLat && knownLng) {
+      setGeoCoords({ lat: knownLat, lng: knownLng });
+      return;
+    }
+
+    if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude) && latitude > 0) {
+      setGeoCoords({ lat: latitude, lng: longitude });
+      return;
+    }
+
+    // 주소 기반 위경도 분석 API 호출
+    let isCancelled = false;
+    setGeocoding(true);
+
+    fetch(`/api/geocode/search?address=${encodeURIComponent(cleanAddress)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isCancelled && data.lat && data.lng) {
+          setGeoCoords({ lat: data.lat, lng: data.lng });
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to geocode delivery address:', err);
+      })
+      .finally(() => {
+        if (!isCancelled) setGeocoding(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen, cleanAddress, latitude, longitude, isPickupStore, knownLat, knownLng]);
 
   if (!isOpen || !address) return null;
 
-  const cleanAddress = address.replace(/\(우:[^)]+\)/g, '').trim();
-  const displayName = storeName || title;
+  // 최종 사용할 위도/경도
+  const mapLat = geoCoords?.lat || knownLat || latitude || 37.2966787;
+  const mapLng = geoCoords?.lng || knownLng || longitude || 127.0215096;
 
-  // 네이버 플레이스 번호 기반 위경도 및 플레이스 ID 정밀 매핑
-  let finalLat = latitude;
-  let finalLng = longitude;
-  let finalPlaceId = naverPlaceId;
+  // 네이버 지도/플레이스 링크 생성
+  const fullSearchQuery = `${cleanAddress} ${detailAddress || ''}`.trim();
+  const naverUrl = isPickupStore && finalPlaceId
+    ? `https://m.place.naver.com/restaurant/${finalPlaceId}/home`
+    : `https://map.naver.com/p/search/${encodeURIComponent(fullSearchQuery)}`;
 
-  // 1. 은달 본점 / 1호점(조원): 1245444726
-  if (
-    finalPlaceId === '1245444726' ||
-    cleanAddress.includes('조원') ||
-    displayName.includes('조원') ||
-    displayName.includes('1호점')
-  ) {
-    finalPlaceId = '1245444726';
-    if (!finalLat) finalLat = 37.2966787;
-    if (!finalLng) finalLng = 127.0215096;
-  }
-  // 2. 은달 파장2호점: 1869537461
-  else if (
-    finalPlaceId === '1869537461' ||
-    cleanAddress.includes('파장') ||
-    cleanAddress.includes('경수대로1043번길') ||
-    displayName.includes('파장') ||
-    displayName.includes('2호점')
-  ) {
-    finalPlaceId = '1869537461';
-    if (!finalLat) finalLat = 37.3075666;
-    if (!finalLng) finalLng = 126.9978752;
-  }
+  const kakaoUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullSearchQuery)}`;
+  const tmapNaviUrl = `https://map.kakao.com/link/to/${encodeURIComponent(displayName || fullSearchQuery)},${mapLat},${mapLng}`;
+  const googleUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullSearchQuery)}`;
 
-  // 기본 fallback 위경도 (수원 장안구 중심)
-  const mapLat = finalLat || 37.3000;
-  const mapLng = finalLng || 127.0100;
-
-  // 네이버 플레이스 바로가기 URL
-  const naverUrl =
-    naverPlaceUrl && naverPlaceUrl.trim()
-      ? naverPlaceUrl.trim()
-      : finalPlaceId
-      ? `https://m.place.naver.com/restaurant/${finalPlaceId}/home`
-      : `https://map.naver.com/p/search/${encodeURIComponent(`${displayName} ${cleanAddress}`)}`;
-
-  const kakaoUrl = `https://map.kakao.com/link/search/${encodeURIComponent(`${displayName} ${cleanAddress}`)}`;
-  const googleUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${cleanAddress}`)}`;
-
-  // 지도 범위 (Bounding Box) 계산
+  // 지도 임베드 범위 (Bounding Box) 계산
   const bbox = `${mapLng - 0.0035},${mapLat - 0.0022},${mapLng + 0.0035},${mapLat + 0.0022}`;
   const embedMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${mapLat},${mapLng}`;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(`${cleanAddress} ${detailAddress || ''}`.trim());
+    navigator.clipboard.writeText(fullSearchQuery);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -98,7 +149,7 @@ export default function MiniMapPopup({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[420px] bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col text-stone-800 animate-in zoom-in-95 duration-150"
+        className="w-full max-w-[430px] bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col text-stone-800 animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -109,9 +160,18 @@ export default function MiniMapPopup({
             </span>
             <div className="min-w-0">
               <h3 className="font-bold text-xs sm:text-sm truncate text-white">{displayName}</h3>
-              <p className="text-[10px] text-emerald-300 font-medium truncate">
-                네이버 플레이스 연동 실위치 미니맵
-                {finalPlaceId && <span className="text-stone-300 ml-1 font-mono">(ID: {finalPlaceId})</span>}
+              <p className="text-[10px] text-emerald-300 font-medium truncate flex items-center gap-1">
+                {isPickupStore ? (
+                  <>
+                    <span>네이버 플레이스 연동 매장</span>
+                    {finalPlaceId && <span className="text-stone-300 font-mono">(ID: {finalPlaceId})</span>}
+                  </>
+                ) : (
+                  <>
+                    <Truck className="w-3 h-3 inline text-amber-300" />
+                    <span>배달지 주소 분석 및 네이버 지도 연동</span>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -125,12 +185,24 @@ export default function MiniMapPopup({
           </button>
         </div>
 
-        {/* 주소 및 매장 실위치 정보 바 */}
+        {/* 주소 및 분석 상태 바 */}
         <div className="p-3.5 bg-stone-50 border-b border-stone-200 space-y-1.5">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md text-[10px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              네이버 플레이스 번호 기반 실위치 매핑
+            <span
+              className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md text-[10px] ${
+                isPickupStore
+                  ? 'text-emerald-800 bg-emerald-100/90'
+                  : 'text-blue-800 bg-blue-100/90'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isPickupStore ? 'bg-emerald-600' : 'bg-blue-600'
+                } animate-pulse`}
+              />
+              {isPickupStore
+                ? '플레이스 고유번호 실위치 매핑'
+                : '세부 주소지 위경도 좌표 분석 완료'}
             </span>
             <button
               type="button"
@@ -157,14 +229,27 @@ export default function MiniMapPopup({
             </p>
             {phone && (
               <p className="text-[11px] text-stone-500">
-                매장 직통 연락처: <span className="font-bold text-stone-700">{phone}</span>
+                연락처: <span className="font-bold text-stone-700">{phone}</span>
+              </p>
+            )}
+            {customerName && (
+              <p className="text-[11px] text-stone-500">
+                주문 고객: <strong className="text-stone-800">{customerName} 님</strong>
+                {distanceLabel && <span className="ml-2 text-stone-600">({distanceLabel})</span>}
               </p>
             )}
           </div>
         </div>
 
-        {/* 요구사항: 네이버 플레이스 번호 토대로 위경도를 파악하여 미니맵에 실제 지도 뷰 렌더링! */}
+        {/* 인터랙티브 타일 미니맵 (위경도 분석 반영) */}
         <div className="relative w-full h-[230px] sm:h-[250px] bg-stone-100 border-b border-stone-200 overflow-hidden">
+          {geocoding && (
+            <div className="absolute inset-0 z-20 bg-stone-50/80 backdrop-blur-2xs flex flex-col items-center justify-center text-xs text-stone-600 gap-1.5">
+              <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
+              <span>주소지 네이버/공간 위경도 분석 중...</span>
+            </div>
+          )}
+
           <iframe
             src={embedMapUrl}
             title={`${displayName} 실위치 미니맵`}
@@ -175,19 +260,23 @@ export default function MiniMapPopup({
           {/* 지도 상단 오버레이 뱃지 */}
           <div className="absolute top-2 left-2 z-10 pointer-events-none">
             <span className="bg-stone-900/85 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm border border-stone-700/60 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#03C75A] inline-block animate-ping" />
-              <span>{displayName} 실위치 핀</span>
+              <span
+                className={`w-2 h-2 rounded-full inline-block animate-ping ${
+                  isPickupStore ? 'bg-[#03C75A]' : 'bg-blue-400'
+                }`}
+              />
+              <span>{isPickupStore ? `${displayName} 픽업 핀` : '배달 목적지 실위치 핀'}</span>
             </span>
           </div>
 
-          {/* 지도 하단 좌표 안내 오버레이 */}
-          <div className="absolute bottom-1 right-2 z-10 pointer-events-none text-[9.5px] text-stone-600 bg-white/80 px-1.5 py-0.5 rounded shadow-2xs">
+          {/* 지도 하단 좌표 오버레이 */}
+          <div className="absolute bottom-1 right-2 z-10 pointer-events-none text-[9.5px] text-stone-600 bg-white/85 px-1.5 py-0.5 rounded shadow-2xs font-mono">
             위도: {mapLat.toFixed(5)} · 경도: {mapLng.toFixed(5)}
           </div>
         </div>
 
-        {/* 네이버 플레이스 원클릭 길찾기/상세보기 액션 바 */}
-        <div className="p-3 bg-white space-y-2.5">
+        {/* 네이버 지도 원클릭 실위치 확인 & 길찾기 액션 바 */}
+        <div className="p-3 bg-white space-y-2">
           <a
             href={naverUrl}
             target="_blank"
@@ -195,13 +284,14 @@ export default function MiniMapPopup({
             className="w-full py-2.5 px-3 rounded-xl bg-[#03C75A] hover:bg-[#02b150] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all"
           >
             <Navigation className="w-3.5 h-3.5" />
-            <span>네이버 플레이스에서 길찾기 & 상세정보 보기</span>
+            <span>
+              {isPickupStore
+                ? '네이버 플레이스에서 길찾기 & 상세정보 보기'
+                : '네이버 지도에서 배달지 위치 & 길찾기 보기'}
+            </span>
             <ExternalLink className="w-3 h-3 ml-0.5" />
           </a>
-        </div>
 
-        {/* 하단 퀵 액션: 카카오 / 구글 보조 링크 및 닫기 */}
-        <div className="p-3 bg-white space-y-2">
           <div className="grid grid-cols-2 gap-2 text-center text-[11px]">
             <a
               href={kakaoUrl}
@@ -213,13 +303,13 @@ export default function MiniMapPopup({
               <ExternalLink className="w-2.5 h-2.5 text-stone-700" />
             </a>
             <a
-              href={googleUrl}
+              href={tmapNaviUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="py-1.5 px-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg flex items-center justify-center gap-1 shadow-2xs transition-colors"
+              className="py-1.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold rounded-lg flex items-center justify-center gap-1 border border-blue-200 transition-colors"
             >
-              <span>구글 지도</span>
-              <ExternalLink className="w-2.5 h-2.5" />
+              <span>길찾기 내비</span>
+              <ExternalLink className="w-2.5 h-2.5 text-blue-700" />
             </a>
           </div>
 

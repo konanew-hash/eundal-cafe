@@ -142,6 +142,8 @@ export default function OrderModal({
   const [gpsAccuracy, setGpsAccuracy] = useState<number | undefined>(undefined);
   const [gpsAddress, setGpsAddress] = useState<string>('');
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'success' | 'denied' | 'unsupported'>('idle');
+  const [deliveryLat, setDeliveryLat] = useState<number | undefined>(undefined);
+  const [deliveryLng, setDeliveryLng] = useState<number | undefined>(undefined);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -248,11 +250,24 @@ export default function OrderModal({
     setCustomerPhone(formatted);
   };
 
-  // 다음 도로명 주소 선택 핸들러
-  const handleCompletePostcode = (data: { roadAddress: string; jibunAddress: string; zonecode: string }) => {
+  // 다음 도로명 주소 선택 핸들러 (선택 즉시 백그라운드 위경도 분석 연동)
+  const handleCompletePostcode = async (data: { roadAddress: string; jibunAddress: string; zonecode: string }) => {
     const fullAddress = data.roadAddress || data.jibunAddress;
     setDeliveryAddress(fullAddress);
     setIsPostcodeOpen(false);
+
+    try {
+      const geoRes = await fetch(`/api/geocode/search?address=${encodeURIComponent(fullAddress)}`);
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        if (geoData.lat && geoData.lng) {
+          setDeliveryLat(geoData.lat);
+          setDeliveryLng(geoData.lng);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
   };
 
   // 견적 요청 제출
@@ -304,6 +319,8 @@ export default function OrderModal({
           gps_lat: gpsLat,
           gps_lng: gpsLng,
           gps_address: gpsAddress,
+          delivery_lat: deliveryLat || gpsLat,
+          delivery_lng: deliveryLng || gpsLng,
           packaging_fee: packagingFee,
           packaging_box: packagingBox,
           packaging_options: packagingOptions,

@@ -15,8 +15,9 @@ import InstallPromptModal, { useHomeScreenInstall } from '@/components/InstallPr
 import GpsGuideModal from '@/components/GpsGuideModal';
 import CustomSetBuilderModal from '@/components/CustomSetBuilderModal';
 import Footer from '@/components/Footer';
-import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store, PresetSet } from '@/lib/types';
-import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation, Gift, Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CafeInfo, Category, MenuItem, DeliveryPolicy, CartItem, Order, Store, PresetSet, Portfolio } from '@/lib/types';
+import { ShoppingBag, ArrowRight, Sparkles, Coffee, Clock, MapPin, Loader2, BookmarkPlus, Navigation, Gift, Package, ChevronLeft, ChevronRight, Award } from 'lucide-react';
+import Link from 'next/link';
 
 export default function HomePage() {
   const [cafe, setCafe] = useState<CafeInfo | null>(null);
@@ -24,6 +25,7 @@ export default function HomePage() {
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [presetSets, setPresetSets] = useState<PresetSet[]>([]);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [deliveryPolicy, setDeliveryPolicy] = useState<DeliveryPolicy | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -117,6 +119,15 @@ export default function HomePage() {
   // 홈페이지 첫 진입 시 위치 권한 자동 질의 (브라우저 설정 목록에 '위치' 항목 자동 등록)
   useEffect(() => {
     triggerBrowserLocationPrompt();
+
+    // 포트폴리오에서 '이 구성 그대로 견적 문의' 클릭하여 진입한 경우
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const memo = params.get('custom_memo');
+      if (memo) {
+        setIsSetBuilderOpen(true);
+      }
+    }
   }, []);
 
   // 초기 데이터 불러오기
@@ -134,6 +145,9 @@ export default function HomePage() {
         }
         if (data.presetSets) {
           setPresetSets(data.presetSets);
+        }
+        if (data.portfolios) {
+          setPortfolios(data.portfolios);
         }
         if (data.deliveryPolicy) {
           setDeliveryPolicy(data.deliveryPolicy);
@@ -422,6 +436,37 @@ export default function HomePage() {
             </div>
           </button>
         </section>
+
+        {/* 단체 납품 포트폴리오 사례 배너 (자연스러운 홍보 및 견적 유도) */}
+        {portfolios.length > 0 && (
+          <section className="px-3 sm:px-4 py-1.5">
+            <Link
+              href="/portfolio"
+              className="w-full p-2.5 sm:p-3 bg-gradient-to-r from-emerald-950 via-stone-900 to-amber-950 text-white rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.99] border border-emerald-800/40 text-left group"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-base sm:text-lg border border-emerald-400/20 shrink-0">
+                  <Award className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold flex items-center gap-1.5">
+                    <span className="truncate">단체 납품 & 케이터링 실제 사례 ({portfolios.length}건)</span>
+                    <span className="text-[10px] bg-emerald-500 text-stone-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
+                      실적확인
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-stone-300 mt-0.5 truncate">
+                    수원시청, 대학교, 기업 등 실제 납품 사진과 후기 보기
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs font-bold text-emerald-300 flex items-center gap-0.5 shrink-0 pl-1.5 group-hover:translate-x-0.5 transition-transform">
+                <span>사례보기</span>
+                <span className="text-emerald-400">➔</span>
+              </div>
+            </Link>
+          </section>
+        )}
 
         {/* 4. 맞춤 세트메뉴 만들기 배너 (원하는 품목 + 포장용기 + 캔시머/옵션) */}
         <section className="px-3 sm:px-4 py-1.5">

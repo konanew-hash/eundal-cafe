@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Moon, Info, Search, ShoppingBag, BookmarkPlus } from 'lucide-react';
+import { Moon, Info, Search, ShoppingBag, BookmarkPlus, Award } from 'lucide-react';
 import { CafeInfo } from '@/lib/types';
 
 interface HeaderProps {
@@ -51,6 +51,16 @@ export default function Header({
             <BookmarkPlus className="w-3.5 h-3.5 text-amber-700 shrink-0" />
             <span className="font-bold whitespace-nowrap">홈추가</span>
           </button>
+
+          {/* 단체 납품 포트폴리오 사례 링크 */}
+          <Link
+            href="/portfolio"
+            title="실제 단체 납품 & 케이터링 포트폴리오 보기"
+            className="flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100 transition-colors active:scale-95"
+          >
+            <Award className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+            <span className="font-bold whitespace-nowrap">납품사례</span>
+          </Link>
 
           {/* 카페 소개 버튼 */}
           <button

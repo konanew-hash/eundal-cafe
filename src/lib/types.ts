@@ -218,6 +218,8 @@ export interface Order {
   client_location?: string;
   gps_lat?: number;
   gps_lng?: number;
+  delivery_lat?: number; // 배달 목적지 주소 기반 위도
+  delivery_lng?: number; // 배달 목적지 주소 기반 경도
   created_at: string;
   updated_at?: string;
   items?: OrderItem[];
@@ -229,4 +231,25 @@ export interface CartItem {
   quantity: number;
   is_custom_set?: boolean;
   set_details?: CustomSetDetails;
+}
+
+// 단체 행사 납품 포트폴리오
+export interface Portfolio {
+  id: string;
+  title: string;
+  client_name: string;
+  event_date: string;
+  event_time?: string;
+  event_scale: string;
+  item_summary?: string;
+  content?: string;
+  photos: string[];
+  video_urls?: string[];
+  tags: string[];
+  order_id?: string;
+  is_featured: boolean;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
 }

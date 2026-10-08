@@ -36,7 +36,9 @@ import {
   Gift,
   Store,
   Truck,
+  Award,
 } from 'lucide-react';
+import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { Order, MenuItem, OrderItem } from '@/lib/types';
 import { exportOrdersToExcel } from '@/lib/excel';
@@ -53,8 +55,18 @@ export default function AdminOrdersPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const previousOrderCountRef = useRef(0);
 
-  // 지도 미니 팝업 상태 (요구사항: 작은 팝업 스타일로 열고 닫을 수 있는 구조)
-  const [mapModalData, setMapModalData] = useState<{ address: string; label: string } | null>(null);
+  // 지도 미니 팝업 상태 (배달지 위경도 분석 및 매장 픽업 위치)
+  const [mapModalData, setMapModalData] = useState<{
+    address: string;
+    detailAddress?: string;
+    label: string;
+    latitude?: number;
+    longitude?: number;
+    isDelivery?: boolean;
+    customerName?: string;
+    distanceLabel?: string;
+    phone?: string;
+  } | null>(null);
 
   // 고객 SMS 문자 발송 모달 상태
   const [smsModalOrder, setSmsModalOrder] = useState<Order | null>(null);
@@ -605,7 +617,14 @@ export default function AdminOrdersPage() {
                           onClick={() =>
                             setMapModalData({
                               address: order.delivery_address,
+                              detailAddress: order.delivery_address_detail,
                               label: `${order.customer_name} 님 배달 목적지`,
+                              latitude: order.delivery_lat || order.gps_lat,
+                              longitude: order.delivery_lng || order.gps_lng,
+                              isDelivery: true,
+                              customerName: order.customer_name,
+                              distanceLabel: order.selected_distance_label,
+                              phone: order.customer_phone,
                             })
                           }
                           className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded-lg border border-blue-200 transition-colors shrink-0"
@@ -716,6 +735,11 @@ export default function AdminOrdersPage() {
                                 ? `${order.gps_lat},${order.gps_lng}`
                                 : translateLocationToKorean(order.client_location || ''),
                             label: order.gps_lat ? '주문 작성자 GPS 좌표 위치' : '고객 접속 위치 (우편구역)',
+                            latitude: order.gps_lat,
+                            longitude: order.gps_lng,
+                            isDelivery: order.order_type === 'delivery',
+                            customerName: order.customer_name,
+                            phone: order.customer_phone,
                           })
                         }
                         className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded-lg border border-amber-300 transition-colors shrink-0"
@@ -781,8 +805,18 @@ export default function AdminOrdersPage() {
                     </button>
                   )}
                   {order.status === 'completed' && (
-                    <div className="flex-1 py-2 bg-stone-100 text-emerald-800 font-bold rounded-xl text-xs text-center border border-emerald-200">
-                      거래 완료됨
+                    <div className="flex-1 flex items-center gap-1">
+                      <div className="flex-1 py-2 bg-stone-100 text-emerald-800 font-bold rounded-xl text-xs text-center border border-emerald-200">
+                        거래 완료됨
+                      </div>
+                      <Link
+                        href={`/admin/portfolio?order_id=${order.id}&client_name=${encodeURIComponent(order.customer_name)}&date=${order.delivery_date}&time=${encodeURIComponent(order.delivery_time)}&items=${encodeURIComponent(order.items?.map(i => `${i.menu_name} x${i.quantity}`).join(', ') || '')}`}
+                        className="py-2 px-2.5 bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition-colors shadow-xs shrink-0"
+                        title="완료된 납품 건을 홈페이지 홍보 포트폴리오로 등록"
+                      >
+                        <Award className="w-3.5 h-3.5 text-stone-950" />
+                        <span>포트폴리오 등록</span>
+                      </Link>
                     </div>
                   )}
                   {order.status === 'cancelled' && (
@@ -993,6 +1027,13 @@ export default function AdminOrdersPage() {
         title={mapModalData?.label || '위치 지도 확인'}
         storeName={mapModalData?.label}
         address={mapModalData?.address || ''}
+        detailAddress={mapModalData?.detailAddress}
+        latitude={mapModalData?.latitude}
+        longitude={mapModalData?.longitude}
+        isDelivery={mapModalData?.isDelivery}
+        customerName={mapModalData?.customerName}
+        distanceLabel={mapModalData?.distanceLabel}
+        phone={mapModalData?.phone}
       />
 
       {/* 6. 고객 문자(SMS) 메시지 발송 팝업 모달 */}

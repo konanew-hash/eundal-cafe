@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
       packaging_fee,
       packaging_box,
       packaging_options,
+      delivery_lat,
+      delivery_lng,
     } = body;
 
     const parsedPackagingFee = typeof packaging_fee === 'number' ? Math.max(0, packaging_fee) : 0;
@@ -258,6 +260,8 @@ export async function POST(req: NextRequest) {
         client_location: clientLocation,
         gps_lat: gps_lat ? parseFloat(String(gps_lat)) : null,
         gps_lng: gps_lng ? parseFloat(String(gps_lng)) : null,
+        delivery_lat: delivery_lat ? parseFloat(String(delivery_lat)) : null,
+        delivery_lng: delivery_lng ? parseFloat(String(delivery_lng)) : null,
       })
       .select('*')
       .single();
