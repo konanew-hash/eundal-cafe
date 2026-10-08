@@ -70,29 +70,99 @@ export default function CustomSetBuilderModal({
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [addedEffect, setAddedEffect] = useState(false);
 
-  // 포트폴리오 '이 구성 그대로 견적 문의' 연동 시 초기 세트 구성 자동 프리필
+  // 포트폴리오 '이 구성 그대로 견적 문의' 연동 시 실제 납품 구성 정밀 자동 프리필
   useEffect(() => {
     if (initialPortfolioData && isOpen) {
       if (initialPortfolioData.title) {
         setSetName(initialPortfolioData.title);
       }
       const summaryText = (initialPortfolioData.itemsSummary || '').toLowerCase();
+      const normSummary = summaryText.replace(/[\s\-_,./+&()]+/g, '').toLowerCase();
       const compMap: Record<string, number> = {};
 
-      if (summaryText && menus.length > 0) {
-        menus.forEach((m) => {
-          if (m.packaging_type === 'box' || m.packaging_type === 'special') return;
-          const cleanName = m.name.replace(/\(.*?\)/g, '').trim().toLowerCase();
-          if (cleanName && summaryText.includes(cleanName)) {
-            compMap[m.id] = 1;
+      if (menus.length > 0) {
+        // 1. 샌드위치류 스마트 매칭:
+        // (1) 햄치즈 / 에그마요 / 반반 샌드위치
+        if (normSummary.includes('햄치즈') || normSummary.includes('에그마요') || normSummary.includes('에그샌드위치') || normSummary.includes('반반')) {
+          const hamEggSandwich = menus.find((m) => m.name.includes('햄') && m.name.includes('에그') && m.name.includes('1/2'))
+            || menus.find((m) => m.name.includes('햄') && m.name.includes('에그'))
+            || menus.find((m) => m.name.includes('반반'));
+          if (hamEggSandwich) compMap[hamEggSandwich.id] = 1;
+        }
+        // (2) 클럽 / BLT 샌드위치
+        if (normSummary.includes('클럽') || normSummary.includes('blt') || normSummary.includes('비엘티')) {
+          const bltSandwich = menus.find((m) => (m.name.includes('BLT') || m.name.includes('클럽')) && m.name.includes('1/2'))
+            || menus.find((m) => m.name.includes('BLT') || m.name.includes('클럽'));
+          if (bltSandwich) compMap[bltSandwich.id] = 1;
+        }
+        // (3) 불고기 샌드위치
+        if (normSummary.includes('불고기')) {
+          const bulgogi = menus.find((m) => m.name.includes('불고기') && m.name.includes('1/2'))
+            || menus.find((m) => m.name.includes('불고기'));
+          if (bulgogi) compMap[bulgogi.id] = 1;
+        }
+        // (4) 떡갈비 샌드위치
+        if (normSummary.includes('떡갈비')) {
+          const tteok = menus.find((m) => m.name.includes('떡갈비') && m.name.includes('1/2'))
+            || menus.find((m) => m.name.includes('떡갈비'));
+          if (tteok) compMap[tteok.id] = 1;
+        }
+
+        // 2. 음료류 스마트 매칭:
+        // (1) 딸기라떼
+        if (normSummary.includes('딸기라떼')) {
+          const berry = menus.find((m) => m.name === '딸기라떼' || m.name.includes('딸기라떼'));
+          if (berry) compMap[berry.id] = 1;
+        }
+        // (2) 아메리카노 (음료가 아직 안 담겼거나 아메리카노 지정 시)
+        if (normSummary.includes('아메리카노') || normSummary.includes('아메')) {
+          const hasBeverageAlready = Object.keys(compMap).some((id) => {
+            const m = menus.find((item) => item.id === id);
+            return m && isBeverage(m);
+          });
+          if (!hasBeverageAlready) {
+            const americano = menus.find((m) => m.name === '아메리카노') || menus.find((m) => m.name.includes('아메리카노'));
+            if (americano) compMap[americano.id] = 1;
           }
-        });
+        }
+        // (3) 밀크티
+        if (normSummary.includes('밀크티')) {
+          const milkTea = menus.find((m) => m.name.includes('밀크티'));
+          if (milkTea) compMap[milkTea.id] = 1;
+        }
+
+        // 3. 디저트/다과류 스마트 매칭:
+        if (normSummary.includes('쿠키')) {
+          const cookie = menus.find((m) => m.name.includes('쿠키') && !m.name.includes('박스'));
+          if (cookie) compMap[cookie.id] = 1;
+        }
+        if (normSummary.includes('과일') || normSummary.includes('컵과일')) {
+          const fruit = menus.find((m) => m.name.includes('과일'));
+          if (fruit) compMap[fruit.id] = 1;
+        }
+        if (normSummary.includes('스콘')) {
+          const scone = menus.find((m) => m.name.includes('스콘'));
+          if (scone) compMap[scone.id] = 1;
+        }
+        if (normSummary.includes('휘낭시에')) {
+          const fin = menus.find((m) => m.name.includes('휘낭시에'));
+          if (fin) compMap[fin.id] = 1;
+        }
+        if (normSummary.includes('에그타르트') || normSummary.includes('타르트')) {
+          const tart = menus.find((m) => m.name.includes('에그타르트') || m.name.includes('타르트'));
+          if (tart) compMap[tart.id] = 1;
+        }
+
+        // 4. 특수 포장 옵션 (캔시머 안심 포장) 자동 체크:
+        if (normSummary.includes('캔시머') || normSummary.includes('캔포장') || normSummary.includes('밀봉캔') || normSummary.includes('보냉')) {
+          setSelectedOptionIds(['opt_can']);
+        }
       }
 
       if (Object.keys(compMap).length > 0) {
         setSelectedComponents(compMap);
       }
-      setSetQuantity(20); // 단체 납품 기본 20세트 권장
+      setSetQuantity(20); // 단체 납품 기본 20세트 권장 (1/2 샌드위치 포함시 짝수 자동 보정)
     }
   }, [initialPortfolioData, isOpen, menus]);
 

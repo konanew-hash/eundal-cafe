@@ -82,10 +82,36 @@ async function handleDailyUpdate(request: NextRequest) {
           newReviewCount += randomAdd;
         }
 
-        // 인지도 점수 재계산 (0~100)
+        // 해당 매장의 메뉴 목록을 조회하여 음료/디저트/세트 평균 가격 실시간 재계산
+        const { data: compMenus } = await supabase
+          .from('eundal_competitor_menus')
+          .select('category, price')
+          .eq('competitor_id', comp.id);
+
+        let avgDrink = comp.avg_drink_price;
+        let avgDessert = comp.avg_dessert_price;
+        let avgSet = comp.avg_set_price;
+
+        if (compMenus && compMenus.length > 0) {
+          const drinks = compMenus.filter((m) => m.category === 'drink' || m.category === 'coffee' || m.category === 'beverage');
+          const desserts = compMenus.filter((m) => m.category === 'dessert' || m.category === 'bakery');
+          const sets = compMenus.filter((m) => m.category === 'set');
+
+          if (drinks.length > 0) {
+            avgDrink = Math.round(drinks.reduce((sum, m) => sum + (m.price || 0), 0) / drinks.length);
+          }
+          if (desserts.length > 0) {
+            avgDessert = Math.round(desserts.reduce((sum, m) => sum + (m.price || 0), 0) / desserts.length);
+          }
+          if (sets.length > 0) {
+            avgSet = Math.round(sets.reduce((sum, m) => sum + (m.price || 0), 0) / sets.length);
+          }
+        }
+
+        // 인지도 점수 실시간 재계산
         const newPopularityScore = Math.min(
           99.9,
-          Math.round((newRating * 12 + Math.log10(newReviewCount + 1) * 12) * 10) / 10
+          Math.round(((newRating * 12) + Math.log10(newReviewCount + 1) * 12) * 10) / 10
         );
 
         // DB 업데이트
@@ -96,6 +122,9 @@ async function handleDailyUpdate(request: NextRequest) {
             review_count: newReviewCount,
             blog_review_count: newBlogReviewCount,
             popularity_score: newPopularityScore,
+            avg_drink_price: avgDrink,
+            avg_dessert_price: avgDessert,
+            avg_set_price: avgSet,
             last_updated_at: new Date().toISOString(),
           })
           .eq('id', comp.id);
@@ -107,6 +136,9 @@ async function handleDailyUpdate(request: NextRequest) {
             name: comp.name,
             rating: newRating,
             reviewCount: newReviewCount,
+            avgDrink,
+            avgDessert,
+            avgSet,
           });
         }
       } catch (err) {

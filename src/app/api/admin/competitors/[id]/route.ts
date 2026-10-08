@@ -31,6 +31,9 @@ export async function PUT(
       description,
       representative_menu,
       avg_coffee_price,
+      avg_drink_price,
+      avg_dessert_price,
+      avg_set_price,
       is_active,
       sort_order,
       menus,
@@ -66,8 +69,43 @@ export async function PUT(
     if (description !== undefined) updatePayload.description = description;
     if (representative_menu !== undefined) updatePayload.representative_menu = representative_menu;
     if (avg_coffee_price !== undefined) updatePayload.avg_coffee_price = parseInt(avg_coffee_price, 10);
+    if (avg_drink_price !== undefined) updatePayload.avg_drink_price = parseInt(avg_drink_price, 10);
+    if (avg_dessert_price !== undefined) updatePayload.avg_dessert_price = parseInt(avg_dessert_price, 10);
+    if (avg_set_price !== undefined) updatePayload.avg_set_price = parseInt(avg_set_price, 10);
     if (is_active !== undefined) updatePayload.is_active = is_active;
     if (sort_order !== undefined) updatePayload.sort_order = parseInt(sort_order, 10);
+
+    // 메뉴 목록이 제공된 경우 갱신 및 평균 가격 동적 재계산
+    if (Array.isArray(menus)) {
+      await supabase.from('eundal_competitor_menus').delete().eq('competitor_id', id);
+
+      if (menus.length > 0) {
+        const menuRows = menus.map((m: any, idx: number) => ({
+          competitor_id: id,
+          name: m.name,
+          category: m.category || 'drink',
+          price: parseInt(m.price, 10) || 0,
+          description: m.description || null,
+          is_signature: Boolean(m.is_signature),
+          sort_order: idx + 1,
+        }));
+        await supabase.from('eundal_competitor_menus').insert(menuRows);
+
+        const drinkItems = menus.filter((m: any) => m.category === 'drink' || m.category === 'coffee' || m.category === 'beverage');
+        const dessertItems = menus.filter((m: any) => m.category === 'dessert' || m.category === 'bakery');
+        const setItems = menus.filter((m: any) => m.category === 'set');
+
+        if (drinkItems.length > 0) {
+          updatePayload.avg_drink_price = Math.round(drinkItems.reduce((sum: number, m: any) => sum + (parseInt(m.price, 10) || 0), 0) / drinkItems.length);
+        }
+        if (dessertItems.length > 0) {
+          updatePayload.avg_dessert_price = Math.round(dessertItems.reduce((sum: number, m: any) => sum + (parseInt(m.price, 10) || 0), 0) / dessertItems.length);
+        }
+        if (setItems.length > 0) {
+          updatePayload.avg_set_price = Math.round(setItems.reduce((sum: number, m: any) => sum + (parseInt(m.price, 10) || 0), 0) / setItems.length);
+        }
+      }
+    }
 
     const { data: updated, error: updateError } = await supabase
       .from('eundal_competitors')
@@ -78,24 +116,6 @@ export async function PUT(
 
     if (updateError) {
       throw updateError;
-    }
-
-    // 메뉴 목록이 제공된 경우 갱신
-    if (Array.isArray(menus)) {
-      await supabase.from('eundal_competitor_menus').delete().eq('competitor_id', id);
-
-      if (menus.length > 0) {
-        const menuRows = menus.map((m: any, idx: number) => ({
-          competitor_id: id,
-          name: m.name,
-          category: m.category || 'coffee',
-          price: parseInt(m.price, 10) || 0,
-          description: m.description || null,
-          is_signature: Boolean(m.is_signature),
-          sort_order: idx + 1,
-        }));
-        await supabase.from('eundal_competitor_menus').insert(menuRows);
-      }
     }
 
     return NextResponse.json({ success: true, competitor: updated });

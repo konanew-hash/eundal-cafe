@@ -161,7 +161,10 @@ export async function POST(request: NextRequest) {
       image_url,
       description,
       representative_menu,
-      avg_coffee_price = 4500,
+      avg_coffee_price = 3500,
+      avg_drink_price,
+      avg_dessert_price,
+      avg_set_price,
       sort_order = 1,
       menus = [],
     } = body;
@@ -178,6 +181,27 @@ export async function POST(request: NextRequest) {
     const lngNum = parseFloat(longitude);
     const dist1 = calculateDistanceKm(latNum, lngNum, EUNDAL_STORE1_COORDS.lat, EUNDAL_STORE1_COORDS.lng);
     const dist2 = calculateDistanceKm(latNum, lngNum, EUNDAL_STORE2_COORDS.lat, EUNDAL_STORE2_COORDS.lng);
+
+    // 메뉴 목록으로부터 음료/디저트/세트 실시간 평균 가격 자동 산출
+    const drinkItems = (menus || []).filter((m: any) => m.category === 'drink' || m.category === 'coffee' || m.category === 'beverage');
+    const dessertItems = (menus || []).filter((m: any) => m.category === 'dessert' || m.category === 'bakery');
+    const setItems = (menus || []).filter((m: any) => m.category === 'set');
+
+    const calculatedDrinkPrice = drinkItems.length > 0
+      ? Math.round(drinkItems.reduce((sum: number, m: any) => sum + (parseInt(m.price, 10) || 0), 0) / drinkItems.length)
+      : (parseInt(avg_drink_price, 10) || parseInt(avg_coffee_price, 10) || 4000);
+
+    const calculatedDessertPrice = dessertItems.length > 0
+      ? Math.round(dessertItems.reduce((sum: number, m: any) => sum + (parseInt(m.price, 10) || 0), 0) / dessertItems.length)
+      : (parseInt(avg_dessert_price, 10) || 3800);
+
+    const calculatedSetPrice = setItems.length > 0
+      ? Math.round(setItems.reduce((sum: number, m: any) => sum + (parseInt(m.price, 10) || 0), 0) / setItems.length)
+      : (parseInt(avg_set_price, 10) || 7500);
+
+    const calculatedCoffeePrice = drinkItems.find((m: any) => m.name.includes('아메리카노'))?.price
+      || parseInt(avg_coffee_price, 10)
+      || calculatedDrinkPrice;
 
     // 인지도 점수 계산식 (평점*12 + 리뷰수 가중치)
     const popScore = Math.min(
@@ -207,7 +231,10 @@ export async function POST(request: NextRequest) {
         image_url: image_url || null,
         description,
         representative_menu,
-        avg_coffee_price: parseInt(avg_coffee_price, 10) || 4500,
+        avg_coffee_price: calculatedCoffeePrice,
+        avg_drink_price: calculatedDrinkPrice,
+        avg_dessert_price: calculatedDessertPrice,
+        avg_set_price: calculatedSetPrice,
         sort_order: parseInt(sort_order, 10) || 1,
         is_active: true,
         last_updated_at: new Date().toISOString(),
@@ -224,7 +251,7 @@ export async function POST(request: NextRequest) {
       const menuRows = menus.map((m: any, idx: number) => ({
         competitor_id: insertedComp.id,
         name: m.name,
-        category: m.category || 'coffee',
+        category: m.category || 'drink',
         price: parseInt(m.price, 10) || 0,
         description: m.description || null,
         is_signature: Boolean(m.is_signature),
