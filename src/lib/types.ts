@@ -220,7 +220,7 @@ export interface CustomSetDetails {
   unit_price: number; // 1세트당 단가
 }
 
-// 서브웨이 썹픽 스타일 추천 세트 조합 (은픽)
+// 은달 추천 세트 조합 (은픽)
 export interface PresetSet {
   id: string;
   name: string;

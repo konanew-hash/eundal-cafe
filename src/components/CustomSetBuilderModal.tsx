@@ -491,7 +491,7 @@ export default function CustomSetBuilderModal({
                     <h4 className="font-extrabold text-sm sm:text-base text-stone-900 flex items-center gap-1.5">
                       <span>은달 추천 꿀조합</span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-bold">
-                        은픽 (썹픽)
+                        은픽 추천
                       </span>
                     </h4>
                     <p className="text-[11px] text-stone-600">
@@ -501,8 +501,8 @@ export default function CustomSetBuilderModal({
                 </div>
               </div>
 
-              {/* 추천 조합 카드 목록 (가로 스크롤 & 슬라이드 형태) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+              {/* 추천 조합 카드 목록 (반응형 그리드 및 PC 폭 확보) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pt-1">
                 {presetSets
                   .filter((p) => p.is_active)
                   .map((preset) => {
@@ -514,10 +514,10 @@ export default function CustomSetBuilderModal({
                     return (
                       <div
                         key={preset.id}
-                        className="bg-white rounded-xl p-3 border border-amber-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden"
+                        className="bg-white rounded-2xl p-3.5 border border-amber-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden"
                       >
                         {preset.badge_text && (
-                          <div className="absolute top-2 right-2">
+                          <div className="absolute top-2.5 right-2.5">
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
                               {preset.badge_text}
                             </span>
@@ -528,7 +528,7 @@ export default function CustomSetBuilderModal({
                           <h5 className="font-bold text-stone-900 text-xs sm:text-sm line-clamp-1 group-hover:text-amber-800 transition-colors">
                             {preset.name}
                           </h5>
-                          <p className="text-amber-700 font-extrabold text-xs">
+                          <p className="text-amber-700 font-extrabold text-xs sm:text-sm">
                             {preset.price.toLocaleString()}원
                             <span className="text-[10px] text-stone-500 font-normal ml-1">/ 1세트</span>
                           </p>
@@ -541,7 +541,7 @@ export default function CustomSetBuilderModal({
                         )}
 
                         {/* 구성품 요약 태그 */}
-                        <div className="my-2.5 p-2 bg-stone-50 rounded-lg border border-stone-200/70 space-y-1">
+                        <div className="my-2.5 p-2 bg-stone-50 rounded-xl border border-stone-200/70 space-y-1">
                           <div className="flex flex-wrap gap-1">
                             {preset.components.map((c, i) => (
                               <span
@@ -565,24 +565,25 @@ export default function CustomSetBuilderModal({
                           )}
                         </div>
 
-                        {/* 액션 버튼 2종 */}
-                        <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-stone-100">
+                        {/* 액션 버튼 2종 (PC 화면에서도 텍스트 깨짐 없는 레이아웃) */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100">
                           <button
                             type="button"
                             onClick={() => handleLoadPreset(preset)}
-                            className="w-full py-1.5 px-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg font-bold text-[11px] transition-colors flex items-center justify-center gap-1"
+                            className="w-full py-2 px-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
                             title="이 조합의 구성을 아래 빌더로 불러와서 자유롭게 변경합니다"
                           >
-                            <span>✏️ 불러와 수정</span>
+                            <span className="shrink-0">✏️</span>
+                            <span className="truncate">불러와 수정</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => handleQuickAddPreset(preset)}
-                            className="w-full py-1.5 px-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-105 text-stone-950 font-black rounded-lg text-[11px] transition-all flex items-center justify-center gap-1 shadow-2xs"
+                            className="w-full py-2 px-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-105 text-stone-950 font-black rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap min-w-0"
                             title="이 구성 그대로 견적서에 즉시 담습니다"
                           >
-                            <Zap className="w-3 h-3 fill-stone-950" />
-                            <span>견적서 담기</span>
+                            <Zap className="w-3.5 h-3.5 fill-stone-950 shrink-0" />
+                            <span className="truncate">견적서 담기</span>
                           </button>
                         </div>
                       </div>
