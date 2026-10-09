@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-08T16:02:32.493Z",
+  "at": "2026-10-09T02:22:59.119Z",
   "url": "https://eundal.vercel.app",
   "reachable": true,
   "results": [
@@ -24,7 +24,7 @@
         "header": "content-security-policy",
         "value": null,
         "validation": "누락",
-        "observedAt": "2026-10-08T16:02:30.940Z"
+        "observedAt": "2026-10-09T02:22:57.448Z"
       }
     },
     {
@@ -35,7 +35,7 @@
         "header": "strict-transport-security",
         "value": "max-age=63072000; includeSubDomains; preload",
         "validation": "valid",
-        "observedAt": "2026-10-08T16:02:30.940Z"
+        "observedAt": "2026-10-09T02:22:57.448Z"
       }
     },
     {
@@ -46,7 +46,7 @@
         "header": "x-frame-options",
         "value": "DENY",
         "validation": "x-frame-options: DENY",
-        "observedAt": "2026-10-08T16:02:30.940Z"
+        "observedAt": "2026-10-09T02:22:57.448Z"
       }
     },
     {
@@ -57,7 +57,7 @@
         "header": "x-content-type-options",
         "value": "nosniff",
         "validation": "valid",
-        "observedAt": "2026-10-08T16:02:30.940Z"
+        "observedAt": "2026-10-09T02:22:57.448Z"
       }
     },
     {
@@ -68,7 +68,7 @@
         "header": "referrer-policy",
         "value": "strict-origin-when-cross-origin",
         "validation": "valid",
-        "observedAt": "2026-10-08T16:02:30.940Z"
+        "observedAt": "2026-10-09T02:22:57.448Z"
       }
     },
     {
@@ -79,7 +79,7 @@
         "header": "permissions-policy",
         "value": "camera=(), microphone=(), geolocation=()",
         "validation": "valid",
-        "observedAt": "2026-10-08T16:02:30.940Z"
+        "observedAt": "2026-10-09T02:22:57.448Z"
       }
     },
     {
@@ -192,9 +192,9 @@
           },
           {
             "path": "/_next/static/chunks/main-app-5eb0d9c55a395822.js",
-            "httpStatus": 403,
+            "httpStatus": 200,
             "exposed": false,
-            "checked": false
+            "checked": true
           },
           {
             "path": "/_next/static/chunks/5928-17a18d8c50f58a92.js",
@@ -320,9 +320,9 @@
     {
       "id": "perf.ttfb",
       "status": "pass",
-      "observed": "응답 시간 125ms",
+      "observed": "응답 시간 134ms",
       "evidence": {
-        "ms": 125
+        "ms": 134
       }
     },
     {
@@ -370,7 +370,7 @@
       "observed": "하드코딩 시크릿 미검출",
       "evidence": {
         "hits": [],
-        "inspectedFiles": 89,
+        "inspectedFiles": 92,
         "readFailures": 0
       }
     },
@@ -380,7 +380,7 @@
       "observed": "클라 시크릿 노출 미검출",
       "evidence": {
         "hits": [],
-        "inspectedFiles": 82,
+        "inspectedFiles": 85,
         "readFailures": 0
       }
     },
@@ -431,8 +431,8 @@
       "unsafeTransport": false,
       "bodyTruncated": false
     },
-    "scannedAt": "2026-10-08T16:02:30.937Z",
-    "ttfbMs": 125,
+    "scannedAt": "2026-10-09T02:22:57.444Z",
+    "ttfbMs": 134,
     "observedHeaders": [
       "access-control-allow-origin",
       "age",
@@ -483,7 +483,7 @@
             "header": "content-security-policy",
             "value": null,
             "validation": "누락",
-            "observedAt": "2026-10-08T16:02:30.940Z"
+            "observedAt": "2026-10-09T02:22:57.448Z"
           }
         },
         {
@@ -494,7 +494,7 @@
             "header": "strict-transport-security",
             "value": "max-age=63072000; includeSubDomains; preload",
             "validation": "valid",
-            "observedAt": "2026-10-08T16:02:30.940Z"
+            "observedAt": "2026-10-09T02:22:57.448Z"
           }
         },
         {
@@ -505,7 +505,7 @@
             "header": "x-frame-options",
             "value": "DENY",
             "validation": "x-frame-options: DENY",
-            "observedAt": "2026-10-08T16:02:30.940Z"
+            "observedAt": "2026-10-09T02:22:57.448Z"
           }
         },
         {
@@ -516,7 +516,7 @@
             "header": "x-content-type-options",
             "value": "nosniff",
             "validation": "valid",
-            "observedAt": "2026-10-08T16:02:30.940Z"
+            "observedAt": "2026-10-09T02:22:57.448Z"
           }
         },
         {
@@ -527,7 +527,7 @@
             "header": "referrer-policy",
             "value": "strict-origin-when-cross-origin",
             "validation": "valid",
-            "observedAt": "2026-10-08T16:02:30.940Z"
+            "observedAt": "2026-10-09T02:22:57.448Z"
           }
         },
         {
@@ -538,7 +538,7 @@
             "header": "permissions-policy",
             "value": "camera=(), microphone=(), geolocation=()",
             "validation": "valid",
-            "observedAt": "2026-10-08T16:02:30.940Z"
+            "observedAt": "2026-10-09T02:22:57.448Z"
           }
         },
         {
@@ -651,9 +651,9 @@
               },
               {
                 "path": "/_next/static/chunks/main-app-5eb0d9c55a395822.js",
-                "httpStatus": 403,
+                "httpStatus": 200,
                 "exposed": false,
-                "checked": false
+                "checked": true
               },
               {
                 "path": "/_next/static/chunks/5928-17a18d8c50f58a92.js",
@@ -779,9 +779,9 @@
         {
           "id": "perf.ttfb",
           "status": "pass",
-          "observed": "응답 시간 125ms",
+          "observed": "응답 시간 134ms",
           "evidence": {
-            "ms": 125
+            "ms": 134
           }
         },
         {
@@ -829,7 +829,7 @@
           "observed": "하드코딩 시크릿 미검출",
           "evidence": {
             "hits": [],
-            "inspectedFiles": 89,
+            "inspectedFiles": 92,
             "readFailures": 0
           }
         },
@@ -839,7 +839,7 @@
           "observed": "클라 시크릿 노출 미검출",
           "evidence": {
             "hits": [],
-            "inspectedFiles": 82,
+            "inspectedFiles": 85,
             "readFailures": 0
           }
         },

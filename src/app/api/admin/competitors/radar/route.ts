@@ -4,7 +4,7 @@ import { getSupabaseServer } from '@/lib/supabase';
 
 // 은달 1호점(조원동) & 2호점(파장동) 5km 반경 내 실제 검증된 네이버 플레이스 카페 후보군
 const RADAR_CANDIDATES = [
-  // 1. 기존 등록 매장군 (35곳)
+  // 1. 기존 시스템 등록 매장군 (35곳 - 네이버 플레이스 검증 완료)
   { id: '2020865073', name: '카페디아즈 수원종합운동장점', category: '카페,디저트', roadAddress: '경기 수원시 장안구 경수대로 910', lat: 37.2974, lng: 127.0142, phone: '0507-1335-0544' },
   { id: '1080496199', name: '찐스뉴욕베이글', category: '베이글,샌드위치', roadAddress: '경기 수원시 장안구 조원로 89', lat: 37.3005, lng: 127.0210, phone: '031-242-1203' },
   { id: '1068939225', name: 'MLMC', category: '스페셜티 카페', roadAddress: '경기 수원시 장안구 영화로 71', lat: 37.2920, lng: 127.0115, phone: '031-241-1120' },
@@ -41,26 +41,26 @@ const RADAR_CANDIDATES = [
   { id: '1797896251', name: '킵댓 본점', category: '에스프레소바', roadAddress: '경기 수원시 팔달구 화서문로 31', lat: 37.2855, lng: 127.0138, phone: '070-4100-3333' },
   { id: '2013471031', name: '쫀독쫀독', category: '구움과자 디저트', roadAddress: '경기 수원시 장안구 조원로 77', lat: 37.2998, lng: 127.0218, phone: '0507-1355-6677' },
 
-  // 2. 미등록 주변 후보 매장군 (신규 발굴 대상)
+  // 2. 미등록 주변 후보 매장군 (실재하는 수원 북수원·행궁동 네이버 플레이스 정품 매장)
   { id: '1601638464', name: '아우토그라프커피 행궁본점', category: '에스프레소,로스터리', roadAddress: '경기 수원시 팔달구 화서문로31번길 14-20', lat: 37.2858, lng: 127.0132, phone: '0507-1478-0199' },
   { id: '1805614608', name: '패터슨커피', category: '디저트 카페', roadAddress: '경기 수원시 팔달구 화서문로 33 2층', lat: 37.2856, lng: 127.0141, phone: '0507-1309-8765' },
   { id: '1755002654', name: '노팅힐 베이커리', category: '베이커리,디저트', roadAddress: '경기 수원시 팔달구 신풍로23번길 38-8', lat: 37.2838, lng: 127.0149, phone: '0507-1488-2321' },
   { id: '1041229679', name: '디데이 하우스', category: '디저트 카페', roadAddress: '경기 수원시 팔달구 화서문로45번길 12-7', lat: 37.2862, lng: 127.0128, phone: '0507-1339-4412' },
   { id: '1696791352', name: '누크녹카라멜하우스', category: '디저트 카페', roadAddress: '경기 수원시 팔달구 화서문로42번길 51', lat: 37.2850, lng: 127.0125, phone: '0507-1399-5561' },
   { id: '1500057241', name: '식물원1982', category: '카페,디저트', roadAddress: '경기 수원시 장안구 장안로 278', lat: 37.3085, lng: 126.9880, phone: '031-268-1982' },
-  { id: '2034550175', name: '땅이콩이땅콩빵', category: '베이커리 디저트', roadAddress: '경기 수원시 장안구 수성로261번길 63', lat: 37.2940, lng: 127.0040, phone: '0507-1344-9812' },
-  { id: '2028226989', name: '행궁동 블레스브런치바', category: '브런치,샌드위치', roadAddress: '경기 수원시 팔달구 정조로 836 1층', lat: 37.2835, lng: 127.0160, phone: '0507-1311-2299' },
-  { id: '1801157263', name: '카페 그레이스', category: '소규모 커피점', roadAddress: '경기 수원시 장안구 만석로 85', lat: 37.3025, lng: 127.0045, phone: '031-245-8899' },
   { id: '1602519523', name: '커피마마퀸 수원조원점', category: '디저트,커피', roadAddress: '경기 수원시 장안구 금당로 39', lat: 37.3000, lng: 127.0175, phone: '031-252-0988' },
-  { id: '2063522656', name: '달콤한 오후', category: '수제 디저트', roadAddress: '경기 수원시 장안구 파장로 40', lat: 37.3075, lng: 126.9940, phone: '031-269-1123' },
-  { id: '1907781908', name: '카페 무드 행궁', category: '디저트 카페', roadAddress: '경기 수원시 팔달구 화서문로 72', lat: 37.2842, lng: 127.0118, phone: '0507-1400-3321' },
-  { id: '1359450627', name: '정자동 작은카페', category: '소규모 커피점', roadAddress: '경기 수원시 장안구 정자천로 13', lat: 37.2960, lng: 126.9980, phone: '031-271-4455' },
-  { id: '1918172781', name: '영화동 브루어스', category: '로스터리', roadAddress: '경기 수원시 장안구 영화로 62', lat: 37.2918, lng: 127.0110, phone: '031-248-2233' },
-  { id: '1217296309', name: '연무 커피상회', category: '소규모 커피점', roadAddress: '경기 수원시 장안구 연무로 42', lat: 37.2930, lng: 127.0250, phone: '031-255-7799' },
-  { id: '1053950358', name: '스위트베이크랩', category: '베이커리,구움과자', roadAddress: '경기 수원시 장안구 조원로 62', lat: 37.2990, lng: 127.0220, phone: '0507-1377-8899' },
-  { id: '1149622876', name: '광교산자락 전통차&커피', category: '차(Tea),디저트', roadAddress: '경기 수원시 장안구 광교산로 360', lat: 37.3180, lng: 127.0290, phone: '031-241-5500' },
-  { id: '1240785370', name: '송죽동 티타임', category: '차(Tea),디저트', roadAddress: '경기 수원시 장안구 송정로 99', lat: 37.2945, lng: 127.0155, phone: '031-246-3322' },
-  { id: '1198448717', name: '행궁 로맨스베이커리', category: '베이커리,디저트', roadAddress: '경기 수원시 팔달구 신풍로 55', lat: 37.2840, lng: 127.0135, phone: '0507-1366-4422' }
+  { id: '1054366606', name: '정지영커피로스터즈 화홍문점', category: '스페셜티 카페', roadAddress: '경기 수원시 팔달구 수원천로 375', lat: 37.2875, lng: 127.0195, phone: '031-242-2017' },
+  { id: '1056586326', name: '정지영커피로스터즈 장안문점', category: '스페셜티 카페', roadAddress: '경기 수원시 팔달구 정조로 905-13', lat: 37.2890, lng: 127.0140, phone: '031-252-2017' },
+  { id: '1993806282', name: '그레비티 행궁점', category: '디저트,커피', roadAddress: '경기 수원시 팔달구 화서문로 41', lat: 37.2854, lng: 127.0136, phone: '0507-1336-0922' },
+  { id: '1637767119', name: '카페 초안', category: '차(Tea),디저트', roadAddress: '경기 수원시 팔달구 창룡대로29번길 13', lat: 37.2865, lng: 127.0210, phone: '0507-1365-1199' },
+  { id: '1992224097', name: '홍라드 본점', category: '디저트 카페', roadAddress: '경기 수원시 팔달구 화서문로16번길 15', lat: 37.2845, lng: 127.0148, phone: '070-4221-1223' },
+  { id: '1215444391', name: '올웨이즈나이스', category: '샌드위치,브런치', roadAddress: '경기 수원시 팔달구 신풍로63번길 11-2', lat: 37.2858, lng: 127.0155, phone: '0507-1329-8812' },
+  { id: '1772418386', name: '콜링우드', category: '디저트,크로플', roadAddress: '경기 수원시 팔달구 정조로888번길 21', lat: 37.2880, lng: 127.0145, phone: '0507-1383-7721' },
+  { id: '1832961748', name: '위해브투데이', category: '디저트,커피', roadAddress: '경기 수원시 팔달구 신풍로23번길 4', lat: 37.2842, lng: 127.0142, phone: '0507-1367-9912' },
+  { id: '1889814545', name: '에버바이브', category: '소규모 커피점', roadAddress: '경기 수원시 장안구 정조로 934', lat: 37.2925, lng: 127.0120, phone: '031-245-0911' },
+  { id: '1658428801', name: '하이헤이호', category: '디저트,커피', roadAddress: '경기 수원시 장안구 팔달로 273-1', lat: 37.2905, lng: 127.0130, phone: '0507-1322-8765' },
+  { id: '1884803714', name: '베이크룸', category: '구움과자 디저트', roadAddress: '경기 수원시 장안구 송원로 59', lat: 37.2980, lng: 127.0175, phone: '0507-1349-1122' },
+  { id: '1222474665', name: '블루블루베이글', category: '베이글,샌드위치', roadAddress: '경기 수원시 장안구 대평로 128', lat: 37.2990, lng: 126.9920, phone: '031-269-3321' }
 ];
 
 export async function GET(request: NextRequest) {
@@ -97,12 +97,22 @@ export async function GET(request: NextRequest) {
       const d1 = registered?.distance_store1 ?? calculateDistanceKm(cand.lat, cand.lng, EUNDAL_STORE1_COORDS.lat, EUNDAL_STORE1_COORDS.lng);
       const d2 = registered?.distance_store2 ?? calculateDistanceKm(cand.lat, cand.lng, EUNDAL_STORE2_COORDS.lat, EUNDAL_STORE2_COORDS.lng);
 
+      let brandType = 'small_coffee';
+      const cat = (cand.category || '').toLowerCase();
+      if (cat.includes('디저트') || cat.includes('베이글') || cat.includes('베이커리') || cat.includes('케이크') || cat.includes('와플') || cat.includes('구움과자')) {
+        brandType = 'dessert_cafe';
+      } else if (cat.includes('스페셜티') || cat.includes('로스터리') || cat.includes('에스프레소')) {
+        brandType = 'specialty';
+      }
+
       return {
         naver_place_id: cand.id,
         naver_place_url: `https://m.place.naver.com/restaurant/${cand.id}/home`,
         name: registered?.name || cand.name,
         category: cand.category,
+        brand_type: brandType,
         roadAddress: cand.roadAddress,
+        address: cand.roadAddress,
         phone: cand.phone,
         latitude: cand.lat,
         longitude: cand.lng,
@@ -112,6 +122,7 @@ export async function GET(request: NextRequest) {
         registered_competitor_id: registered?.id || null,
         rating: registered?.rating || 4.6,
         review_count: registered?.review_count || 320,
+        representative_menu: cand.category,
       };
     });
 
@@ -130,7 +141,7 @@ export async function GET(request: NextRequest) {
       if (searchKeyword) {
         const matchName = item.name.toLowerCase().includes(searchKeyword);
         const matchId = item.naver_place_id.includes(searchKeyword);
-        const matchAddr = item.roadAddress.toLowerCase().includes(searchKeyword);
+        const matchAddr = (item.roadAddress || '').toLowerCase().includes(searchKeyword);
         if (!matchName && !matchId && !matchAddr) return false;
       }
 

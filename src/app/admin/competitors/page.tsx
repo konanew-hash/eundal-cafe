@@ -63,8 +63,8 @@ export default function AdminCompetitorsPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
 
-  // 뷰 모드: 'similarity' | 'radar' | 'cards' | 'chart' | 'matrix'
-  const [viewMode, setViewMode] = useState<'similarity' | 'radar' | 'cards' | 'chart' | 'matrix'>('similarity');
+  // 뷰 모드: 'cards' (기본 화면: 상세 카드) | 'similarity' | 'radar' | 'chart' | 'matrix'
+  const [viewMode, setViewMode] = useState<'similarity' | 'radar' | 'cards' | 'chart' | 'matrix'>('cards');
 
   // 차트 비교 카테고리: 6대 세부분류 ('coffee' | 'juice' | 'tea' | 'dessert' | 'sandwich' | 'set')
   const [chartCategory, setChartCategory] = useState<MenuSubcategory>('coffee');
@@ -112,8 +112,8 @@ export default function AdminCompetitorsPage() {
   // 신규 등록 폼 내 메뉴 카테고리 탭: 'drink' | 'dessert' | 'set'
   const [menuFormTab, setMenuFormTab] = useState<'drink' | 'dessert' | 'set'>('drink');
 
-  // 각 경쟁사 카드별 메뉴 카테고리 탭 상태 ('all' | 'drink' | 'dessert' | 'set')
-  const [compMenuCategoryTab, setCompMenuCategoryTab] = useState<Record<string, 'all' | 'drink' | 'dessert' | 'set'>>({});
+  // 각 경쟁사 카드별 메뉴 카테고리 탭 상태 ('all' | 6대 세부분류)
+  const [compMenuCategoryTab, setCompMenuCategoryTab] = useState<Record<string, 'all' | MenuSubcategory>>({});
 
   // 폼 상태
   const [form, setForm] = useState({
@@ -2289,14 +2289,15 @@ export default function AdminCompetitorsPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            // 미니 지도 팝업을 위해 가상 Competitor 규격 전달
+                            // 미니 지도 팝업을 위해 실제 주소 및 좌표 전달
+                            const targetAddr = place.roadAddress || place.address || '';
                             setMapTarget({
                               id: place.registered_competitor_id || place.naver_place_id,
                               name: place.name,
-                              address: place.address,
+                              address: targetAddr,
                               brand_type: place.brand_type,
-                              latitude: 37.3000,
-                              longitude: 127.0100,
+                              latitude: place.latitude || 37.2966,
+                              longitude: place.longitude || 127.0215,
                               distance_store1: place.distance_store1,
                               distance_store2: place.distance_store2,
                               rating: place.rating,
@@ -2311,7 +2312,7 @@ export default function AdminCompetitorsPage() {
                           <span>미니 지도</span>
                         </button>
                         <a
-                          href={`https://map.naver.com/v5/search/${encodeURIComponent(place.address || place.name)}`}
+                          href={`https://map.naver.com/v5/search/${encodeURIComponent(place.roadAddress || place.address || place.name)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 flex items-center gap-0.5"
@@ -2319,7 +2320,7 @@ export default function AdminCompetitorsPage() {
                           네이버 <ExternalLink className="w-2 h-2" />
                         </a>
                         <a
-                          href={`https://map.kakao.com/link/search/${encodeURIComponent(place.address || place.name)}`}
+                          href={`https://map.kakao.com/link/search/${encodeURIComponent(place.roadAddress || place.address || place.name)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-2 py-1 rounded-md bg-yellow-50 hover:bg-yellow-100 text-yellow-900 font-bold border border-yellow-300 flex items-center gap-0.5"
@@ -2327,7 +2328,7 @@ export default function AdminCompetitorsPage() {
                           카카오 <ExternalLink className="w-2 h-2" />
                         </a>
                         <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address || place.name)}`}
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.roadAddress || place.address || place.name)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold border border-stone-200 flex items-center gap-0.5"
@@ -2634,9 +2635,35 @@ export default function AdminCompetitorsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredCompetitors.map((comp) => {
-                const drinkMenus = (comp.menus || []).filter((m) => m.category === 'drink' || m.category === 'coffee');
-                const dessertMenus = (comp.menus || []).filter((m) => m.category === 'dessert');
-                const setMenus = (comp.menus || []).filter((m) => m.category === 'set');
+                // 각 경쟁사 메뉴를 6대 세부분류로 상세 태깅
+                const enrichedCompMenus = (comp.menus || []).map((m) => {
+                  const sub = (m.subcategory || categorizeMenuDetailed(m.name, m.category).subcategory) as MenuSubcategory;
+                  return { ...m, subcategory: sub };
+                });
+
+                const subCounts: Record<MenuSubcategory, number> = {
+                  coffee: enrichedCompMenus.filter((m) => m.subcategory === 'coffee').length,
+                  juice: enrichedCompMenus.filter((m) => m.subcategory === 'juice').length,
+                  tea: enrichedCompMenus.filter((m) => m.subcategory === 'tea').length,
+                  dessert: enrichedCompMenus.filter((m) => m.subcategory === 'dessert').length,
+                  sandwich: enrichedCompMenus.filter((m) => m.subcategory === 'sandwich').length,
+                  set: enrichedCompMenus.filter((m) => m.subcategory === 'set').length,
+                };
+
+                const calcSubAvg = (sub: MenuSubcategory, fallback: number) => {
+                  const list = enrichedCompMenus.filter((m) => m.subcategory === sub);
+                  if (list.length === 0) return fallback;
+                  return Math.round(list.reduce((sum, item) => sum + item.price, 0) / list.length);
+                };
+
+                const subPrices: Record<MenuSubcategory, number> = {
+                  coffee: calcSubAvg('coffee', comp.avg_coffee_price || 3800),
+                  juice: calcSubAvg('juice', comp.avg_juice_price || 5200),
+                  tea: calcSubAvg('tea', comp.avg_tea_price || 4600),
+                  dessert: calcSubAvg('dessert', comp.avg_dessert_price || 3800),
+                  sandwich: calcSubAvg('sandwich', comp.avg_sandwich_price || 6500),
+                  set: calcSubAvg('set', comp.avg_set_price || 8500),
+                };
 
                 return (
                   <div
@@ -2680,11 +2707,11 @@ export default function AdminCompetitorsPage() {
                               <span>리뷰 {comp.review_count.toLocaleString()}</span>
                             </span>
 
-                            {/* 네이버 플레이스 연동 확인 배지 & ID (픽업 매장 관리와 동일) */}
+                            {/* 네이버 플레이스 연동 확인 배지 & ID */}
                             <div className="flex items-center gap-1.5 flex-wrap ml-auto">
                               <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                                <span>네이버 플레이스 연동</span>
+                                <span>네이버 플레이스</span>
                                 {comp.naver_place_id && (
                                   <code className="text-emerald-900 bg-emerald-100/90 px-1 py-0.2 rounded text-[9.5px] font-mono">
                                     ID: {comp.naver_place_id}
@@ -2732,40 +2759,71 @@ export default function AdminCompetitorsPage() {
                         )}
                       </div>
 
-                      {/* 3대 카테고리별 평균 가격 요약 바 (원클릭 카테고리 전환 가능) */}
-                      <div className="grid grid-cols-3 gap-2 p-2 bg-stone-50/70 rounded-xl border border-stone-200 text-center text-xs">
-                        <button
-                          type="button"
-                          onClick={() => setCompMenuCategoryTab(prev => ({ ...prev, [comp.id]: 'drink' }))}
-                          className="hover:bg-amber-100/50 p-1 rounded-lg transition-colors text-center"
-                          title="클릭 시 커피·음료 메뉴 목록으로 전환"
-                        >
-                          <span className="text-[10px] text-stone-500 block">☕ 음료 평균</span>
-                          <span className="font-bold text-stone-900">{(comp.avg_drink_price || comp.avg_coffee_price || 3800).toLocaleString()}원</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCompMenuCategoryTab(prev => ({ ...prev, [comp.id]: 'dessert' }))}
-                          className="border-x border-stone-200 hover:bg-rose-100/50 p-1 rounded-lg transition-colors text-center"
-                          title="클릭 시 디저트 메뉴 목록으로 전환"
-                        >
-                          <span className="text-[10px] text-stone-500 block">🍰 디저트 평균</span>
-                          <span className="font-bold text-stone-900">{(comp.avg_dessert_price || 3500).toLocaleString()}원</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCompMenuCategoryTab(prev => ({ ...prev, [comp.id]: 'set' }))}
-                          className="hover:bg-purple-100/50 p-1 rounded-lg transition-colors text-center"
-                          title="클릭 시 세트 메뉴 목록으로 전환"
-                        >
-                          <span className="text-[10px] text-stone-500 block">🎁 세트 평균</span>
-                          <span className="font-bold text-stone-900">{(comp.avg_set_price || 7500).toLocaleString()}원</span>
-                        </button>
+                      {/* 6대 세부분류별 평균 가격 요약 바 (원클릭 카테고리 전환 및 은달 대비 차액 시각화) */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] text-stone-500 font-bold px-1">
+                          <span>6대 세부분류 평균 가격 (클릭 시 해당 품목 전환)</span>
+                          <span className="text-[10px] text-stone-400">은달 대비 차액 표시</span>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 p-2 bg-stone-50/80 rounded-2xl border border-stone-200/90 text-center text-xs">
+                          {(Object.keys(SUBCATEGORIES) as MenuSubcategory[]).map((subKey) => {
+                            const meta = SUBCATEGORIES[subKey];
+                            const avgPrice = subPrices[subKey];
+                            const eundalPrice = eundalBenchmark.subcategories?.[subKey] || 4000;
+                            const diff = avgPrice - eundalPrice;
+                            const isSelected = compMenuCategoryTab[comp.id] === subKey;
+                            const count = subCounts[subKey];
+
+                            return (
+                              <button
+                                key={subKey}
+                                type="button"
+                                onClick={() =>
+                                  setCompMenuCategoryTab((prev) => ({
+                                    ...prev,
+                                    [comp.id]: prev[comp.id] === subKey ? 'all' : subKey,
+                                  }))
+                                }
+                                className={`p-2 rounded-xl border text-center transition-all ${
+                                  isSelected
+                                    ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-xs ring-2 ring-amber-300'
+                                    : 'bg-white hover:bg-stone-100 border-stone-200 text-stone-800'
+                                }`}
+                                title={`클릭 시 ${meta.label} 메뉴 목록으로 필터링`}
+                              >
+                                <div className="text-[10px] text-stone-500 font-bold flex items-center justify-center gap-0.5 truncate">
+                                  <span>{meta.icon}</span>
+                                  <span className="truncate">{meta.label}</span>
+                                </div>
+                                <div className="font-extrabold text-xs text-stone-900 mt-0.5">
+                                  {avgPrice > 0 ? `${avgPrice.toLocaleString()}원` : '-'}
+                                </div>
+                                {avgPrice > 0 && eundalPrice > 0 ? (
+                                  <div className="text-[9.5px] font-bold mt-0.5 flex items-center justify-center gap-0.5">
+                                    {diff > 0 ? (
+                                      <span className="text-rose-600 flex items-center">
+                                        <span className="text-[10px]">▲</span>+{diff.toLocaleString()}
+                                      </span>
+                                    ) : diff < 0 ? (
+                                      <span className="text-blue-600 flex items-center">
+                                        <span className="text-[10px]">▼</span>{diff.toLocaleString()}
+                                      </span>
+                                    ) : (
+                                      <span className="text-stone-400">동일</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="text-[9px] text-stone-400 mt-0.5">{count}종</div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      {/* 메뉴 리스트 (스크롤바 구성 및 커피/디저트/세트 버튼 구분 비교) */}
+                      {/* 메뉴 리스트 (6대 세부분류 탭 버튼 + 스크롤바) */}
                       <div className="space-y-2">
-                        {/* 카테고리 필터 버튼 탭 */}
+                        {/* 6대 세부분류 필터 버튼 탭 */}
                         <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl overflow-x-auto no-scrollbar">
                           {(() => {
                             const currentTab = compMenuCategoryTab[comp.id] || 'all';
@@ -2773,51 +2831,35 @@ export default function AdminCompetitorsPage() {
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => setCompMenuCategoryTab(prev => ({ ...prev, [comp.id]: 'all' }))}
-                                  className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all shrink-0 ${
+                                  onClick={() => setCompMenuCategoryTab((prev) => ({ ...prev, [comp.id]: 'all' }))}
+                                  className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all shrink-0 ${
                                     currentTab === 'all'
                                       ? 'bg-stone-900 text-white shadow-2xs'
                                       : 'text-stone-600 hover:text-stone-900'
                                   }`}
                                 >
-                                  전체 ({(comp.menus || []).length})
+                                  전체 ({enrichedCompMenus.length})
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setCompMenuCategoryTab(prev => ({ ...prev, [comp.id]: 'drink' }))}
-                                  className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
-                                    currentTab === 'drink'
-                                      ? 'bg-amber-600 text-white shadow-2xs'
-                                      : 'text-stone-600 hover:text-amber-800'
-                                  }`}
-                                >
-                                  <Coffee className="w-3 h-3" />
-                                  <span>음료 ({drinkMenus.length})</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setCompMenuCategoryTab(prev => ({ ...prev, [comp.id]: 'dessert' }))}
-                                  className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
-                                    currentTab === 'dessert'
-                                      ? 'bg-rose-600 text-white shadow-2xs'
-                                      : 'text-stone-600 hover:text-rose-800'
-                                  }`}
-                                >
-                                  <Cake className="w-3 h-3" />
-                                  <span>디저트 ({dessertMenus.length})</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setCompMenuCategoryTab(prev => ({ ...prev, [comp.id]: 'set' }))}
-                                  className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
-                                    currentTab === 'set'
-                                      ? 'bg-purple-600 text-white shadow-2xs'
-                                      : 'text-stone-600 hover:text-purple-800'
-                                  }`}
-                                >
-                                  <Package className="w-3 h-3" />
-                                  <span>세트 ({setMenus.length})</span>
-                                </button>
+                                {(Object.keys(SUBCATEGORIES) as MenuSubcategory[]).map((subKey) => {
+                                  const meta = SUBCATEGORIES[subKey];
+                                  const isSelected = currentTab === subKey;
+                                  const count = subCounts[subKey];
+                                  return (
+                                    <button
+                                      key={subKey}
+                                      type="button"
+                                      onClick={() => setCompMenuCategoryTab((prev) => ({ ...prev, [comp.id]: subKey }))}
+                                      className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all shrink-0 flex items-center gap-1 ${
+                                        isSelected
+                                          ? 'bg-amber-600 text-white shadow-2xs'
+                                          : 'text-stone-600 hover:text-amber-800'
+                                      }`}
+                                    >
+                                      <span>{meta.icon}</span>
+                                      <span>{meta.label} ({count})</span>
+                                    </button>
+                                  );
+                                })}
                               </>
                             );
                           })()}
@@ -2826,43 +2868,50 @@ export default function AdminCompetitorsPage() {
                         {/* 스크롤바가 적용된 메뉴 리스트 */}
                         {(() => {
                           const currentTab = compMenuCategoryTab[comp.id] || 'all';
-                          const filteredMenuList = (comp.menus || []).filter((m) => {
-                            if (currentTab === 'drink') return m.category === 'drink' || m.category === 'coffee';
-                            if (currentTab === 'dessert') return m.category === 'dessert';
-                            if (currentTab === 'set') return m.category === 'set';
-                            return true;
+                          const filteredMenuList = enrichedCompMenus.filter((m) => {
+                            if (currentTab === 'all') return true;
+                            return m.subcategory === currentTab;
                           });
 
                           return filteredMenuList.length > 0 ? (
-                            <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 overflow-hidden bg-white text-xs max-h-52 sm:max-h-60 overflow-y-auto pr-0.5">
-                              {filteredMenuList.map((m) => (
-                                <div key={m.id} className="p-2 px-3 flex items-center justify-between hover:bg-stone-50 transition-colors">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold shrink-0 ${
-                                      m.category === 'drink' || m.category === 'coffee'
-                                        ? 'bg-amber-100 text-amber-800'
-                                        : m.category === 'dessert'
-                                        ? 'bg-rose-100 text-rose-800'
-                                        : 'bg-purple-100 text-purple-800'
-                                    }`}>
-                                      {m.category === 'drink' || m.category === 'coffee' ? '음료' : m.category === 'dessert' ? '디저트' : '세트'}
-                                    </span>
-                                    <span className="font-bold text-stone-900 truncate">{m.name}</span>
-                                    {m.is_signature && (
-                                      <span className="px-1.5 py-0.2 rounded bg-amber-500 text-stone-950 text-[8.5px] font-black shrink-0">
-                                        시그니처
+                            <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 overflow-hidden bg-white text-xs max-h-56 sm:max-h-64 overflow-y-auto pr-0.5">
+                              {filteredMenuList.map((m, idx) => {
+                                const meta = SUBCATEGORIES[m.subcategory] || SUBCATEGORIES.coffee;
+                                const eundalRefPrice = eundalBenchmark.subcategories?.[m.subcategory] || 4000;
+                                const diff = m.price - eundalRefPrice;
+
+                                return (
+                                  <div key={m.id || idx} className="p-2.5 px-3 flex items-center justify-between hover:bg-stone-50 transition-colors">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span
+                                        className={`text-[9px] px-1.5 py-0.5 rounded font-extrabold shrink-0 border ${meta.badgeBg} ${meta.badgeText} ${meta.badgeBorder}`}
+                                      >
+                                        {meta.icon} {meta.label}
                                       </span>
-                                    )}
+                                      <span className="font-bold text-stone-900 truncate">{m.name}</span>
+                                      {m.is_signature && (
+                                        <span className="px-1.5 py-0.2 rounded bg-amber-500 text-stone-950 text-[8.5px] font-black shrink-0">
+                                          시그니처
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                                      {diff !== 0 && (
+                                        <span className={`text-[10px] font-bold ${diff > 0 ? 'text-rose-600' : 'text-blue-600'}`}>
+                                          {diff > 0 ? `▲+${diff.toLocaleString()}` : `▼${diff.toLocaleString()}`}
+                                        </span>
+                                      )}
+                                      <span className="font-extrabold text-stone-900 text-xs">{m.price.toLocaleString()}원</span>
+                                    </div>
                                   </div>
-                                  <span className="font-bold text-stone-900 shrink-0 ml-2">{m.price.toLocaleString()}원</span>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="p-4 text-center text-[11px] text-stone-400 bg-stone-50 rounded-xl border border-stone-200/60">
                               {currentTab === 'all'
-                                ? (comp.representative_menu || '등록된 메뉴가 없습니다.')
-                                : '해당 카테고리에 등록된 메뉴가 없습니다.'}
+                                ? comp.representative_menu || '등록된 메뉴가 없습니다.'
+                                : `해당 ${SUBCATEGORIES[currentTab as MenuSubcategory]?.label || ''} 카테고리에 등록된 메뉴가 없습니다.`}
                             </div>
                           );
                         })()}

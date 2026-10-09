@@ -44,57 +44,54 @@ export default function MiniMapPopup({
   const cleanAddress = address ? address.replace(/\(우:[^)]+\)/g, '').trim() : '';
   const displayName = storeName || title;
 
-  // 1. 매장 픽업인지 배달 목적지인지 판별
-  const isPickupStore =
-    !isDelivery &&
-    (Boolean(naverPlaceId) ||
-      cleanAddress.includes('조원') ||
-      cleanAddress.includes('파장') ||
-      displayName.includes('은달'));
-
-  // 2. 알려진 매장인 경우 네이버 플레이스 번호 기반 위경도 매핑
-  let knownLat = latitude;
-  let knownLng = longitude;
   let finalPlaceId = naverPlaceId;
 
-  if (isPickupStore) {
-    if (
-      finalPlaceId === '1245444726' ||
-      cleanAddress.includes('조원') ||
-      displayName.includes('조원') ||
-      displayName.includes('1호점')
-    ) {
+  // 1. 은달 직영 픽업 매장(1호점, 2호점) 여부 명확히 판별
+  const isEundalPickupStore =
+    finalPlaceId === '1245444726' ||
+    finalPlaceId === '1869537461' ||
+    (displayName.includes('은달') && (displayName.includes('1호점') || displayName.includes('2호점') || displayName.includes('본점')));
+
+  const isPickupStore = !isDelivery && (Boolean(naverPlaceId) || isEundalPickupStore);
+
+  // 2. 알려진 은달 매장인 경우에만 은달 직영점 위경도 고정 매핑
+  let knownLat = latitude && latitude > 0 ? latitude : undefined;
+  let knownLng = longitude && longitude > 0 ? longitude : undefined;
+
+  if (isEundalPickupStore) {
+    if (finalPlaceId === '1245444726' || displayName.includes('1호점') || cleanAddress.includes('조원로')) {
       finalPlaceId = '1245444726';
       if (!knownLat) knownLat = 37.2966787;
       if (!knownLng) knownLng = 127.0215096;
-    } else if (
-      finalPlaceId === '1869537461' ||
-      cleanAddress.includes('파장') ||
-      cleanAddress.includes('경수대로1043번길') ||
-      displayName.includes('파장') ||
-      displayName.includes('2호점')
-    ) {
+    } else if (finalPlaceId === '1869537461' || displayName.includes('2호점') || cleanAddress.includes('경수대로1043번길')) {
       finalPlaceId = '1869537461';
       if (!knownLat) knownLat = 37.3075666;
       if (!knownLng) knownLng = 126.9978752;
     }
   }
 
-  // 3. 배달 목적지 주소의 경우: 위경도가 없으면 자동 주소 지오코딩 분석 실행
+  // 3. 위경도 유효성 및 자동 주소 지오코딩 분석 실행
   useEffect(() => {
-    if (!isOpen || !cleanAddress) return;
+    if (!isOpen) return;
 
-    if (isPickupStore && knownLat && knownLng) {
-      setGeoCoords({ lat: knownLat, lng: knownLng });
-      return;
-    }
-
-    if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude) && latitude > 0) {
+    // 이미 유효한 위경도가 전달된 경우
+    if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude) && latitude > 0 && longitude > 0) {
       setGeoCoords({ lat: latitude, lng: longitude });
       return;
     }
 
-    // 주소 기반 위경도 분석 API 호출
+    if (knownLat && knownLng) {
+      setGeoCoords({ lat: knownLat, lng: knownLng });
+      return;
+    }
+
+    if (!cleanAddress) {
+      // 주소가 없으면 기본 수원 중심 좌표
+      setGeoCoords({ lat: 37.2966787, lng: 127.0215096 });
+      return;
+    }
+
+    // 주소 기반 위경도 분석 API 호출 (미등록 경쟁사, 배달 목적지 등)
     let isCancelled = false;
     setGeocoding(true);
 
@@ -106,7 +103,7 @@ export default function MiniMapPopup({
         }
       })
       .catch((err) => {
-        console.error('Failed to geocode delivery address:', err);
+        console.error('Failed to geocode address:', err);
       })
       .finally(() => {
         if (!isCancelled) setGeocoding(false);
@@ -115,17 +112,17 @@ export default function MiniMapPopup({
     return () => {
       isCancelled = true;
     };
-  }, [isOpen, cleanAddress, latitude, longitude, isPickupStore, knownLat, knownLng]);
+  }, [isOpen, cleanAddress, latitude, longitude, knownLat, knownLng]);
 
-  if (!isOpen || !address) return null;
+  if (!isOpen) return null;
 
   // 최종 사용할 위도/경도
-  const mapLat = geoCoords?.lat || knownLat || latitude || 37.2966787;
-  const mapLng = geoCoords?.lng || knownLng || longitude || 127.0215096;
+  const mapLat = geoCoords?.lat || knownLat || (latitude && latitude > 0 ? latitude : 37.2966787);
+  const mapLng = geoCoords?.lng || knownLng || (longitude && longitude > 0 ? longitude : 127.0215096);
 
   // 네이버 지도/플레이스 링크 생성
-  const fullSearchQuery = `${cleanAddress} ${detailAddress || ''}`.trim();
-  const naverUrl = isPickupStore && finalPlaceId
+  const fullSearchQuery = cleanAddress ? `${cleanAddress} ${detailAddress || ''}`.trim() : displayName;
+  const naverUrl = finalPlaceId
     ? `https://m.place.naver.com/restaurant/${finalPlaceId}/home`
     : `https://map.naver.com/p/search/${encodeURIComponent(fullSearchQuery)}`;
 
