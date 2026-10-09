@@ -47,11 +47,15 @@ export interface CafeInfo {
 }
 
 // 주변 상권 및 경쟁사 정보
+// 주변 카페 비교 세부분류 (커피류, 주스류, 차음료류, 디저트류, 샌드위치류, 세트류)
+export type MenuSubcategory = 'coffee' | 'juice' | 'tea' | 'dessert' | 'sandwich' | 'set';
+
 export interface CompetitorMenu {
   id: string;
   competitor_id: string;
   name: string;
   category: 'coffee' | 'beverage' | 'dessert' | 'bakery' | 'set' | string;
+  subcategory?: MenuSubcategory;
   price: number;
   description?: string;
   image_url?: string;
@@ -86,6 +90,9 @@ export interface Competitor {
   avg_drink_price?: number;
   avg_dessert_price?: number;
   avg_set_price?: number;
+  avg_juice_price?: number;
+  avg_tea_price?: number;
+  avg_sandwich_price?: number;
   is_active: boolean;
   sort_order: number;
   last_updated_at?: string;

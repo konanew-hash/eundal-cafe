@@ -33,20 +33,29 @@ import {
   Check,
   Info,
 } from 'lucide-react';
-import { Competitor } from '@/lib/types';
+import { Competitor, MenuSubcategory } from '@/lib/types';
 import MiniMapPopup from '@/components/MiniMapPopup';
 import CompetitorImage from '@/components/CompetitorImage';
 import { EUNDAL_STORE1_COORDS, EUNDAL_STORE2_COORDS } from '@/lib/geoUtils';
+import { SUBCATEGORIES, SubcategoryMeta, categorizeMenuDetailed } from '@/lib/competitorUtils';
 
 export default function AdminCompetitorsPage() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [eundalMenus, setEundalMenus] = useState<any[]>([]);
-  const [eundalBenchmark, setEundalBenchmark] = useState({
+  const [eundalBenchmark, setEundalBenchmark] = useState<any>({
     americanoPrice: 3000,
     lattePrice: 4000,
     avgDrinkPrice: 5000,
     avgDessertPrice: 4400,
     avgSetPrice: 7500,
+    subcategories: {
+      coffee: 3800,
+      juice: 5200,
+      tea: 4600,
+      dessert: 3500,
+      sandwich: 6200,
+      set: 7500,
+    },
     store1: EUNDAL_STORE1_COORDS,
     store2: EUNDAL_STORE2_COORDS,
   });
@@ -54,18 +63,29 @@ export default function AdminCompetitorsPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
 
-  // 뷰 모드: 'cards' | 'chart' | 'matrix' | 'similarity'
-  const [viewMode, setViewMode] = useState<'cards' | 'chart' | 'matrix' | 'similarity'>('similarity');
+  // 뷰 모드: 'similarity' | 'radar' | 'cards' | 'chart' | 'matrix'
+  const [viewMode, setViewMode] = useState<'similarity' | 'radar' | 'cards' | 'chart' | 'matrix'>('similarity');
 
-  // 차트 비교 카테고리: 'drink' | 'dessert' | 'set'
-  const [chartCategory, setChartCategory] = useState<'drink' | 'dessert' | 'set'>('drink');
+  // 차트 비교 카테고리: 6대 세부분류 ('coffee' | 'juice' | 'tea' | 'dessert' | 'sandwich' | 'set')
+  const [chartCategory, setChartCategory] = useState<MenuSubcategory>('coffee');
 
-  // 유사도 비교 필터: 'all' | 'drink' | 'dessert'
-  const [similarityCategoryFilter, setSimilarityCategoryFilter] = useState<'all' | 'drink' | 'dessert'>('all');
+  // 유사도 비교 필터: 'all' | 6대 세부분류
+  const [similarityCategoryFilter, setSimilarityCategoryFilter] = useState<'all' | MenuSubcategory>('all');
   const [similaritySearch, setSimilaritySearch] = useState('');
   const [similarityViewType, setSimilarityViewType] = useState<'table' | 'cards'>('table'); // 📋 요약 표 뷰 vs 📑 상세 카드 뷰
   const [similarityQuickChip, setSimilarityQuickChip] = useState<string>('all'); // 대표 메뉴 퀵 필터
   const [expandedMenuIds, setExpandedMenuIds] = useState<Record<string, boolean>>({}); // 표 뷰 아코디언 토글
+
+  // 상권 레이더 (네이버 플레이스 5km 탐색 및 비교 등록 관리) 상태
+  const [radarPlaces, setRadarPlaces] = useState<any[]>([]);
+  const [radarSummary, setRadarSummary] = useState<any>(null);
+  const [radarLoading, setRadarLoading] = useState(false);
+  const [radarBranchFilter, setRadarBranchFilter] = useState<'all' | 'store1' | 'store2'>('all');
+  const [radarStatusFilter, setRadarStatusFilter] = useState<'all' | 'registered' | 'unregistered'>('all');
+  const [radarSearch, setRadarSearch] = useState('');
+  const [quickAddingId, setQuickAddingId] = useState<string | null>(null);
+  const [quickAddInput, setQuickAddInput] = useState('');
+  const [quickAddMessage, setQuickAddMessage] = useState('');
 
   // 필터 상태
   const [selectedBranch, setSelectedBranch] = useState<'all' | 'store1' | 'store2'>('all');
@@ -145,9 +165,74 @@ export default function AdminCompetitorsPage() {
     }
   };
 
+  // 1-1. 상권 레이더 (네이버 플레이스 5km 카페 후보 목록 및 등록 여부) 로드
+  const loadRadarPlaces = async () => {
+    try {
+      setRadarLoading(true);
+      const params = new URLSearchParams({
+        branch: radarBranchFilter,
+        status: radarStatusFilter,
+        search: radarSearch,
+      });
+      const res = await fetch(`/api/admin/competitors/radar?${params.toString()}`);
+      const data = await res.json();
+      if (data.places) {
+        setRadarPlaces(data.places);
+      }
+      if (data.summary) {
+        setRadarSummary(data.summary);
+      }
+    } catch (err) {
+      console.error('Failed to load radar places:', err);
+    } finally {
+      setRadarLoading(false);
+    }
+  };
+
+  // 원터치 비교 분석에 추가 핸들러
+  const handleQuickAdd = async (placeId: string, placeName?: string) => {
+    if (!placeId) return;
+    try {
+      setQuickAddingId(placeId);
+      setQuickAddMessage('');
+      const res = await fetch('/api/admin/competitors/quick-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ naver_place_id: placeId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setQuickAddMessage(data.message || `'${placeName || placeId}'(이)가 성공적으로 비교 분석에 추가되었습니다.`);
+        await Promise.all([loadData(), loadRadarPlaces()]);
+      } else {
+        alert(data.error || data.message || '원터치 추가 처리 중 오류가 발생했습니다.');
+      }
+    } catch {
+      alert('네트워크 오류가 발생했습니다.');
+    } finally {
+      setQuickAddingId(null);
+      setTimeout(() => setQuickAddMessage(''), 6000);
+    }
+  };
+
+  // 직접 입력창을 통한 원터치 추가 핸들러
+  const handleCustomQuickAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickAddInput.trim()) return;
+    await handleQuickAdd(quickAddInput.trim());
+    setQuickAddInput('');
+  };
+
   useEffect(() => {
     loadData();
+    loadRadarPlaces();
   }, []);
+
+  useEffect(() => {
+    if (viewMode === 'radar') {
+      loadRadarPlaces();
+    }
+  }, [radarBranchFilter, radarStatusFilter, radarSearch, viewMode]);
 
   // 메뉴명 텍스트 정규화 (공백, 괄호, 불용어 제거)
   const normalizeMenuName = (name: string): string => {
@@ -215,6 +300,7 @@ export default function AdminCompetitorsPage() {
       name: string;
       price: number;
       category: string;
+      subcategory?: string;
       naverPlaceId: string;
       naverPlaceUrl: string;
     }> = [];
@@ -222,6 +308,7 @@ export default function AdminCompetitorsPage() {
     competitors.forEach((c) => {
       (c.menus || []).forEach((m) => {
         if (m.name && m.price > 0) {
+          const { mainCategory, subcategory } = categorizeMenuDetailed(m.name, m.category);
           allCompMenus.push({
             competitorId: c.id,
             competitorName: c.name,
@@ -230,7 +317,8 @@ export default function AdminCompetitorsPage() {
             distance2: c.distance_store2,
             name: m.name,
             price: m.price,
-            category: m.category || 'drink',
+            category: mainCategory,
+            subcategory,
             naverPlaceId: c.naver_place_id || '',
             naverPlaceUrl: c.naver_place_url || '',
           });
@@ -258,6 +346,7 @@ export default function AdminCompetitorsPage() {
             similarity: sim,
             priceDiff,
             priceDiffPercent,
+            subcategory: cMenu.subcategory,
             naverPlaceId: cMenu.naverPlaceId,
             naverPlaceUrl: cMenu.naverPlaceUrl,
           };
@@ -301,18 +390,21 @@ export default function AdminCompetitorsPage() {
     { id: 'americano', label: '☕ 아메리카노', keyword: '아메리카노' },
     { id: 'latte', label: '🥛 카페라떼', keyword: '카페라떼|라떼' },
     { id: 'vanilla', label: '🍯 바닐라라떼', keyword: '바닐라' },
-    { id: 'strawberry', label: '🍓 딸기음료/에이드', keyword: '딸기|에이드|주스|스무디' },
+    { id: 'strawberry', label: '🍓 딸기/에이드', keyword: '딸기|에이드|주스|스무디' },
+    { id: 'tea', label: '🍵 티/밀크티', keyword: '밀크티|홍차|녹차|얼그레이|캐모마일' },
     { id: 'sandwich', label: '🥪 샌드위치', keyword: '샌드위치' },
     { id: 'bakery', label: '🥐 소금빵/베이커리', keyword: '소금빵|크루아상|식빵|베이글' },
     { id: 'cookie', label: '🍪 쿠키/구움과자', keyword: '쿠키|스콘|휘낭시에|마들렌|마카롱' },
   ];
 
-  // 1:1 비교 필터링 결과 (카테고리 + 퀵 칩 + 검색어)
+  // 1:1 비교 필터링 결과 (6대 세부분류 + 퀵 칩 + 검색어)
   const filteredSimilarMenus = useMemo(() => {
     return similarMenuComparison.filter((item) => {
-      // 1. 카테고리 필터
-      if (similarityCategoryFilter === 'drink' && !item.eundalMenu.is_drink) return false;
-      if (similarityCategoryFilter === 'dessert' && !item.eundalMenu.is_dessert) return false;
+      // 1. 6대 세부분류 필터 (coffee, juice, tea, dessert, sandwich, set)
+      if (similarityCategoryFilter !== 'all') {
+        const eSub = item.eundalMenu.subcategory || categorizeMenuDetailed(item.eundalMenu.name, item.eundalMenu.category_name).subcategory;
+        if (eSub !== similarityCategoryFilter) return false;
+      }
 
       // 2. 퀵 칩 필터
       if (similarityQuickChip !== 'all') {
@@ -947,7 +1039,7 @@ export default function AdminCompetitorsPage() {
             </button>
           </div>
 
-          {/* 뷰 모드 전환 (1:1 메뉴 유사도 비교 / 상세 카드 / 가격 비교 차트 / 인지도 매트릭스) */}
+          {/* 뷰 모드 전환 (1:1 메뉴 유사도 비교 / 5km 상권 레이더 / 상세 카드 / 가격 비교 차트 / 인지도 매트릭스) */}
           <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-2xl self-start lg:self-auto overflow-x-auto no-scrollbar">
             <button
               onClick={() => setViewMode('similarity')}
@@ -956,7 +1048,16 @@ export default function AdminCompetitorsPage() {
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-stone-950" />
-              <span>1:1 메뉴 유사도 비교 (80%+)</span>
+              <span>1:1 메뉴 유사도 비교</span>
+            </button>
+            <button
+              onClick={() => setViewMode('radar')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                viewMode === 'radar' ? 'bg-amber-500 text-stone-950 shadow-xs' : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <Navigation className="w-3.5 h-3.5 text-stone-950" />
+              <span>📍 5km 상권 레이더 (발굴&원터치 추가)</span>
             </button>
             <button
               onClick={() => setViewMode('cards')}
@@ -1161,7 +1262,7 @@ export default function AdminCompetitorsPage() {
             {/* 상단 줄: 카테고리 탭 + 일괄 토글 */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-stone-500 mr-1">분류:</span>
+                <span className="text-xs font-bold text-stone-500 mr-1">세부 분류:</span>
                 <button
                   onClick={() => setSimilarityCategoryFilter('all')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
@@ -1173,15 +1274,37 @@ export default function AdminCompetitorsPage() {
                   전체 ({similarMenuComparison.length})
                 </button>
                 <button
-                  onClick={() => setSimilarityCategoryFilter('drink')}
+                  onClick={() => setSimilarityCategoryFilter('coffee')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
-                    similarityCategoryFilter === 'drink'
+                    similarityCategoryFilter === 'coffee'
                       ? 'bg-amber-600 text-white shadow-2xs'
                       : 'bg-white text-stone-600 border border-stone-200/80 hover:bg-stone-100'
                   }`}
                 >
                   <Coffee className="w-3 h-3" />
-                  <span>음료류</span>
+                  <span>커피류</span>
+                </button>
+                <button
+                  onClick={() => setSimilarityCategoryFilter('juice')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    similarityCategoryFilter === 'juice'
+                      ? 'bg-orange-600 text-white shadow-2xs'
+                      : 'bg-white text-stone-600 border border-stone-200/80 hover:bg-stone-100'
+                  }`}
+                >
+                  <span>🍹</span>
+                  <span>주스·에이드·스무디</span>
+                </button>
+                <button
+                  onClick={() => setSimilarityCategoryFilter('tea')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    similarityCategoryFilter === 'tea'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-white text-stone-600 border border-stone-200/80 hover:bg-stone-100'
+                  }`}
+                >
+                  <span>🍵</span>
+                  <span>차(Tea) & 밀크티</span>
                 </button>
                 <button
                   onClick={() => setSimilarityCategoryFilter('dessert')}
@@ -1192,7 +1315,29 @@ export default function AdminCompetitorsPage() {
                   }`}
                 >
                   <Cake className="w-3 h-3" />
-                  <span>디저트/샌드위치</span>
+                  <span>디저트 & 구움과자</span>
+                </button>
+                <button
+                  onClick={() => setSimilarityCategoryFilter('sandwich')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    similarityCategoryFilter === 'sandwich'
+                      ? 'bg-lime-700 text-white shadow-2xs'
+                      : 'bg-white text-stone-600 border border-stone-200/80 hover:bg-stone-100'
+                  }`}
+                >
+                  <span>🥪</span>
+                  <span>샌드위치 & 브런치</span>
+                </button>
+                <button
+                  onClick={() => setSimilarityCategoryFilter('set')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    similarityCategoryFilter === 'set'
+                      ? 'bg-purple-600 text-white shadow-2xs'
+                      : 'bg-white text-stone-600 border border-stone-200/80 hover:bg-stone-100'
+                  }`}
+                >
+                  <Package className="w-3 h-3" />
+                  <span>세트 & 다과 패키지</span>
                 </button>
               </div>
 
@@ -1331,15 +1476,17 @@ export default function AdminCompetitorsPage() {
                               {/* 메뉴명 / 카테고리 */}
                               <td className="py-3 px-3.5">
                                 <div className="flex items-center gap-2">
-                                  <span
-                                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                                      eundalMenu.is_drink
-                                        ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                                        : 'bg-rose-100 text-rose-900 border border-rose-200'
-                                    }`}
-                                  >
-                                    {eundalMenu.category_name || (eundalMenu.is_drink ? '음료' : '디저트')}
-                                  </span>
+                                  {(() => {
+                                    const subKey = (eundalMenu.subcategory || categorizeMenuDetailed(eundalMenu.name, eundalMenu.category_name).subcategory) as MenuSubcategory;
+                                    const meta = SUBCATEGORIES[subKey] || SUBCATEGORIES.coffee;
+                                    return (
+                                      <span
+                                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 border ${meta.badgeBg} ${meta.badgeText} ${meta.badgeBorder}`}
+                                      >
+                                        {meta.icon} {meta.label}
+                                      </span>
+                                    );
+                                  })()}
                                   <span className="font-extrabold text-stone-900">
                                     {eundalMenu.name}
                                   </span>
@@ -1599,15 +1746,17 @@ export default function AdminCompetitorsPage() {
                     {/* 상단: 은달 메뉴 요약 & 주변 평균 요약 바 */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-stone-100">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`text-[10.5px] px-2 py-0.5 rounded-full font-bold ${
-                            eundalMenu.is_drink
-                              ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                              : 'bg-rose-100 text-rose-900 border border-rose-200'
-                          }`}
-                        >
-                          {eundalMenu.category_name || (eundalMenu.is_drink ? '음료' : '디저트')}
-                        </span>
+                        {(() => {
+                          const subKey = (eundalMenu.subcategory || categorizeMenuDetailed(eundalMenu.name, eundalMenu.category_name).subcategory) as MenuSubcategory;
+                          const meta = SUBCATEGORIES[subKey] || SUBCATEGORIES.coffee;
+                          return (
+                            <span
+                              className={`text-[10.5px] px-2 py-0.5 rounded-full font-bold border ${meta.badgeBg} ${meta.badgeText} ${meta.badgeBorder}`}
+                            >
+                              {meta.icon} {meta.label}
+                            </span>
+                          );
+                        })()}
                         <h4 className="font-black text-sm text-stone-900">
                           {eundalMenu.name}
                         </h4>
@@ -1758,6 +1907,443 @@ export default function AdminCompetitorsPage() {
         </div>
       )}
 
+      {/* 모드: 은달 1·2호점 5km 네이버 플레이스 상권 레이더 (탐색 & 등록 여부 & 원터치 추가) */}
+      {viewMode === 'radar' && (
+        <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-6">
+          {/* 1. 상단 타이틀 & 새로고침 & 안내 */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-stone-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-amber-500 text-stone-950 font-black">
+                  <Navigation className="w-4 h-4" />
+                </span>
+                <h3 className="text-base font-black text-stone-900 tracking-tight">
+                  은달 1·2호점 반경 5km 네이버 플레이스 상권 레이더
+                </h3>
+              </div>
+              <p className="text-xs text-stone-500 mt-1.5 leading-relaxed">
+                조원동 1호점 및 파장동 2호점 반경 5km 내의 검증된 네이버 플레이스 카페 목록입니다.
+                현재 비교 시스템에 <strong>등록 여부</strong>를 확인하고, 미등록 매장은 <strong>원터치로 실시간 정보·메뉴를 수집하여 즉시 추가</strong>할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={loadRadarPlaces}
+                disabled={radarLoading}
+                className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                title="상권 레이더 목록 새로고침"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${radarLoading ? 'animate-spin' : ''}`} />
+                <span>새로고침</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 알림 메시지 배너 */}
+          {quickAddMessage && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-fade-in shadow-2xs">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{quickAddMessage}</span>
+            </div>
+          )}
+
+          {/* 2. 네이버 플레이스 ID 직접 퀵 추가 폼 바 */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-stone-900 to-stone-800 text-white shadow-md">
+            <form onSubmit={handleCustomQuickAdd} className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shrink-0">
+                  ⚡
+                </span>
+                <div>
+                  <h4 className="font-extrabold text-xs sm:text-sm text-stone-100">
+                    신규 매장 네이버 플레이스 ID로 원터치 즉시 등록
+                  </h4>
+                  <p className="text-[11px] text-stone-400 mt-0.5">
+                    네이버 플레이스 고유 숫자 ID(예: 1601638464)를 입력하면 실시간으로 메뉴와 가격을 크롤링하여 등록합니다.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <input
+                  type="text"
+                  placeholder="플레이스 ID (예: 1805614608)"
+                  value={quickAddInput}
+                  onChange={(e) => setQuickAddInput(e.target.value)}
+                  className="px-3 py-2 bg-stone-800/90 border border-stone-700 rounded-xl text-xs text-white placeholder-stone-500 font-mono focus:outline-none focus:border-amber-400 flex-1 sm:w-56"
+                />
+                <button
+                  type="submit"
+                  disabled={!quickAddInput.trim() || !!quickAddingId}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:bg-stone-700 text-stone-950 font-black rounded-xl text-xs flex items-center gap-1.5 transition-all shrink-0 shadow-sm"
+                >
+                  {quickAddingId === quickAddInput.trim() ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>수집 중...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>원터치 추가</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* 3. KPI 상권 통계 대시보드 */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80">
+              <div className="text-[11px] font-medium text-stone-500">발굴 카페 총계</div>
+              <div className="text-lg font-black text-stone-900 mt-0.5">
+                {radarSummary?.totalCount || radarPlaces.length}곳
+              </div>
+              <div className="text-[10px] text-stone-400 mt-0.5">5km 반경 내 검증</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60">
+              <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>비교 등록 완료</span>
+              </div>
+              <div className="text-lg font-black text-emerald-700 mt-0.5">
+                {radarSummary?.registeredCount || 0}곳
+              </div>
+              <div className="text-[10px] text-emerald-600 mt-0.5">
+                점유율 {radarSummary?.totalCount ? Math.round(((radarSummary.registeredCount || 0) / radarSummary.totalCount) * 100) : 0}%
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/60">
+              <div className="text-[11px] font-bold text-amber-800 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>미등록 발굴 후보</span>
+              </div>
+              <div className="text-lg font-black text-amber-700 mt-0.5">
+                {radarSummary?.unregisteredCount || 0}곳
+              </div>
+              <div className="text-[10px] text-amber-600 mt-0.5">원터치 추가 가능</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80">
+              <div className="text-[11px] font-medium text-stone-500">1호점(조원) 5km</div>
+              <div className="text-lg font-black text-stone-900 mt-0.5">
+                {radarSummary?.withinStore1 || 0}곳
+              </div>
+              <div className="text-[10px] text-stone-400 mt-0.5">북수원·조원·송죽 상권</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80">
+              <div className="text-[11px] font-medium text-stone-500">2호점(파장) 5km</div>
+              <div className="text-lg font-black text-stone-900 mt-0.5">
+                {radarSummary?.withinStore2 || 0}곳
+              </div>
+              <div className="text-[10px] text-stone-400 mt-0.5">파장·정자·이목 상권</div>
+            </div>
+          </div>
+
+          {/* 4. 필터 및 검색 툴바 */}
+          <div className="space-y-3 bg-stone-50/70 p-3.5 rounded-2xl border border-stone-200/60">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              {/* 등록 여부 필터 */}
+              <div className="flex items-center gap-1 p-1 bg-white rounded-xl border border-stone-200/80">
+                <button
+                  type="button"
+                  onClick={() => setRadarStatusFilter('all')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    radarStatusFilter === 'all'
+                      ? 'bg-stone-900 text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  전체 ({radarPlaces.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRadarStatusFilter('unregistered')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    radarStatusFilter === 'unregistered'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-amber-700'
+                  }`}
+                >
+                  <span>⚠️ 미등록 후보만</span>
+                  <span className="text-[10px] opacity-80">({radarSummary?.unregisteredCount || 0})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRadarStatusFilter('registered')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    radarStatusFilter === 'registered'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-emerald-700'
+                  }`}
+                >
+                  <span>✅ 등록 완료만</span>
+                  <span className="text-[10px] opacity-80">({radarSummary?.registeredCount || 0})</span>
+                </button>
+              </div>
+
+              {/* 지점 중심 필터 */}
+              <div className="flex items-center gap-1 p-1 bg-white rounded-xl border border-stone-200/80">
+                <button
+                  type="button"
+                  onClick={() => setRadarBranchFilter('all')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    radarBranchFilter === 'all'
+                      ? 'bg-stone-800 text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  전체 5km
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRadarBranchFilter('store1')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    radarBranchFilter === 'store1'
+                      ? 'bg-stone-800 text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  1호점(조원동) 5km
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRadarBranchFilter('store2')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    radarBranchFilter === 'store2'
+                      ? 'bg-stone-800 text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  2호점(파장동) 5km
+                </button>
+              </div>
+
+              {/* 실시간 검색창 */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="카페 상호명, 주소, ID 검색..."
+                  value={radarSearch}
+                  onChange={(e) => setRadarSearch(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-400 w-full sm:w-56"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 5. 후보 매장 카드 그리드 리스트 */}
+          {radarLoading ? (
+            <div className="py-16 text-center text-xs text-stone-400 space-y-2">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto text-amber-600" />
+              <p>5km 반경 네이버 플레이스 상권 데이터를 스캔하는 중입니다...</p>
+            </div>
+          ) : radarPlaces.length === 0 ? (
+            <div className="py-16 text-center text-xs text-stone-400 bg-stone-50 rounded-2xl border border-stone-200">
+              조건에 일치하는 5km 상권 카페가 없습니다.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[700px] overflow-y-auto pr-1">
+              {radarPlaces.map((place) => {
+                const isAdding = quickAddingId === place.naver_place_id;
+
+                return (
+                  <div
+                    key={place.naver_place_id}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3.5 ${
+                      place.is_registered
+                        ? 'bg-white border-stone-200/90 hover:border-emerald-300 shadow-2xs'
+                        : 'bg-amber-50/20 border-amber-200/70 hover:border-amber-400 shadow-xs'
+                    }`}
+                  >
+                    {/* 상단: 상호명 & 등록 여부 뱃지 */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="font-black text-sm text-stone-900 truncate">
+                              {place.name}
+                            </h4>
+                            {place.brand_type === 'small_coffee' && (
+                              <span className="text-[9.5px] px-1.5 py-0.2 rounded font-bold bg-amber-100 text-amber-800">
+                                소규모 커피
+                              </span>
+                            )}
+                            {place.brand_type === 'dessert_cafe' && (
+                              <span className="text-[9.5px] px-1.5 py-0.2 rounded font-bold bg-rose-100 text-rose-800">
+                                디저트 카페
+                              </span>
+                            )}
+                            {place.brand_type === 'specialty' && (
+                              <span className="text-[9.5px] px-1.5 py-0.2 rounded font-bold bg-purple-100 text-purple-800">
+                                스페셜티
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-500 truncate mt-0.5" title={place.address}>
+                            {place.address}
+                          </p>
+                        </div>
+
+                        {/* 등록 상태 뱃지 */}
+                        <div className="shrink-0">
+                          {place.is_registered ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              <CheckCircle className="w-3 h-3 text-emerald-600" />
+                              <span>비교 등록됨</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-extrabold bg-amber-100 text-amber-900 border border-amber-200">
+                              <span>⚠️ 미등록 후보</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 네이버 플레이스 ID & 네이버 링크 & 거리 */}
+                      <div className="flex items-center gap-2 text-[10.5px] text-stone-500 flex-wrap pt-1">
+                        <span className="font-mono bg-stone-100 text-stone-700 px-1.5 py-0.2 rounded border border-stone-200/70 font-bold">
+                          ID: {place.naver_place_id}
+                        </span>
+                        {place.naver_place_url && (
+                          <a
+                            href={place.naver_place_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-700 hover:text-emerald-900 underline font-bold flex items-center gap-0.5"
+                            title="네이버 플레이스 바로가기"
+                          >
+                            <span>플레이스</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                        <span className="text-stone-300">|</span>
+                        <span>1호점 {place.distance_store1?.toFixed(1) || '?'}km</span>
+                        <span>•</span>
+                        <span>2호점 {place.distance_store2?.toFixed(1) || '?'}km</span>
+                      </div>
+                    </div>
+
+                    {/* 중단: 네이버 평점 & 리뷰 & 대표메뉴 안내 */}
+                    <div className="p-2.5 rounded-xl bg-stone-50/80 border border-stone-200/60 space-y-1 text-xs">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          <span className="font-extrabold text-stone-900">{place.rating || 4.5}</span>
+                          <span className="text-stone-400 text-[10px]">
+                            (리뷰 {(place.review_count || 0).toLocaleString()}개)
+                          </span>
+                        </div>
+                        {place.blog_review_count > 0 && (
+                          <span className="text-[10px] text-stone-400">
+                            블로그 {place.blog_review_count}개
+                          </span>
+                        )}
+                      </div>
+                      {place.representative_menu && (
+                        <p className="text-[11px] text-stone-600 truncate font-medium">
+                          <span className="text-stone-400 mr-1">대표메뉴:</span>
+                          {place.representative_menu}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* 하단: 액션 버튼 바 (원터치 추가 버튼 or 등록완료 안내 + 4대 지도 확인 버튼) */}
+                    <div className="space-y-2 pt-1 border-t border-stone-100">
+                      {/* 원터치 추가 액션 */}
+                      {!place.is_registered ? (
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAdd(place.naver_place_id, place.name)}
+                          disabled={isAdding}
+                          className="w-full py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-stone-300 disabled:to-stone-400 text-stone-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                        >
+                          {isAdding ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>실시간 메뉴 수집 및 추가 중...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>+ 원터치 비교 분석에 추가</span>
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="w-full py-1.5 bg-emerald-50 text-emerald-800 rounded-xl text-[11px] font-bold text-center border border-emerald-200/80 flex items-center justify-center gap-1">
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>비교 분석 등록 완료된 매장입니다</span>
+                        </div>
+                      )}
+
+                      {/* 픽업 매장 관리와 동일한 4대 지도 확인 버튼 탑재 */}
+                      <div className="flex items-center gap-1 justify-between text-[10px] pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // 미니 지도 팝업을 위해 가상 Competitor 규격 전달
+                            setMapTarget({
+                              id: place.registered_competitor_id || place.naver_place_id,
+                              name: place.name,
+                              address: place.address,
+                              brand_type: place.brand_type,
+                              latitude: 37.3000,
+                              longitude: 127.0100,
+                              distance_store1: place.distance_store1,
+                              distance_store2: place.distance_store2,
+                              rating: place.rating,
+                              review_count: place.review_count,
+                              naver_place_id: place.naver_place_id,
+                              naver_place_url: place.naver_place_url,
+                            } as any);
+                          }}
+                          className="px-2 py-1 rounded-md bg-stone-900 hover:bg-stone-800 text-white font-bold flex items-center gap-0.5 shadow-2xs"
+                        >
+                          <MapPin className="w-2.5 h-2.5 text-amber-400" />
+                          <span>미니 지도</span>
+                        </button>
+                        <a
+                          href={`https://map.naver.com/v5/search/${encodeURIComponent(place.address || place.name)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 flex items-center gap-0.5"
+                        >
+                          네이버 <ExternalLink className="w-2 h-2" />
+                        </a>
+                        <a
+                          href={`https://map.kakao.com/link/search/${encodeURIComponent(place.address || place.name)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 rounded-md bg-yellow-50 hover:bg-yellow-100 text-yellow-900 font-bold border border-yellow-300 flex items-center gap-0.5"
+                        >
+                          카카오 <ExternalLink className="w-2 h-2" />
+                        </a>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address || place.name)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold border border-stone-200 flex items-center gap-0.5"
+                        >
+                          구글 <ExternalLink className="w-2 h-2" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 모드 1: 음료류/디저트류/세트류 3대 카테고리 가격 비교 차트 */}
       {viewMode === 'chart' && (
         <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-6">
@@ -1772,75 +2358,110 @@ export default function AdminCompetitorsPage() {
               </p>
             </div>
 
-            {/* 카테고리 탭 (음료 / 디저트 / 세트) */}
-            <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
+            {/* 카테고리 탭 (6대 세부분류: 커피, 주스·에이드, 티·밀크티, 디저트, 샌드위치, 세트) */}
+            <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl overflow-x-auto no-scrollbar">
               <button
-                onClick={() => setChartCategory('drink')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
-                  chartCategory === 'drink' ? 'bg-amber-600 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                onClick={() => setChartCategory('coffee')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
+                  chartCategory === 'coffee' ? 'bg-amber-600 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 <Coffee className="w-3.5 h-3.5" />
-                <span>음료류 평균</span>
+                <span>☕ 커피류</span>
+              </button>
+              <button
+                onClick={() => setChartCategory('juice')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
+                  chartCategory === 'juice' ? 'bg-orange-600 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>🍹</span>
+                <span>주스·에이드</span>
+              </button>
+              <button
+                onClick={() => setChartCategory('tea')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
+                  chartCategory === 'tea' ? 'bg-emerald-600 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>🍵</span>
+                <span>차(Tea)·밀크티</span>
               </button>
               <button
                 onClick={() => setChartCategory('dessert')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
                   chartCategory === 'dessert' ? 'bg-rose-600 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 <Cake className="w-3.5 h-3.5" />
-                <span>디저트류 평균</span>
+                <span>🍰 디저트</span>
+              </button>
+              <button
+                onClick={() => setChartCategory('sandwich')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
+                  chartCategory === 'sandwich' ? 'bg-lime-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>🥪</span>
+                <span>샌드위치</span>
               </button>
               <button
                 onClick={() => setChartCategory('set')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
                   chartCategory === 'set' ? 'bg-purple-600 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 <Package className="w-3.5 h-3.5" />
-                <span>세트/단체구성 평균</span>
+                <span>🎁 세트구성</span>
               </button>
             </div>
           </div>
 
           {/* 은달 기준선 바 */}
-          <div className="p-3.5 bg-stone-900 text-white rounded-2xl flex items-center justify-between font-black text-xs shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 text-[10px]">기준점</span>
-              <span>
-                ★ 은달 카페 (
-                {chartCategory === 'drink'
-                  ? `음료 평균 ${eundalBenchmark.avgDrinkPrice.toLocaleString()}원`
-                  : chartCategory === 'dessert'
-                  ? `디저트 평균 ${eundalBenchmark.avgDessertPrice.toLocaleString()}원`
-                  : `추천세트 평균 ${eundalBenchmark.avgSetPrice.toLocaleString()}원`}
-                )
-              </span>
-            </div>
-            <div className="text-amber-300 text-sm font-bold">
-              {chartCategory === 'drink'
-                ? eundalBenchmark.avgDrinkPrice.toLocaleString()
-                : chartCategory === 'dessert'
-                ? eundalBenchmark.avgDessertPrice.toLocaleString()
-                : eundalBenchmark.avgSetPrice.toLocaleString()}원
-            </div>
-          </div>
+          {(() => {
+            const benchmarkPrice = eundalBenchmark.subcategories?.[chartCategory] || (
+              chartCategory === 'coffee' ? eundalBenchmark.americanoPrice :
+              chartCategory === 'set' ? eundalBenchmark.avgSetPrice :
+              chartCategory === 'dessert' ? eundalBenchmark.avgDessertPrice : eundalBenchmark.avgDrinkPrice
+            );
+            const categoryLabel = SUBCATEGORIES[chartCategory]?.label || chartCategory;
+
+            return (
+              <div className="p-3.5 bg-stone-900 text-white rounded-2xl flex items-center justify-between font-black text-xs shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 text-[10px]">기준점</span>
+                  <span>
+                    ★ 은달 카페 ({categoryLabel} 실시간 평균 {benchmarkPrice.toLocaleString()}원)
+                  </span>
+                </div>
+                <div className="text-amber-300 text-sm font-bold">
+                  {benchmarkPrice.toLocaleString()}원
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 경쟁사별 바 */}
           <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
             {filteredCompetitors.map((comp) => {
-              const compPrice = chartCategory === 'drink'
-                ? (comp.avg_drink_price || comp.avg_coffee_price || 4200)
-                : chartCategory === 'dessert'
-                ? (comp.avg_dessert_price || 4500)
-                : (comp.avg_set_price || 8500);
+              const compPrice =
+                chartCategory === 'coffee'
+                  ? (comp.avg_coffee_price || 3500)
+                  : chartCategory === 'juice'
+                  ? (comp.avg_juice_price || comp.avg_drink_price || 5000)
+                  : chartCategory === 'tea'
+                  ? (comp.avg_tea_price || comp.avg_drink_price || 4500)
+                  : chartCategory === 'sandwich'
+                  ? (comp.avg_sandwich_price || comp.avg_dessert_price || 6200)
+                  : chartCategory === 'dessert'
+                  ? (comp.avg_dessert_price || 3800)
+                  : (comp.avg_set_price || 7500);
 
-              const benchmarkPrice = chartCategory === 'drink'
-                ? eundalBenchmark.avgDrinkPrice
-                : chartCategory === 'dessert'
-                ? eundalBenchmark.avgDessertPrice
-                : eundalBenchmark.avgSetPrice;
+              const benchmarkPrice = eundalBenchmark.subcategories?.[chartCategory] || (
+                chartCategory === 'coffee' ? eundalBenchmark.americanoPrice :
+                chartCategory === 'set' ? eundalBenchmark.avgSetPrice :
+                chartCategory === 'dessert' ? eundalBenchmark.avgDessertPrice : eundalBenchmark.avgDrinkPrice
+              );
 
               const diff = compPrice - benchmarkPrice;
               const maxScale = chartCategory === 'set' ? 16000 : 8000;
@@ -1878,7 +2499,17 @@ export default function AdminCompetitorsPage() {
                   <div className="w-full bg-stone-200 rounded-full h-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        chartCategory === 'drink' ? 'bg-amber-700' : chartCategory === 'dessert' ? 'bg-rose-600' : 'bg-purple-700'
+                        chartCategory === 'coffee'
+                          ? 'bg-amber-700'
+                          : chartCategory === 'juice'
+                          ? 'bg-orange-600'
+                          : chartCategory === 'tea'
+                          ? 'bg-emerald-600'
+                          : chartCategory === 'dessert'
+                          ? 'bg-rose-600'
+                          : chartCategory === 'sandwich'
+                          ? 'bg-amber-600'
+                          : 'bg-purple-700'
                       }`}
                       style={{ width: `${barWidth}%` }}
                     />
