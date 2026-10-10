@@ -496,6 +496,38 @@
         },
         "blocking": []
       }
+    },
+    {
+      "n": 32,
+      "at": "2026-10-10T15:29:32.047Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 28,
+          "unverified": 7,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
+    },
+    {
+      "n": 33,
+      "at": "2026-10-10T15:43:29.569Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 31,
+          "unverified": 4,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
     }
   ],
   "items": {
@@ -572,15 +604,15 @@
       "regressed": false
     },
     "info.secret-exposed": {
-      "status": "unknown",
+      "status": "pass",
       "firstFailRound": null,
-      "fixedRound": null,
+      "fixedRound": 33,
       "regressed": false
     },
     "info.config-exposed": {
-      "status": "unknown",
+      "status": "pass",
       "firstFailRound": null,
-      "fixedRound": null,
+      "fixedRound": 33,
       "regressed": false
     },
     "info.source-map": {
@@ -686,9 +718,9 @@
       "regressed": false
     },
     "code.endpoint.unauth": {
-      "status": "unknown",
+      "status": "pass",
       "firstFailRound": null,
-      "fixedRound": null,
+      "fixedRound": 33,
       "regressed": false
     },
     "code.hardcoded-secret": {
