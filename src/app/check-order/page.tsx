@@ -17,8 +17,10 @@ import {
   Loader2,
   Trash2,
   Phone,
+  FileText,
 } from 'lucide-react';
-import { Order } from '@/lib/types';
+import { Order, CafeInfo } from '@/lib/types';
+import QuotationModal from '@/components/QuotationModal';
 
 function CheckOrderContent() {
   const searchParams = useSearchParams();
@@ -37,6 +39,23 @@ function CheckOrderContent() {
   const [errorMsg, setErrorMsg] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
+
+  // 공식 견적서 모달 및 카페 정보
+  const [cafe, setCafe] = useState<CafeInfo | null>(null);
+  const [quotationOrder, setQuotationOrder] = useState<Order | null>(null);
+
+  useEffect(() => {
+    async function loadCafe() {
+      try {
+        const res = await fetch('/api/public/data');
+        const data = await res.json();
+        if (data.cafe) setCafe(data.cafe);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadCafe();
+  }, []);
 
   // 규격 외 문자 차단 핸들러
   const handleInputChange = (val: string) => {
@@ -370,6 +389,19 @@ function CheckOrderContent() {
               </div>
             </div>
 
+            {/* 공식 견적서 (PDF / XLSX) 다운로드 버튼 */}
+            <div className="pt-3 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setQuotationOrder(order)}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-2xl flex items-center justify-center gap-1.5 transition-colors shadow-2xs text-xs"
+                title="A4 표준 서식의 공식 견적서를 PDF 또는 엑셀로 다운로드합니다"
+              >
+                <FileText className="w-4 h-4 text-stone-950" />
+                <span>공식 견적서 다운로드 (PDF / 엑셀)</span>
+              </button>
+            </div>
+
             {/* 견적 취소 액션 바 (요구사항: 확인 창에서 취소가 가능하도록 프로세스 추가) */}
             {canCancel && (
               <div className="pt-3 border-t border-stone-100">
@@ -399,6 +431,14 @@ function CheckOrderContent() {
           </div>
         )}
       </div>
+
+      {/* 공식 견적서 모달 */}
+      <QuotationModal
+        isOpen={Boolean(quotationOrder)}
+        onClose={() => setQuotationOrder(null)}
+        order={quotationOrder}
+        cafe={cafe}
+      />
     </div>
   );
 }

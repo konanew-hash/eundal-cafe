@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Search,
@@ -15,8 +15,10 @@ import {
   Loader2,
   Trash2,
   Gift,
+  FileText,
 } from 'lucide-react';
-import { Order } from '@/lib/types';
+import { Order, CafeInfo } from '@/lib/types';
+import QuotationModal from './QuotationModal';
 
 interface CheckOrderModalProps {
   isOpen: boolean;
@@ -33,6 +35,25 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
   const [errorMsg, setErrorMsg] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
+
+  // 공식 견적서 모달 및 카페 정보
+  const [cafe, setCafe] = useState<CafeInfo | null>(null);
+  const [quotationOrder, setQuotationOrder] = useState<Order | null>(null);
+
+  useEffect(() => {
+    async function loadCafe() {
+      try {
+        const res = await fetch('/api/public/data');
+        const data = await res.json();
+        if (data.cafe) setCafe(data.cafe);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (isOpen) {
+      loadCafe();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -371,6 +392,19 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
               <span className="text-base text-amber-900 font-black">{order.total_amount.toLocaleString()}원</span>
             </div>
 
+            {/* 공식 견적서 (PDF / XLSX) 다운로드 버튼 */}
+            <div className="pt-2 border-t border-stone-200">
+              <button
+                type="button"
+                onClick={() => setQuotationOrder(order)}
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-2xs text-xs"
+                title="A4 표준 서식의 공식 견적서를 PDF 또는 엑셀로 다운로드합니다"
+              >
+                <FileText className="w-4 h-4 text-stone-950" />
+                <span>공식 견적서 다운로드 (PDF / 엑셀)</span>
+              </button>
+            </div>
+
             {/* 견적 취소 버튼 */}
             {canCancel && (
               <div className="pt-2 border-t border-stone-200">
@@ -406,6 +440,14 @@ export default function CheckOrderModal({ isOpen, onClose }: CheckOrderModalProp
           </button>
         </div>
       </div>
+
+      {/* 공식 견적서 모달 */}
+      <QuotationModal
+        isOpen={Boolean(quotationOrder)}
+        onClose={() => setQuotationOrder(null)}
+        order={quotationOrder}
+        cafe={cafe}
+      />
     </div>
   );
 }

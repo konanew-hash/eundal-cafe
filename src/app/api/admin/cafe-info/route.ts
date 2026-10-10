@@ -122,6 +122,10 @@ export async function PUT(req: NextRequest) {
         // 납품 포트폴리오 홍보 문구
         portfolio_title: body.portfolio_title !== undefined ? body.portfolio_title : null,
         portfolio_subtitle: body.portfolio_subtitle !== undefined ? body.portfolio_subtitle : null,
+        // 견적서 공급자 서식 정보
+        business_type: body.business_type !== undefined ? body.business_type : '음식점업',
+        business_item: body.business_item !== undefined ? body.business_item : '커피, 디저트, 샌드위치',
+        seal_image_url: body.seal_image_url !== undefined ? body.seal_image_url : null,
         updated_at: new Date().toISOString(),
       })
       .neq('id', '00000000-0000-0000-0000-000000000000')

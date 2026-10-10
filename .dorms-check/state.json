@@ -464,6 +464,38 @@
         },
         "blocking": []
       }
+    },
+    {
+      "n": 30,
+      "at": "2026-10-09T03:20:01.032Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 28,
+          "unverified": 7,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
+    },
+    {
+      "n": 31,
+      "at": "2026-10-09T04:30:46.044Z",
+      "security": {
+        "score": null,
+        "grade": null,
+        "eligible": true,
+        "outcome": "eligible",
+        "coverage": {
+          "checked": 28,
+          "unverified": 7,
+          "notApplicable": 1
+        },
+        "blocking": []
+      }
     }
   ],
   "items": {

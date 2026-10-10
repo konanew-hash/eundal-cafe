@@ -37,14 +37,16 @@ import {
   Store,
   Truck,
   Award,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
-import { Order, MenuItem, OrderItem } from '@/lib/types';
+import { Order, MenuItem, OrderItem, CafeInfo } from '@/lib/types';
 import { exportOrdersToExcel } from '@/lib/excel';
 import { translateLocationToKorean } from '@/lib/location';
 import MiniMapPopup from '@/components/MiniMapPopup';
 import SmsSendModal from '@/components/SmsSendModal';
+import QuotationModal from '@/components/QuotationModal';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -70,6 +72,10 @@ export default function AdminOrdersPage() {
 
   // 고객 SMS 문자 발송 모달 상태
   const [smsModalOrder, setSmsModalOrder] = useState<Order | null>(null);
+
+  // 공식 견적서 모달 상태 및 카페 정보
+  const [cafe, setCafe] = useState<CafeInfo | null>(null);
+  const [quotationModalOrder, setQuotationModalOrder] = useState<Order | null>(null);
 
   // 주문 수정 모달 상태
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -103,13 +109,14 @@ export default function AdminOrdersPage() {
     }
   }, [statusFilter]);
 
-  // 메뉴 목록 로드 (주문 수정 시 추가용)
+  // 메뉴 및 카페 정보 로드
   useEffect(() => {
     async function loadMenus() {
       try {
         const res = await fetch('/api/public/data');
         const data = await res.json();
         if (data.menus) setAvailableMenus(data.menus);
+        if (data.cafe) setCafe(data.cafe);
       } catch (err) {
         console.error(err);
       }
@@ -786,6 +793,16 @@ export default function AdminOrdersPage() {
                   </button>
                 </div>
 
+                {/* 공식 견적서 (PDF / XLSX) 다운로드 & 출력 버튼 */}
+                <button
+                  onClick={() => setQuotationModalOrder(order)}
+                  className="w-full py-1.5 px-2 bg-amber-100/90 hover:bg-amber-200 text-amber-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors border border-amber-300 shadow-2xs"
+                  title="공식 견적서 확인 및 PDF/XLSX 다운로드"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-800" />
+                  <span>공식 견적서 출력 (PDF / 엑셀)</span>
+                </button>
+
                 {/* 상태 변경 액션 버튼들 (4단계: 견적대기 - 견적확정 - 거래완료 - 취소) */}
                 <div className="flex items-center gap-1.5">
                   {order.status === 'pending' && (
@@ -1056,6 +1073,14 @@ export default function AdminOrdersPage() {
         isOpen={Boolean(smsModalOrder)}
         onClose={() => setSmsModalOrder(null)}
         order={smsModalOrder}
+      />
+
+      {/* 7. 공식 견적서 (PDF / XLSX / 인쇄) 모달 */}
+      <QuotationModal
+        isOpen={Boolean(quotationModalOrder)}
+        onClose={() => setQuotationModalOrder(null)}
+        order={quotationModalOrder}
+        cafe={cafe}
       />
     </div>
   );

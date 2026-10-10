@@ -1,6 +1,7 @@
-import React from 'react';
-import { CheckCircle2, Copy, MapPin, Calendar, Clock, ShoppingBag, MessageCircle, Gift } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Copy, MapPin, Calendar, Clock, ShoppingBag, MessageCircle, Gift, FileText } from 'lucide-react';
 import { Order, CafeInfo } from '@/lib/types';
+import QuotationModal from './QuotationModal';
 
 interface OrderSuccessModalProps {
   order: Order | null;
@@ -9,7 +10,9 @@ interface OrderSuccessModalProps {
   onClose: () => void;
 }
 
-export default function OrderSuccessModal({ order, quoteNotice, onClose }: OrderSuccessModalProps) {
+export default function OrderSuccessModal({ order, quoteNotice, cafe, onClose }: OrderSuccessModalProps) {
+  const [showQuotation, setShowQuotation] = useState(false);
+
   if (!order) return null;
 
   const defaultNotice =
@@ -148,16 +151,35 @@ export default function OrderSuccessModal({ order, quoteNotice, onClose }: Order
           </div>
         </div>
 
-        {/* 닫기 버튼 */}
-        <div className="pt-2">
+        {/* 하단 액션 버튼들 */}
+        <div className="pt-2 space-y-2">
           <button
+            type="button"
+            onClick={() => setShowQuotation(true)}
+            className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm text-xs"
+            title="A4 표준 서식의 공식 견적서를 PDF 또는 엑셀로 다운로드합니다"
+          >
+            <FileText className="w-4 h-4 text-stone-900" />
+            <span>📄 공식 견적서 다운로드 (PDF / 엑셀)</span>
+          </button>
+
+          <button
+            type="button"
             onClick={onClose}
-            className="w-full py-3.5 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-sm text-sm"
+            className="w-full py-2.5 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-sm text-xs"
           >
             확인 (홈으로 이동)
           </button>
         </div>
       </div>
+
+      {/* 공식 견적서 모달 */}
+      <QuotationModal
+        isOpen={showQuotation}
+        onClose={() => setShowQuotation(false)}
+        order={order}
+        cafe={cafe}
+      />
     </div>
   );
 }

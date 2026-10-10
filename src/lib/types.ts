@@ -44,6 +44,10 @@ export interface CafeInfo {
   // 납품 사례 홍보 문구 (관리자 편집용)
   portfolio_title?: string;
   portfolio_subtitle?: string;
+  // 견적서 공급자 정보 (서식 수정용)
+  business_type?: string; // 업태 (예: 음식점업)
+  business_item?: string; // 종목 (예: 커피, 디저트, 샌드위치)
+  seal_image_url?: string; // 공급자 직인/인감 도장 이미지
 }
 
 // 주변 상권 및 경쟁사 정보

@@ -63,12 +63,14 @@ export default function AdminCafeInfoPage() {
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingAppIcon, setUploadingAppIcon] = useState(false);
+  const [uploadingSeal, setUploadingSeal] = useState(false);
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [testingSms, setTestingSms] = useState(false);
 
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const appIconFileInputRef = useRef<HTMLInputElement>(null);
+  const sealFileInputRef = useRef<HTMLInputElement>(null);
 
   // 새 배너 URL 직접 추가용 입력값
   const [newBannerUrl, setNewBannerUrl] = useState('');
@@ -106,6 +108,9 @@ export default function AdminCafeInfoPage() {
     google_url: '',
     business_number: '',
     owner_name: '',
+    business_type: '음식점업',
+    business_item: '커피, 디저트, 샌드위치',
+    seal_image_url: '',
     privacy_officer: '',
     privacy_policy: '',
     manager_kakao_id: '',
@@ -163,6 +168,9 @@ export default function AdminCafeInfoPage() {
           google_url: data.cafe.google_url || '',
           business_number: data.cafe.business_number || '',
           owner_name: data.cafe.owner_name || '',
+          business_type: data.cafe.business_type || '음식점업',
+          business_item: data.cafe.business_item || '커피, 디저트, 샌드위치',
+          seal_image_url: data.cafe.seal_image_url || '',
           privacy_officer: data.cafe.privacy_officer || '',
           privacy_policy: data.cafe.privacy_policy || '',
           manager_kakao_id: data.cafe.manager_kakao_id || '',
@@ -247,14 +255,15 @@ export default function AdminCafeInfoPage() {
     loadCafeInfo();
   }, []);
 
-  const handleFileUpload = async (file: File, target: 'banner' | 'logo' | 'app_icon') => {
+  const handleFileUpload = async (file: File, target: 'banner' | 'logo' | 'app_icon' | 'seal') => {
     if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
 
     if (target === 'banner') setUploadingBanner(true);
     else if (target === 'logo') setUploadingLogo(true);
-    else setUploadingAppIcon(true);
+    else if (target === 'app_icon') setUploadingAppIcon(true);
+    else setUploadingSeal(true);
 
     try {
       const res = await fetch('/api/admin/upload', {
@@ -281,8 +290,10 @@ export default function AdminCafeInfoPage() {
               logo_icon_url: nextList[0] || data.url,
             };
           });
-        } else {
+        } else if (target === 'app_icon') {
           setForm((prev) => ({ ...prev, app_icon_url: data.url }));
+        } else {
+          setForm((prev) => ({ ...prev, seal_image_url: data.url }));
         }
       } else {
         alert(data.error || '이미지 업로드에 실패했습니다.');
@@ -293,7 +304,8 @@ export default function AdminCafeInfoPage() {
     } finally {
       if (target === 'banner') setUploadingBanner(false);
       else if (target === 'logo') setUploadingLogo(false);
-      else setUploadingAppIcon(false);
+      else if (target === 'app_icon') setUploadingAppIcon(false);
+      else setUploadingSeal(false);
     }
   };
 
@@ -1014,20 +1026,37 @@ export default function AdminCafeInfoPage() {
           </div>
         </div>
 
-        {/* 6. 사업자 정보 및 개인정보보호 책임자 (법령 준수) */}
+        {/* 6. 사업자(공급자) 정보 및 직인 설정 (견적서 & 푸터 연동) */}
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-          <div>
-            <h3 className="text-sm font-bold text-stone-900">
-              사업자 정보 및 개인정보보호 책임자 (법령 표기용)
-            </h3>
-            <p className="text-xs text-stone-500 mt-0.5">
-              전자상거래법 및 개인정보보호법에 의거하여 홈페이지 하단 푸터에 의무 고지되는 사업자 정보입니다.
-            </p>
+          <div className="border-b border-stone-100 pb-2 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-amber-700" />
+                <span>사업자(공급자) 정보 및 직인 (공식 견적서 & 푸터 연동)</span>
+              </h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                공식 견적서(A4/PDF/XLSX)의 공급자 란 및 홈페이지 하단 푸터에 자동 반영되는 사업자 정보입니다.
+              </p>
+            </div>
+            <span className="text-[11px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+              견적서 서식 반영
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div>
-              <label className="block text-stone-700 font-bold mb-1">대표자명</label>
+              <label className="block text-stone-700 font-bold mb-1">상호 (업체명)</label>
+              <input
+                type="text"
+                placeholder="예: 은달 카페"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">대표자명 (성명)</label>
               <input
                 type="text"
                 placeholder="예: 김은달"
@@ -1041,9 +1070,31 @@ export default function AdminCafeInfoPage() {
               <label className="block text-stone-700 font-bold mb-1">사업자등록번호</label>
               <input
                 type="text"
-                placeholder="예: 123-45-67890"
+                placeholder="예: 569-06-01382"
                 value={form.business_number}
                 onChange={(e) => setForm({ ...form, business_number: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">업태</label>
+              <input
+                type="text"
+                placeholder="예: 음식점업"
+                value={form.business_type}
+                onChange={(e) => setForm({ ...form, business_type: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">종목</label>
+              <input
+                type="text"
+                placeholder="예: 커피, 디저트, 샌드위치"
+                value={form.business_item}
+                onChange={(e) => setForm({ ...form, business_item: e.target.value })}
                 className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
               />
             </div>
@@ -1057,6 +1108,108 @@ export default function AdminCafeInfoPage() {
                 onChange={(e) => setForm({ ...form, privacy_officer: e.target.value })}
                 className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-stone-700 font-bold mb-1">사업장 주소 (견적서 공급자 주소)</label>
+              <input
+                type="text"
+                placeholder="예: 경기도 수원시 장안구 조원로 16"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-700 font-bold mb-1">대표 전화번호 (견적서 공급자 번호)</label>
+              <input
+                type="text"
+                placeholder="예: 010-9986-2418"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium font-mono"
+              />
+            </div>
+          </div>
+
+          {/* 직인(도장) 이미지 관리 */}
+          <div className="pt-3 border-t border-stone-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-stone-800 font-bold text-xs">
+                  견적서 대표 직인(도장) 이미지
+                </label>
+                <p className="text-[11px] text-stone-500">
+                  견적서 공급자 란 성명 옆에 날인되는 직인입니다. (투명 배경 PNG 권장, 미등록 시 자동 붉은색 (인) 표기)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-xl border border-stone-200">
+              {/* 직인 미리보기 */}
+              <div className="w-16 h-16 rounded-xl border border-stone-300 bg-white flex items-center justify-center p-1 relative shrink-0 shadow-2xs">
+                {form.seal_image_url ? (
+                  <img
+                    src={form.seal_image_url}
+                    alt="직인 미리보기"
+                    className="w-14 h-14 object-contain"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full border-2 border-red-600 flex items-center justify-center text-red-600 font-black text-xs">
+                    인
+                  </div>
+                )}
+              </div>
+
+              {/* 직인 업로드 & URL 입력 컨트롤 */}
+              <div className="flex-1 space-y-2 min-w-0">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={sealFileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileUpload(e.target.files[0], 'seal');
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => sealFileInputRef.current?.click()}
+                    disabled={uploadingSeal}
+                    className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    {uploadingSeal ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    <span>{uploadingSeal ? '업로드 중...' : '직인 파일 업로드'}</span>
+                  </button>
+
+                  {form.seal_image_url && (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, seal_image_url: '' })}
+                      className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors border border-rose-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>직인 삭제 (기본도장 사용)</span>
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="직인 이미지 직접 URL 입력 (예: https://...)"
+                  value={form.seal_image_url}
+                  onChange={(e) => setForm({ ...form, seal_image_url: e.target.value })}
+                  className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-mono"
+                />
+              </div>
             </div>
           </div>
         </div>
