@@ -27,19 +27,19 @@ export const QuotationDocument = forwardRef<HTMLDivElement, QuotationDocumentPro
     const supplierPhone = cafe?.phone || '010-9986-2418';
     const sealUrl = cafe?.seal_image_url;
 
-    // 테이블 빈 줄 채우기 (기본 최소 9줄 유지)
-    const minRows = 9;
+    // 테이블 빈 줄 채우기 (A4 1장에 딱 맞추기 위해 기본 6줄 유지)
+    const minRows = 6;
     const emptyRowsCount = Math.max(0, minRows - rows.length);
 
     return (
       <div
         ref={ref}
         id="quotation-print-area"
-        className="w-[794px] min-h-[1123px] bg-white text-stone-900 p-10 font-sans mx-auto shadow-none print:shadow-none print:p-8 print:m-0 print:w-full print:min-h-0 select-text"
+        className="w-[794px] min-h-[1050px] bg-white text-stone-900 p-8 font-sans mx-auto shadow-none print:shadow-none print:p-0 print:m-0 print:w-full print:min-h-0 print:h-auto select-text"
         style={{ boxSizing: 'border-box' }}
       >
         {/* 상단: 문서번호 & 견적서 메인 타이틀 */}
-        <div className="relative mb-6">
+        <div className="relative mb-5 print:mb-3">
           <div className="text-[11px] font-mono text-stone-500 font-semibold">
             NO. {order.order_number}
           </div>
@@ -267,7 +267,7 @@ export const QuotationDocument = forwardRef<HTMLDivElement, QuotationDocumentPro
         </div>
 
         {/* 하단 특기사항 및 안내 */}
-        <div className="mt-4 border border-stone-300 p-3 rounded-lg bg-stone-50/50 text-[11px] text-stone-700 space-y-1">
+        <div className="mt-3 print:mt-2 border border-stone-300 p-2.5 print:p-2 rounded-lg bg-stone-50/50 text-[11px] print:text-[10px] text-stone-700 space-y-1">
           <div className="font-bold text-stone-900 flex items-center justify-between">
             <span>[참고사항 및 수령 안내]</span>
             <span className="font-normal text-stone-500">

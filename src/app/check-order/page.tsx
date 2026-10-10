@@ -19,8 +19,7 @@ import {
   Phone,
   FileText,
 } from 'lucide-react';
-import { Order, CafeInfo } from '@/lib/types';
-import QuotationModal from '@/components/QuotationModal';
+import { Order } from '@/lib/types';
 
 function CheckOrderContent() {
   const searchParams = useSearchParams();
@@ -39,23 +38,6 @@ function CheckOrderContent() {
   const [errorMsg, setErrorMsg] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
-
-  // 공식 견적서 모달 및 카페 정보
-  const [cafe, setCafe] = useState<CafeInfo | null>(null);
-  const [quotationOrder, setQuotationOrder] = useState<Order | null>(null);
-
-  useEffect(() => {
-    async function loadCafe() {
-      try {
-        const res = await fetch('/api/public/data');
-        const data = await res.json();
-        if (data.cafe) setCafe(data.cafe);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    loadCafe();
-  }, []);
 
   // 규격 외 문자 차단 핸들러
   const handleInputChange = (val: string) => {
@@ -389,18 +371,17 @@ function CheckOrderContent() {
               </div>
             </div>
 
-            {/* 공식 견적서 (PDF / XLSX) 다운로드 버튼 */}
-            <div className="pt-3 border-t border-stone-100">
-              <button
-                type="button"
-                onClick={() => setQuotationOrder(order)}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-2xl flex items-center justify-center gap-1.5 transition-colors shadow-2xs text-xs"
-                title="A4 표준 서식의 공식 견적서를 PDF 또는 엑셀로 다운로드합니다"
-              >
-                <FileText className="w-4 h-4 text-stone-950" />
-                <span>공식 견적서 다운로드 (PDF / 엑셀)</span>
-              </button>
-            </div>
+            {/* 공식 견적서 발행 요청 여부 안내 */}
+            {order.request_quotation && (
+              <div className="pt-3 border-t border-stone-100">
+                <div className="p-3 bg-blue-50/80 rounded-2xl border border-blue-200 text-blue-950 flex items-start gap-2 text-xs">
+                  <FileText className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>공식 견적서 발행 요청 건:</strong> 카페에서 견적 확인 및 확정 시, 등록된 연락처로 공식 견적서가 문자/알림으로 전송됩니다.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* 견적 취소 액션 바 (요구사항: 확인 창에서 취소가 가능하도록 프로세스 추가) */}
             {canCancel && (
@@ -431,14 +412,6 @@ function CheckOrderContent() {
           </div>
         )}
       </div>
-
-      {/* 공식 견적서 모달 */}
-      <QuotationModal
-        isOpen={Boolean(quotationOrder)}
-        onClose={() => setQuotationOrder(null)}
-        order={quotationOrder}
-        cafe={cafe}
-      />
     </div>
   );
 }

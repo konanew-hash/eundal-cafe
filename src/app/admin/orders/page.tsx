@@ -167,6 +167,19 @@ export default function AdminOrdersPage() {
         setOrders((prev) =>
           prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus as Order['status'] } : o))
         );
+        // 견적 확정 시 고객에게 견적서 문자/카톡 발송 여부 묻고 SMS 모달 오픈
+        if (nextStatus === 'confirmed') {
+          const target = orders.find((o) => o.id === orderId);
+          if (target) {
+            const confirmedOrder = { ...target, status: 'confirmed' as const };
+            const shouldSendSms = confirm(
+              `[${target.customer_name}] 님의 견적이 확정되었습니다!\n\n고객님께 견적 확정 안내 및 견적서 확인 링크를 문자/카톡으로 발송하시겠습니까?`
+            );
+            if (shouldSendSms) {
+              setSmsModalOrder(confirmedOrder);
+            }
+          }
+        }
       } else {
         alert(data.error || '주문 상태 변경에 실패했습니다.');
       }
@@ -544,6 +557,15 @@ export default function AdminOrdersPage() {
                           <span>배달</span>
                         </span>
                       )}
+                      {order.request_quotation && (
+                        <span
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-black rounded-md border border-rose-300 animate-pulse shadow-2xs"
+                          title="고객이 주문서 작성 시 공식 견적서 발행을 요청하였습니다"
+                        >
+                          <FileText className="w-2.5 h-2.5 text-rose-700 shrink-0" />
+                          <span>견적서 요청</span>
+                        </span>
+                      )}
                     </div>
                     <span className="text-[10px] text-stone-500 block uppercase font-mono mt-0.5">
                       {new Date(order.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 접수
@@ -793,15 +815,30 @@ export default function AdminOrdersPage() {
                   </button>
                 </div>
 
-                {/* 공식 견적서 (PDF / XLSX) 다운로드 & 출력 버튼 */}
-                <button
-                  onClick={() => setQuotationModalOrder(order)}
-                  className="w-full py-1.5 px-2 bg-amber-100/90 hover:bg-amber-200 text-amber-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors border border-amber-300 shadow-2xs"
-                  title="공식 견적서 확인 및 PDF/XLSX 다운로드"
-                >
-                  <FileText className="w-3.5 h-3.5 text-amber-800" />
-                  <span>공식 견적서 출력 (PDF / 엑셀)</span>
-                </button>
+                {/* 공식 견적서 (PDF / XLSX) 다운로드 및 고객 문자/카톡 발송 버튼 바 */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setQuotationModalOrder(order)}
+                    className="flex-1 py-1.5 px-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-colors border border-stone-300 shadow-2xs"
+                    title="공식 견적서 확인 및 PDF/XLSX 다운로드"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-stone-700" />
+                    <span>공식 견적서 (PDF/엑셀)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setSmsModalOrder(order)}
+                    className={`flex-1 py-1.5 px-2 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-colors shadow-2xs ${
+                      order.request_quotation
+                        ? 'bg-rose-600 hover:bg-rose-500 text-white border border-rose-600 shadow-rose-200'
+                        : 'bg-amber-100/90 hover:bg-amber-200 text-amber-950 border border-amber-300'
+                    }`}
+                    title="고객에게 견적서 확인 링크 및 안내 문자를 발송합니다"
+                  >
+                    <MessageSquare className={`w-3.5 h-3.5 ${order.request_quotation ? 'text-white' : 'text-amber-800'}`} />
+                    <span>견적서 문자/카톡 발송</span>
+                  </button>
+                </div>
 
                 {/* 상태 변경 액션 버튼들 (4단계: 견적대기 - 견적확정 - 거래완료 - 취소) */}
                 <div className="flex items-center gap-1.5">

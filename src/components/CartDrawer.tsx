@@ -18,6 +18,7 @@ import {
   Check,
 } from 'lucide-react';
 import { CartItem, DeliveryPolicy, DistanceRule, MenuItem, Store } from '@/lib/types';
+import { getStoreMapSearchName } from '@/lib/location';
 import MiniMapPopup from '@/components/MiniMapPopup';
 
 interface CartDrawerProps {
@@ -536,16 +537,16 @@ export default function CartDrawer({
                               <span>실위치 지도 보기</span>
                             </button>
                             <a
-                              href={store.naver_place_url || `https://map.naver.com/p/search/${encodeURIComponent(`${store.name} ${store.address}`)}`}
+                              href={store.naver_place_url || `https://map.naver.com/p/search/${encodeURIComponent(getStoreMapSearchName(store))}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               className="px-2 py-0.5 rounded bg-[#03C75A] hover:bg-[#02b150] text-white text-[10px] font-bold flex items-center gap-0.5 shadow-2xs transition-colors"
                             >
-                              <span>네이버 플레이스</span> <ExternalLink className="w-2.5 h-2.5" />
+                              <span>네이버 ({getStoreMapSearchName(store)})</span> <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                             <a
-                              href={`https://map.kakao.com/link/search/${encodeURIComponent(`${store.name} ${store.address}`)}`}
+                              href={`https://map.kakao.com/link/search/${encodeURIComponent(getStoreMapSearchName(store))}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}

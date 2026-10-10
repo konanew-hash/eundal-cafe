@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import DaumPostcode from 'react-daum-postcode';
 import { Store } from '@/lib/types';
+import { getStoreMapSearchName } from '@/lib/location';
 import MiniMapPopup from '@/components/MiniMapPopup';
 
 export default function AdminStoresPage() {
@@ -358,15 +359,15 @@ export default function AdminStoresPage() {
                     <span>미니 지도 팝업</span>
                   </button>
                   <a
-                    href={`https://map.naver.com/v5/search/${encodeURIComponent(store.address)}`}
+                    href={store.naver_place_url || `https://map.naver.com/v5/search/${encodeURIComponent(getStoreMapSearchName(store))}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-0.5 border border-emerald-200"
                   >
-                    네이버 지도 <ExternalLink className="w-2.5 h-2.5" />
+                    네이버 지도 ({getStoreMapSearchName(store)}) <ExternalLink className="w-2.5 h-2.5" />
                   </a>
                   <a
-                    href={`https://map.kakao.com/link/search/${encodeURIComponent(store.address)}`}
+                    href={`https://map.kakao.com/link/search/${encodeURIComponent(getStoreMapSearchName(store))}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-2 py-1 rounded-md bg-yellow-50 hover:bg-yellow-100 text-yellow-900 text-[10px] font-bold flex items-center gap-0.5 border border-yellow-300"
@@ -374,7 +375,7 @@ export default function AdminStoresPage() {
                     카카오맵 <ExternalLink className="w-2.5 h-2.5" />
                   </a>
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`}
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(getStoreMapSearchName(store))}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold flex items-center gap-0.5 border border-stone-200"

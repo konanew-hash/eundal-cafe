@@ -283,6 +283,7 @@ export interface Order {
   total_amount: number;
   privacy_agreed: boolean;
   privacy_agreed_at: string;
+  request_quotation?: boolean; // 공식 견적서 발행 요청 여부
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'accepted' | 'brewing' | 'delivering';
   client_ip?: string;
   client_location?: string;

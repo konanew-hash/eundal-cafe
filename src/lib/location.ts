@@ -298,3 +298,25 @@ export async function resolveDetailedKoreanLocation({
 
   return translateLocationToKorean(fullAddress);
 }
+
+// 픽업 매장의 지도(네이버/카카오/구글) 검색용 상호명 매핑
+// 요구사항: 현재 주소로 맵핑하는 것이 아닌 상호명인 '은달', '은달 파장2호점'으로 매핑
+export function getStoreMapSearchName(store?: { name?: string; naver_place_id?: string; address?: string } | null): string {
+  if (!store) return '은달';
+  const name = store.name || '';
+  const placeId = store.naver_place_id || '';
+  const addr = store.address || '';
+
+  // 1. 파장 2호점 (네이버 플레이스 ID: 1869537461)
+  if (placeId === '1869537461' || /파장|2호/i.test(name) || /경수대로1043번길/i.test(addr)) {
+    return '은달 파장2호점';
+  }
+
+  // 2. 조원 1호점 / 본점 (네이버 플레이스 ID: 1245444726)
+  if (placeId === '1245444726' || /조원|1호/i.test(name) || /조원로/i.test(addr) || name.includes('은달')) {
+    return '은달';
+  }
+
+  return name || '은달';
+}
+

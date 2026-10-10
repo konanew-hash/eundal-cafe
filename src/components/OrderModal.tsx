@@ -27,6 +27,7 @@ import GpsGuideModal from '@/components/GpsGuideModal';
 import MiniMapPopup from '@/components/MiniMapPopup';
 import { CartItem, DeliveryPolicy, Order, Store } from '@/lib/types';
 import { getBrowserLocation, calculateDistanceInMeters, formatDistance } from '@/lib/geoUtils';
+import { getStoreMapSearchName } from '@/lib/location';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -128,6 +129,7 @@ export default function OrderModal({
   const [deliveryAddressDetail, setDeliveryAddressDetail] = useState('');
   const [orderMemo, setOrderMemo] = useState(initialOrderMemo);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [requestQuotation, setRequestQuotation] = useState(false);
 
   useEffect(() => {
     if (initialOrderMemo) {
@@ -323,6 +325,7 @@ export default function OrderModal({
           delivery_address_detail: isPickup ? (currentStore?.name || '') : deliveryAddressDetail,
           selected_distance_label: isPickup ? '매장 픽업 (0원)' : selectedDistanceLabel,
           order_memo: orderMemo,
+          request_quotation: requestQuotation,
           privacy_agreed: privacyAgreed,
           gps_lat: gpsLat,
           gps_lng: gpsLng,
@@ -661,7 +664,7 @@ export default function OrderModal({
                           실위치 지도 보기
                         </button>
                         <a
-                          href={store.naver_place_url || `https://map.naver.com/p/search/${encodeURIComponent(`${store.name} ${store.address}`)}`}
+                          href={store.naver_place_url || `https://map.naver.com/p/search/${encodeURIComponent(getStoreMapSearchName(store))}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -670,7 +673,7 @@ export default function OrderModal({
                           <span>네이버 플레이스</span> <ExternalLink className="w-2.5 h-2.5" />
                         </a>
                         <a
-                          href={`https://map.kakao.com/link/search/${encodeURIComponent(`${store.name} ${store.address}`)}`}
+                          href={`https://map.kakao.com/link/search/${encodeURIComponent(getStoreMapSearchName(store))}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -765,6 +768,27 @@ export default function OrderModal({
               </div>
             </div>
           )}
+
+          {/* 4-1. 공식 견적서 발행 요청 (선택) */}
+          <div className="p-3.5 sm:p-4 bg-amber-50/70 rounded-2xl border border-amber-200/90 space-y-1.5">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={requestQuotation}
+                onChange={(e) => setRequestQuotation(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded text-amber-700 focus:ring-amber-500 border-stone-300 shrink-0"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-amber-800" />
+                  <span>공식 견적서(A4/공급가액·세액 구분) 발행 요청</span>
+                </span>
+                <p className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
+                  기관 결재 및 지출 품의용 공식 견적서가 필요하신 경우 선택해 주세요. 카페에서 견적 확인 후 확정 시 문자/알림으로 공식 견적서를 전송해 드립니다.
+                </p>
+              </div>
+            </label>
+          </div>
 
           {/* 5. 개인정보보호법상 동의 체크 (필수) */}
           <div className="p-3.5 sm:p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2">

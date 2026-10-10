@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       packaging_options,
       delivery_lat,
       delivery_lng,
+      request_quotation,
     } = body;
 
     const parsedPackagingFee = typeof packaging_fee === 'number' ? Math.max(0, packaging_fee) : 0;
@@ -253,6 +254,7 @@ export async function POST(req: NextRequest) {
         packaging_box: packaging_box || null,
         packaging_options: Array.isArray(packaging_options) ? packaging_options : [],
         total_amount: totalAmount,
+        request_quotation: Boolean(request_quotation),
         privacy_agreed: true,
         privacy_agreed_at: new Date().toISOString(),
         status: 'pending',

@@ -120,15 +120,31 @@ export default function MiniMapPopup({
   const mapLat = geoCoords?.lat || knownLat || (latitude && latitude > 0 ? latitude : 37.2966787);
   const mapLng = geoCoords?.lng || knownLng || (longitude && longitude > 0 ? longitude : 127.0215096);
 
-  // 네이버 지도/플레이스 링크 생성
+  // 네이버 지도/플레이스 및 길찾기 링크 생성
   const fullSearchQuery = cleanAddress ? `${cleanAddress} ${detailAddress || ''}`.trim() : displayName;
+
+  // 픽업 매장인 경우 지도를 주소가 아닌 상호명('은달' 또는 '은달 파장2호점')으로 매핑
+  let mapSearchQuery = fullSearchQuery;
+  if (isPickupStore) {
+    if (
+      finalPlaceId === '1869537461' ||
+      displayName.includes('2호') ||
+      displayName.includes('파장') ||
+      cleanAddress.includes('경수대로1043번길')
+    ) {
+      mapSearchQuery = '은달 파장2호점';
+    } else {
+      mapSearchQuery = '은달';
+    }
+  }
+
   const naverUrl = finalPlaceId
     ? `https://m.place.naver.com/restaurant/${finalPlaceId}/home`
-    : `https://map.naver.com/p/search/${encodeURIComponent(fullSearchQuery)}`;
+    : `https://map.naver.com/p/search/${encodeURIComponent(mapSearchQuery)}`;
 
-  const kakaoUrl = `https://map.kakao.com/link/search/${encodeURIComponent(fullSearchQuery)}`;
-  const tmapNaviUrl = `https://map.kakao.com/link/to/${encodeURIComponent(displayName || fullSearchQuery)},${mapLat},${mapLng}`;
-  const googleUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullSearchQuery)}`;
+  const kakaoUrl = `https://map.kakao.com/link/search/${encodeURIComponent(mapSearchQuery)}`;
+  const tmapNaviUrl = `https://map.kakao.com/link/to/${encodeURIComponent(mapSearchQuery)},${mapLat},${mapLng}`;
+  const googleUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapSearchQuery)}`;
 
   // 지도 임베드 범위 (Bounding Box) 계산
   const bbox = `${mapLng - 0.0035},${mapLat - 0.0022},${mapLng + 0.0035},${mapLat + 0.0022}`;

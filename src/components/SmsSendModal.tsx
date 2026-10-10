@@ -73,18 +73,28 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
     }
   }, [isOpen]);
 
-  // 주문 정보 기반 템플릿 변수 치환
+  // 주문 정보 기반 템플릿 변수 치환 (견적서 공급가액/세액 및 온라인 확인 링크 포함)
   const formatTemplate = (rawContent: string, currentOrder: Order) => {
     const isPickup = currentOrder.order_type === 'pickup';
     const pickupStore = currentOrder.pickup_store_name || '은달 매장';
     const deliveryMethod = isPickup
       ? `매장 픽업 (${pickupStore})`
-      : `배달 (${currentOrder.delivery_address})`;
+      : `배달 (${currentOrder.delivery_address} ${currentOrder.delivery_address_detail || ''})`;
+    const supplyAmount = Math.round(currentOrder.total_amount / 1.1);
+    const taxAmount = currentOrder.total_amount - supplyAmount;
+    const itemsSummary = currentOrder.items?.map((i) => `${i.menu_name} x${i.quantity}`).join(', ') || '';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://eundal.vercel.app';
+    const checkUrl = `${origin}/check-order?order_number=${encodeURIComponent(currentOrder.order_number)}&phone=${encodeURIComponent(currentOrder.customer_phone)}`;
 
     return rawContent
       .replace(/\{고객명\}/g, currentOrder.customer_name)
       .replace(/\{주문번호\}/g, currentOrder.order_number)
       .replace(/\{총금액\}/g, currentOrder.total_amount.toLocaleString())
+      .replace(/\{공급가액\}/g, supplyAmount.toLocaleString())
+      .replace(/\{부가가치세\}/g, taxAmount.toLocaleString())
+      .replace(/\{세액\}/g, taxAmount.toLocaleString())
+      .replace(/\{품목요약\}/g, itemsSummary)
+      .replace(/\{견적확인링크\}/g, checkUrl)
       .replace(/\{수령일시\}/g, `${currentOrder.delivery_date} ${currentOrder.delivery_time}`)
       .replace(/\{수령방식\}/g, deliveryMethod)
       .replace(/\{픽업매장\}/g, pickupStore)
@@ -97,14 +107,43 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
     setMessageText(formatTemplate(tpl.content, order));
   };
 
+  // 견적서 발송 전용 템플릿 즉시 적용 헬퍼
+  const applyQuotationPreset = () => {
+    if (!order) return;
+    setSelectedTemplateId('quotation_preset');
+    const quotationPreset = `[은달카페] 견적 확정 안내
+
+안녕하세요, {고객명} 귀하.
+은달 카페 단체 주문 견적이 확정되었습니다.
+
+• 견적번호: {주문번호}
+• 공급가액: {공급가액}원
+• 부가가치세: {부가가치세}원
+• 총 견적금액: {총금액}원
+• 희망 수령일: {수령일시}
+• 수령 방식: {수령방식}
+• 주문 품목: {품목요약}
+
+공식 견적서 확인 및 상세 내역은 아래 링크에서 확인하실 수 있습니다:
+{견적확인링크}
+
+감사합니다.
+은달 카페 드림`;
+    setMessageText(formatTemplate(quotationPreset, order));
+  };
+
   useEffect(() => {
-    if (order && templates.length > 0 && selectedTemplateId !== 'custom') {
+    if (order && templates.length > 0 && selectedTemplateId !== 'custom' && selectedTemplateId !== 'quotation_preset') {
       const current = templates.find((t) => t.id === selectedTemplateId);
       if (current) {
         setMessageText(formatTemplate(current.content, order));
       }
     } else if (order && !messageText) {
-      setMessageText(`[은달카페] 안녕하세요, ${order.customer_name}님! 단체 주문(${order.order_number}) 관련 안내드립니다.`);
+      if (order.request_quotation) {
+        applyQuotationPreset();
+      } else {
+        setMessageText(`[은달카페] 안녕하세요, ${order.customer_name}님! 단체 주문(${order.order_number}) 관련 안내드립니다.`);
+      }
     }
   }, [order, templates, selectedTemplateId]);
 
@@ -392,6 +431,19 @@ export default function SmsSendModal({ isOpen, onClose, order }: SmsSendModalPro
 
             {/* 템플릿 탭 버튼 그리드 */}
             <div className="flex flex-wrap gap-1.5 text-xs">
+              {/* 견적 확정 전용 프리셋 버튼 */}
+              <button
+                type="button"
+                onClick={applyQuotationPreset}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all border ${
+                  selectedTemplateId === 'quotation_preset'
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-400/30'
+                    : 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100'
+                }`}
+              >
+                📄 견적 확정 및 견적서 링크
+              </button>
+
               {templates.map((tpl) => (
                 <button
                   key={tpl.id}
